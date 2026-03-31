@@ -1,0 +1,66 @@
+workflows:
+  ios-release:
+    name: iOS App Store Release
+    max_build_duration: 60
+    instance_type: mac_mini_m2
+
+    integrations:
+      app_store_connect: StreamBox ASC Key  # Codemagic panelde oluşturulan isim
+
+    environment:
+      ios_signing:
+        distribution_type: app_store
+        bundle_identifier: com.streambox.app
+      flutter: stable
+      xcode: latest
+      cocoapods: default
+
+    scripts:
+      - name: Flutter pub get
+        script: flutter pub get
+
+      - name: Pod install
+        script: |
+          cd ios
+          pod install
+
+      - name: Build iOS IPA
+        script: |
+          flutter build ipa --release \
+            --export-options-plist=$CM_BUILD_DIR/ios/ExportOptions.plist
+
+    artifacts:
+      - build/ios/ipa/*.ipa
+      - /tmp/xcodebuild_logs/*.log
+
+    publishing:
+      app_store_connect:
+        auth: integration
+        submit_to_testflight: true   # önce TestFlight'a gönderir
+        submit_to_app_store: false   # manuel onay için false bırak
+
+  android-release:
+    name: Android Play Store Release
+    max_build_duration: 30
+    instance_type: linux_x2
+
+    environment:
+      flutter: stable
+      android_signing:
+        - streambox_keystore  # Codemagic panelde yüklenen keystore adı
+
+    scripts:
+      - name: Flutter pub get
+        script: flutter pub get
+
+      - name: Build AAB
+        script: |
+          flutter build appbundle --release
+
+    artifacts:
+      - build/app/outputs/bundle/release/app-release.aab
+
+    publishing:
+      google_play:
+        credentials: $GCLOUD_SERVICE_ACCOUNT_CREDENTIALS
+        track: internal   # internal → alpha → beta → production

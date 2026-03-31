@@ -1,0 +1,163 @@
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../core/providers/app_providers.dart';
+import '../../data/models/channel_model.dart';
+import 'home_state.dart';
+
+final homeProvider = AsyncNotifierProvider<HomeNotifier, HomeState>(
+  HomeNotifier.new,
+);
+
+class HomeNotifier extends AsyncNotifier<HomeState> {
+  @override
+  Future<HomeState> build() async {
+    final playlistRepo = ref.read(playlistRepoProvider);
+    final playlists    = await playlistRepo.getAll();
+    final activeId     = ref.read(activePlaylistProvider);
+
+    final id = activeId.isNotEmpty
+        ? activeId
+        : playlists.firstOrNull?.id ?? '';
+
+    HomeState state = HomeState(
+      playlists:        playlists,
+      activePlaylistId: id,
+    );
+
+    if (id.isNotEmpty) {
+      state = await _loadCategories(state);
+      state = await _loadChannels(state);
+      final recent = await ref
+          .read(channelRepoProvider)
+          .getRecentlyWatched(id);
+      state = state.copyWith(recentlyWatched: recent);
+    }
+
+    return state;
+  }
+
+  // ── Public actions ──────────────────────────────────────────────────────────
+
+  Future<void> selectTab(String tab) async {
+    final current = state.value;
+    if (current == null) return;
+    var next = current.copyWith(
+      activeTab:        tab,
+      selectedCategory: '',
+      channels:         [],
+    );
+    state = AsyncData(next);
+    next = await _loadCategories(next);
+    next = await _loadChannels(next);
+    state = AsyncData(next);
+  }
+
+  Future<void> selectCategory(String category) async {
+    final current = state.value;
+    if (current == null) return;
+    var next = current.copyWith(selectedCategory: category, channels: []);
+    state = AsyncData(next);
+    next  = await _loadChannels(next);
+    state = AsyncData(next);
+  }
+
+  void setSortOrder(SortOrder order) {
+    final current = state.value;
+    if (current == null) return;
+    state = AsyncData(current.copyWith(sortOrder: order));
+  }
+
+  Future<void> markWatched(String channelId, {int position = 0}) async {
+    await ref.read(channelRepoProvider)
+        .updateWatched(channelId, position: position);
+    // Refresh recently watched list
+    final current = state.value;
+    if (current == null || current.activePlaylistId.isEmpty) return;
+    final recent = await ref
+        .read(channelRepoProvider)
+        .getRecentlyWatched(current.activePlaylistId);
+    state = AsyncData(current.copyWith(recentlyWatched: recent));
+  }
+
+  void toggleFavorite(ChannelModel channel) {
+    final current = state.value;
+    if (current == null) return;
+    final newFav = !channel.isFavorite;
+    ref.read(channelRepoProvider).toggleFavorite(channel.id, newFav);
+    final updated = current.channels.map((c) =>
+        c.id == channel.id ? c.copyWith(isFavorite: newFav) : c).toList();
+    state = AsyncData(current.copyWith(channels: updated));
+  }
+
+  Future<void> search(String query) async {
+    final current = state.value;
+    if (current == null) return;
+    if (query.isEmpty) {
+      state = AsyncData(current.copyWith(
+          searchQuery: '', searchResults: [], isSearching: false));
+      return;
+    }
+    state = AsyncData(current.copyWith(
+        searchQuery: query, isSearching: true));
+    final results = await ref
+        .read(channelRepoProvider)
+        .search(current.activePlaylistId, query);
+    state = AsyncData(current.copyWith(
+        searchResults: results, isSearching: false));
+  }
+
+  void clearSearch() {
+    final current = state.value;
+    if (current == null) return;
+    state = AsyncData(current.copyWith(
+        searchQuery: '', searchResults: [], isSearching: false));
+  }
+
+  Future<void> reload() async {
+    state = const AsyncLoading();
+    state = await AsyncValue.guard(build);
+  }
+
+  // ── Private helpers ─────────────────────────────────────────────────────────
+
+  Future<HomeState> _loadCategories(HomeState s) async {
+    if (s.activePlaylistId.isEmpty) return s;
+    final type = _typeForTab(s.activeTab);
+    if (type == null) return s.copyWith(categories: []);
+
+    final cats = await ref
+        .read(channelRepoProvider)
+        .getCategories(s.activePlaylistId, type);
+    final selected = cats.contains(s.selectedCategory)
+        ? s.selectedCategory
+        : (cats.firstOrNull ?? '');
+    return s.copyWith(categories: cats, selectedCategory: selected);
+  }
+
+  Future<HomeState> _loadChannels(HomeState s) async {
+    if (s.activePlaylistId.isEmpty) return s;
+
+    final repo = ref.read(channelRepoProvider);
+    List<ChannelModel> channels;
+
+    if (s.activeTab == 'favorites') {
+      channels = await repo.getFavorites(s.activePlaylistId);
+    } else {
+      final type = _typeForTab(s.activeTab);
+      if (type == null) return s;
+      if (s.selectedCategory.isNotEmpty) {
+        channels = await repo.getByCategory(
+            s.activePlaylistId, type, s.selectedCategory);
+      } else {
+        channels = await repo.getByType(s.activePlaylistId, type);
+      }
+    }
+    return s.copyWith(channels: channels, isLoading: false, clearError: true);
+  }
+
+  static String? _typeForTab(String tab) => switch (tab) {
+    'live'   => 'live',
+    'movie'  => 'movie',
+    'series' => 'series',
+    _        => null,
+  };
+}
