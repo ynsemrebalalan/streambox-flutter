@@ -3,7 +3,7 @@ import 'package:sqflite/sqflite.dart';
 
 class AppDatabase {
   static const _version = 1;
-  static const _name    = 'streambox.db';
+  static const _name    = 'iptvai.db';
 
   static Database? _db;
 

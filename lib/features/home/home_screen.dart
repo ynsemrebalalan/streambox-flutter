@@ -96,7 +96,7 @@ class _NoPlaylistView extends ConsumerWidget {
           children: [
             Icon(Icons.live_tv, size: 80, color: cs.onSurfaceVariant),
             const SizedBox(height: Spacing.xl),
-            Text('StreamBox',
+            Text('IPTV AI Player',
                 style: TextStyle(
                     fontSize: TextSize.titleLg,
                     fontWeight: FontWeight.bold,
@@ -150,7 +150,7 @@ class _TopBar extends ConsumerWidget {
               children: [
                 Icon(Icons.live_tv, color: AppColors.accent, size: 26),
                 const SizedBox(width: Spacing.sm),
-                Text('StreamBox',
+                Text('IPTV AI Player',
                     style: TextStyle(
                         fontSize:   TextSize.title,
                         fontWeight: FontWeight.bold,

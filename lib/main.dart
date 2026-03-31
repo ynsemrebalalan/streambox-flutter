@@ -5,6 +5,7 @@ import 'package:media_kit/media_kit.dart';
 import 'core/providers/app_providers.dart';
 import 'core/router/app_router.dart';
 import 'core/theme/app_theme.dart';
+import 'data/repositories/settings_repository.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -16,23 +17,30 @@ void main() async {
     DeviceOrientation.portraitUp,
   ]);
 
-  runApp(const ProviderScope(child: StreamBoxApp()));
+  runApp(const ProviderScope(child: IPTVAIPlayerApp()));
 }
 
-class StreamBoxApp extends ConsumerStatefulWidget {
-  const StreamBoxApp({super.key});
+class IPTVAIPlayerApp extends ConsumerStatefulWidget {
+  const IPTVAIPlayerApp({super.key});
 
   @override
-  ConsumerState<StreamBoxApp> createState() => _StreamBoxAppState();
+  ConsumerState<IPTVAIPlayerApp> createState() => _IPTVAIPlayerAppState();
 }
 
-class _StreamBoxAppState extends ConsumerState<StreamBoxApp> {
+class _IPTVAIPlayerAppState extends ConsumerState<IPTVAIPlayerApp> {
   @override
   void initState() {
     super.initState();
     Future.microtask(() async {
       await ref.read(themeModeProvider.notifier).loadFromDb();
       await ref.read(activePlaylistProvider.notifier).loadFromDb();
+      // Skip disclaimer if already accepted
+      final accepted = await ref
+          .read(settingsRepoProvider)
+          .get(SettingsKeys.disclaimerAccepted);
+      if (accepted == 'true' && mounted) {
+        appRouter.go(AppRoutes.home);
+      }
     });
   }
 
@@ -41,7 +49,7 @@ class _StreamBoxAppState extends ConsumerState<StreamBoxApp> {
     final themeMode = ref.watch(themeModeProvider);
 
     return MaterialApp.router(
-      title:                      'StreamBox',
+      title:                      'IPTV AI Player',
       debugShowCheckedModeBanner: false,
       themeMode:                  themeMode,
       theme:                      AppTheme.light,

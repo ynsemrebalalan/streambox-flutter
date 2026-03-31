@@ -333,7 +333,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               children: [
                 ListTile(
                   leading: const Icon(Icons.info_outline),
-                  title:   const Text('StreamBox Flutter'),
+                  title:   const Text('IPTV AI Player'),
                   subtitle: Text('Sürüm 1.0.0',
                       style: TextStyle(color: cs.onSurfaceVariant)),
                 ),

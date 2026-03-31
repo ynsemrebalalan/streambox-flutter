@@ -44,5 +44,6 @@ abstract final class SettingsKeys {
   static const String displayMode      = 'display_mode';     // 'list' | 'vod'
   static const String uiMode           = 'ui_mode';
   static const String parentalPin      = 'parental_pin';
-  static const String lastCategory     = 'last_category';
+  static const String lastCategory       = 'last_category';
+  static const String disclaimerAccepted = 'disclaimer_accepted';
 }
