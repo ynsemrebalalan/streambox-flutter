@@ -15,7 +15,7 @@ if (keyPropertiesFile.exists()) {
 }
 
 android {
-    namespace = "com.streambox.app"
+    namespace = "com.ynsemrebalalan.iptvai"
     compileSdk = 36
     ndkVersion = "26.3.11579264"
 
@@ -29,7 +29,7 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.streambox.app"
+        applicationId = "com.ynsemrebalalan.iptvai"
         minSdk = 21
         targetSdk = 36
         versionCode = flutter.versionCode

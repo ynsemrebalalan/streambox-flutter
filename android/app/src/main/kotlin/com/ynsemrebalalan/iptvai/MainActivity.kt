@@ -1,4 +1,4 @@
-package com.streambox.streambox_flutter
+package com.ynsemrebalalan.iptvai
 
 import io.flutter.embedding.android.FlutterActivity
 
