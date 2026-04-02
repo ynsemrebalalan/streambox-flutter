@@ -107,6 +107,50 @@ class AppDatabase {
   }
 
   static Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
-    // future migrations here
+    // Ensure all tables exist even if upgrading from a corrupted/partial state
+    if (oldVersion < newVersion) {
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS settings (
+          key   TEXT PRIMARY KEY,
+          value TEXT NOT NULL
+        )
+      ''');
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS playlists (
+          id           TEXT PRIMARY KEY,
+          name         TEXT NOT NULL,
+          type         TEXT NOT NULL,
+          url          TEXT NOT NULL,
+          username     TEXT DEFAULT '',
+          password     TEXT DEFAULT '',
+          addedAt      INTEGER DEFAULT 0,
+          allowedTypes TEXT DEFAULT 'live,movie,series',
+          etag         TEXT DEFAULT '',
+          lastModified TEXT DEFAULT ''
+        )
+      ''');
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS channels (
+          id            TEXT PRIMARY KEY,
+          playlistId    TEXT NOT NULL,
+          name          TEXT NOT NULL,
+          streamUrl     TEXT NOT NULL,
+          logoUrl       TEXT DEFAULT '',
+          category      TEXT DEFAULT 'Genel',
+          streamType    TEXT DEFAULT 'live',
+          isFavorite    INTEGER DEFAULT 0,
+          lastWatched   INTEGER DEFAULT 0,
+          lastPosition  INTEGER DEFAULT 0,
+          seriesName    TEXT DEFAULT '',
+          seasonNumber  INTEGER DEFAULT 0,
+          episodeNumber INTEGER DEFAULT 0,
+          sortOrder     INTEGER DEFAULT 0,
+          tvgId         TEXT DEFAULT '',
+          addedAt       INTEGER DEFAULT 0,
+          isWatched     INTEGER DEFAULT 0,
+          duration      INTEGER DEFAULT 0
+        )
+      ''');
+    }
   }
 }

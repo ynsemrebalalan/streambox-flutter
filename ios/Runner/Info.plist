@@ -45,6 +45,11 @@
 	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+	<!-- iPad multitasking support -->
+	<key>UIRequiresFullScreen</key>
+	<false/>
+	<key>UISupportsFullScreen</key>
+	<true/>
 	<!-- Network access required for IPTV streaming -->
 	<key>NSAppTransportSecurity</key>
 	<dict>

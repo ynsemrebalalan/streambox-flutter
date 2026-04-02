@@ -1,3 +1,5 @@
+import 'dart:async';
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -8,21 +10,53 @@ import 'core/theme/app_theme.dart';
 import 'data/repositories/settings_repository.dart';
 
 void main() async {
-  WidgetsFlutterBinding.ensureInitialized();
+  // Catch all uncaught Flutter framework errors
+  FlutterError.onError = (details) {
+    FlutterError.presentError(details);
+    debugPrint('FlutterError: ${details.exceptionAsString()}');
+  };
 
-  try {
-    MediaKit.ensureInitialized();
-  } catch (_) {
-    // MediaKit init failure is non-fatal; video playback will be disabled
-  }
+  // Catch all uncaught async errors
+  PlatformDispatcher.instance.onError = (error, stack) {
+    debugPrint('PlatformError: $error\n$stack');
+    return true;
+  };
 
-  await SystemChrome.setPreferredOrientations([
-    DeviceOrientation.landscapeLeft,
-    DeviceOrientation.landscapeRight,
-    DeviceOrientation.portraitUp,
-  ]);
+  // Replace red error screen with a user-friendly grey screen
+  ErrorWidget.builder = (details) => Material(
+    color: Colors.black,
+    child: Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Text(
+          'Something went wrong.\nPlease restart the app.',
+          textAlign: TextAlign.center,
+          style: TextStyle(color: Colors.white70, fontSize: 16),
+        ),
+      ),
+    ),
+  );
 
-  runApp(const ProviderScope(child: IPTVAIPlayerApp()));
+  runZonedGuarded(() async {
+    WidgetsFlutterBinding.ensureInitialized();
+
+    try {
+      MediaKit.ensureInitialized();
+    } catch (e) {
+      debugPrint('MediaKit init failed: $e');
+      // Non-fatal: video playback may be limited
+    }
+
+    await SystemChrome.setPreferredOrientations([
+      DeviceOrientation.landscapeLeft,
+      DeviceOrientation.landscapeRight,
+      DeviceOrientation.portraitUp,
+    ]);
+
+    runApp(const ProviderScope(child: IPTVAIPlayerApp()));
+  }, (error, stack) {
+    debugPrint('Uncaught error: $error\n$stack');
+  });
 }
 
 class IPTVAIPlayerApp extends ConsumerStatefulWidget {
@@ -39,15 +73,24 @@ class _IPTVAIPlayerAppState extends ConsumerState<IPTVAIPlayerApp> {
     Future.microtask(() async {
       try {
         await ref.read(themeModeProvider.notifier).loadFromDb();
+      } catch (e) {
+        debugPrint('Theme load failed: $e');
+      }
+      try {
         await ref.read(activePlaylistProvider.notifier).loadFromDb();
+      } catch (e) {
+        debugPrint('Playlist load failed: $e');
+      }
+      try {
         final accepted = await ref
             .read(settingsRepoProvider)
             .get(SettingsKeys.disclaimerAccepted);
         if (accepted == 'true' && mounted) {
           appRouter.go(AppRoutes.home);
         }
-      } catch (_) {
-        // DB init error: stay on disclaimer screen (safe default)
+      } catch (e) {
+        debugPrint('Settings load failed: $e');
+        // Stay on disclaimer screen (safe default)
       }
     });
   }
