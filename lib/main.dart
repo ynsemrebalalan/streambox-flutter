@@ -9,9 +9,14 @@ import 'data/repositories/settings_repository.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  MediaKit.ensureInitialized();
 
-  SystemChrome.setPreferredOrientations([
+  try {
+    MediaKit.ensureInitialized();
+  } catch (_) {
+    // MediaKit init failure is non-fatal; video playback will be disabled
+  }
+
+  await SystemChrome.setPreferredOrientations([
     DeviceOrientation.landscapeLeft,
     DeviceOrientation.landscapeRight,
     DeviceOrientation.portraitUp,
@@ -32,14 +37,17 @@ class _IPTVAIPlayerAppState extends ConsumerState<IPTVAIPlayerApp> {
   void initState() {
     super.initState();
     Future.microtask(() async {
-      await ref.read(themeModeProvider.notifier).loadFromDb();
-      await ref.read(activePlaylistProvider.notifier).loadFromDb();
-      // Skip disclaimer if already accepted
-      final accepted = await ref
-          .read(settingsRepoProvider)
-          .get(SettingsKeys.disclaimerAccepted);
-      if (accepted == 'true' && mounted) {
-        appRouter.go(AppRoutes.home);
+      try {
+        await ref.read(themeModeProvider.notifier).loadFromDb();
+        await ref.read(activePlaylistProvider.notifier).loadFromDb();
+        final accepted = await ref
+            .read(settingsRepoProvider)
+            .get(SettingsKeys.disclaimerAccepted);
+        if (accepted == 'true' && mounted) {
+          appRouter.go(AppRoutes.home);
+        }
+      } catch (_) {
+        // DB init error: stay on disclaimer screen (safe default)
       }
     });
   }

@@ -57,7 +57,7 @@
 		<string>audio</string>
 	</array>
 	<!-- App does not use non-exempt encryption -->
-	<key>ITSAppUsesNonExempEncryption</key>
+	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
 </dict>
 </plist>
