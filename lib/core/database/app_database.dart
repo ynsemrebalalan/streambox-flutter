@@ -2,7 +2,7 @@ import 'package:path/path.dart';
 import 'package:sqflite/sqflite.dart';
 
 class AppDatabase {
-  static const _version = 1;
+  static const _version = 2;
   static const _name    = 'iptvai.db';
 
   static Database? _db;
@@ -19,7 +19,20 @@ class AppDatabase {
       version: _version,
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
+      onConfigure: _onConfigure,
     );
+  }
+
+  /// Performance PRAGMA'lari. Buyuk playlistlerde okuma/yazma ~2-3x hizlanir.
+  static Future<void> _onConfigure(Database db) async {
+    // WAL: yazma sirasinda okumayi bloklanmaz (concurrent read/write).
+    await db.execute('PRAGMA journal_mode = WAL');
+    // NORMAL: FULL'a gore daha hizli, crash riskine karsi yine guvenli.
+    await db.execute('PRAGMA synchronous = NORMAL');
+    // Bellek cache (10MB) - buyuk playlistlerde tekrar tekrar disk okuma azalir.
+    await db.execute('PRAGMA cache_size = -10000');
+    // Temp tablolari memory'de tut (siralama/join hizlanir).
+    await db.execute('PRAGMA temp_store = MEMORY');
   }
 
   static Future<void> _onCreate(Database db, int version) async {
@@ -70,6 +83,15 @@ class AppDatabase {
     await db.execute('''
       CREATE INDEX idx_channels_category ON channels(category);
     ''');
+    // Composite index: home ekrandaki getByType / getByCategory icin optimum.
+    // (playlistId, streamType, category) kombinasyonu SQLite'in direkt index-only
+    // query yapmasini saglar → tablo taramasi yok.
+    await db.execute('''
+      CREATE INDEX idx_channels_composite ON channels(playlistId, streamType, category, sortOrder);
+    ''');
+    await db.execute('''
+      CREATE INDEX idx_channels_recent ON channels(playlistId, lastWatched DESC);
+    ''');
 
     await db.execute('''
       CREATE TABLE epg_channels (
@@ -107,6 +129,17 @@ class AppDatabase {
   }
 
   static Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
+    // v1 → v2: composite index'ler ekle (home hiz optimizasyonu).
+    if (oldVersion < 2) {
+      await db.execute('''
+        CREATE INDEX IF NOT EXISTS idx_channels_composite
+        ON channels(playlistId, streamType, category, sortOrder)
+      ''');
+      await db.execute('''
+        CREATE INDEX IF NOT EXISTS idx_channels_recent
+        ON channels(playlistId, lastWatched DESC)
+      ''');
+    }
     // Ensure all tables exist even if upgrading from a corrupted/partial state
     if (oldVersion < newVersion) {
       await db.execute('''

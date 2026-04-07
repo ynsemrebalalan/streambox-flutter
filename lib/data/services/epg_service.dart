@@ -11,6 +11,11 @@ class EpgService {
   final Ref _ref;
   EpgService(this._ref);
 
+  /// EPG senkronizasyonu.
+  ///
+  /// Fetch/parse basarisiz olursa ESKI EPG verisi korunur. Bu sayede
+  /// provider yoğun oldugunda kullanici hala (eski de olsa) program
+  /// bilgisi gorur; UI bos kalmaz.
   Future<void> syncEpg(String playlistId) async {
     final url = await _ref
         .read(settingsRepoProvider)
@@ -20,10 +25,12 @@ class EpgService {
       throw Exception('EPG URL ayarlanmamış. Ayarlar → EPG bölümünden giriniz.');
     }
 
-    final repo   = _ref.read(epgRepoProvider);
+    final repo = _ref.read(epgRepoProvider);
+
+    // Once fetch+parse yap. Bu adim fail olursa DB'ye dokunma.
     final result = await EpgParser.fetchAndParse(url, playlistId);
 
-    // Clear old data and insert fresh
+    // Fetch basarili → eski veriyi sil, yenisini yaz.
     await repo.deleteByPlaylist(playlistId);
     await repo.bulkInsertChannels(result.channels);
     await repo.bulkInsertProgrammes(result.programmes);

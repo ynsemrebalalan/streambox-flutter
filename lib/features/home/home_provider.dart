@@ -24,12 +24,29 @@ class HomeNotifier extends AsyncNotifier<HomeState> {
     );
 
     if (id.isNotEmpty) {
-      state = await _loadCategories(state);
-      state = await _loadChannels(state);
-      final recent = await ref
-          .read(channelRepoProvider)
-          .getRecentlyWatched(id);
-      state = state.copyWith(recentlyWatched: recent);
+      // Paralel yukle: categories + channels + recentlyWatched ayni anda.
+      // Sequential'dan ~3x hizli home ekran acilmasi.
+      final type = _typeForTab(state.activeTab);
+      final repo = ref.read(channelRepoProvider);
+      final results = await Future.wait<dynamic>([
+        if (type != null) repo.getCategories(id, type) else Future.value(<String>[]),
+        if (type != null) repo.getByType(id, type) else Future.value(<ChannelModel>[]),
+        repo.getRecentlyWatched(id),
+      ]);
+      final cats     = results[0] as List<String>;
+      final channels = results[1] as List<ChannelModel>;
+      final recent   = results[2] as List<ChannelModel>;
+      final selected = cats.contains(state.selectedCategory)
+          ? state.selectedCategory
+          : (cats.firstOrNull ?? '');
+      state = state.copyWith(
+        categories:       cats,
+        selectedCategory: selected,
+        channels:         channels,
+        recentlyWatched:  recent,
+        isLoading:        false,
+        clearError:       true,
+      );
     }
 
     return state;

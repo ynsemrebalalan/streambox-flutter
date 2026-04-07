@@ -46,19 +46,86 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
         actions: [
           if (_ctrl.text.isNotEmpty)
             IconButton(
+              iconSize: 28,
               icon:      const Icon(Icons.close),
               onPressed: () { _ctrl.clear(); setState(() {}); },
             ),
         ],
       ),
-      body: _ctrl.text.trim().length < 2
-          ? _EmptyState()
-          : _Results(playlistId: widget.playlistId, query: _ctrl.text.trim()),
+      body: Column(
+        children: [
+          // TV-friendly hızlı filtreler: kumanda ile klavye yazmaktan kurtarir
+          if (_ctrl.text.isEmpty)
+            Padding(
+              padding: const EdgeInsets.symmetric(
+                  horizontal: Spacing.md, vertical: Spacing.sm),
+              child: Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  _QuickFilter(label: 'A', onTap: () => _setQuery('a')),
+                  _QuickFilter(label: 'B', onTap: () => _setQuery('b')),
+                  _QuickFilter(label: 'C', onTap: () => _setQuery('c')),
+                  _QuickFilter(label: 'D', onTap: () => _setQuery('d')),
+                  _QuickFilter(label: 'E', onTap: () => _setQuery('e')),
+                  _QuickFilter(label: 'F', onTap: () => _setQuery('f')),
+                  _QuickFilter(label: 'G', onTap: () => _setQuery('g')),
+                  _QuickFilter(label: 'H', onTap: () => _setQuery('h')),
+                  _QuickFilter(label: 'I', onTap: () => _setQuery('i')),
+                  _QuickFilter(label: 'K', onTap: () => _setQuery('k')),
+                  _QuickFilter(label: 'M', onTap: () => _setQuery('m')),
+                  _QuickFilter(label: 'N', onTap: () => _setQuery('n')),
+                  _QuickFilter(label: 'O', onTap: () => _setQuery('o')),
+                  _QuickFilter(label: 'S', onTap: () => _setQuery('s')),
+                  _QuickFilter(label: 'T', onTap: () => _setQuery('t')),
+                ],
+              ),
+            ),
+          Expanded(
+            child: _ctrl.text.trim().length < 2
+                ? _EmptyState()
+                : _Results(
+                    playlistId: widget.playlistId,
+                    query: _ctrl.text.trim()),
+          ),
+        ],
+      ),
     );
+  }
+
+  void _setQuery(String q) {
+    _ctrl.text = q;
+    setState(() {});
   }
 
   @override
   void dispose() { _ctrl.dispose(); super.dispose(); }
+}
+
+// ── Quick filter chip (TV-friendly harf shortcut) ─────────────────────────────
+
+class _QuickFilter extends StatelessWidget {
+  final String label;
+  final VoidCallback onTap;
+  const _QuickFilter({required this.label, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: 48,
+      height: 48,
+      child: FilledButton.tonal(
+        onPressed: onTap,
+        style: FilledButton.styleFrom(
+          padding: EdgeInsets.zero,
+          shape: const CircleBorder(),
+        ),
+        child: Text(label,
+            style: const TextStyle(
+                fontSize: 18, fontWeight: FontWeight.w600)),
+      ),
+    );
+  }
 }
 
 // ── Empty state ───────────────────────────────────────────────────────────────

@@ -104,6 +104,26 @@ class ChannelRepository {
     await db.delete(_table, where: 'playlistId = ?', whereArgs: [playlistId]);
   }
 
+  /// Atomik sync: eski kanallari sil + yenilerini yaz, tek transaction icinde.
+  /// Crash/kesinti olursa eski veri korunur (yarim state olusmaz).
+  Future<void> replaceAllForPlaylist(
+    String playlistId,
+    List<ChannelModel> channels,
+  ) async {
+    if (channels.isEmpty) return;
+    final db = await AppDatabase.instance;
+    await db.transaction((txn) async {
+      await txn.delete(_table,
+          where: 'playlistId = ?', whereArgs: [playlistId]);
+      final batch = txn.batch();
+      for (final ch in channels) {
+        batch.insert(_table, ch.toMap(),
+            conflictAlgorithm: ConflictAlgorithm.replace);
+      }
+      await batch.commit(noResult: true);
+    });
+  }
+
   Future<void> toggleFavorite(String id, bool isFavorite) async {
     final db = await AppDatabase.instance;
     await db.update(

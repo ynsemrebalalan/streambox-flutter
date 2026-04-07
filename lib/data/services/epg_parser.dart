@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
-import 'package:http/http.dart' as http;
 import 'package:xml/xml.dart';
+import '../../core/utils/http_client.dart';
 import '../models/epg_model.dart';
 
 class EpgParser {
@@ -9,15 +9,13 @@ class EpgParser {
   /// Supports plain .xml and gzip-compressed .xml.gz.
   static Future<({List<EpgChannelModel> channels, List<EpgProgrammeModel> programmes})>
       fetchAndParse(String url, String playlistId) async {
-    final response = await http
-        .get(Uri.parse(url))
-        .timeout(const Duration(seconds: 60));
+    // EPG genelde buyuk dosya (50-200 MB xml.gz), 90 sn timeout.
+    final bytes = await AppHttp.getBytes(
+      Uri.parse(url),
+      timeout: const Duration(seconds: 90),
+      retries: 2,
+    );
 
-    if (response.statusCode != 200) {
-      throw Exception('HTTP ${response.statusCode}: $url');
-    }
-
-    final bytes = response.bodyBytes;
     final xmlStr = _decode(bytes, url);
     return parse(xmlStr, playlistId);
   }

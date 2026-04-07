@@ -1,6 +1,7 @@
 import 'dart:convert';
-import 'package:http/http.dart' as http;
+import 'package:flutter/foundation.dart';
 import 'package:uuid/uuid.dart';
+import '../../core/utils/http_client.dart';
 import '../models/channel_model.dart';
 import '../models/playlist_model.dart';
 
@@ -8,14 +9,23 @@ class M3uParser {
   static const _uuid = Uuid();
 
   /// Fetches and parses an M3U playlist. Returns parsed channels.
+  /// Parse isolate'da calisir, UI thread donmaz (buyuk playlistler icin kritik).
   static Future<List<ChannelModel>> fetchAndParse(PlaylistModel playlist) async {
-    final response = await http.get(Uri.parse(playlist.url));
+    final response = await AppHttp.get(
+      Uri.parse(playlist.url),
+      timeout: const Duration(seconds: 30),
+      retries: 3,
+    );
     if (response.statusCode != 200) {
-      throw Exception('HTTP ${response.statusCode}: ${playlist.url}');
+      throw HttpStatusException(response.statusCode, playlist.url);
     }
     final content = utf8.decode(response.bodyBytes);
-    return parse(playlist, content);
+    // 10k+ kanalli M3U parse UI thread'i 1-3 sn dondurur → isolate'a at.
+    return compute(_parseInIsolate, _ParseArgs(playlist, content));
   }
+
+  static List<ChannelModel> _parseInIsolate(_ParseArgs args) =>
+      parse(args.playlist, args.content);
 
   static List<ChannelModel> parse(PlaylistModel playlist, String content) {
     final lines   = content.split('\n');
@@ -107,4 +117,11 @@ class M3uParser {
     }
     return (name, 0, 0);
   }
+}
+
+/// Isolate'a gecirilen argument tasiyicisi.
+class _ParseArgs {
+  final PlaylistModel playlist;
+  final String content;
+  const _ParseArgs(this.playlist, this.content);
 }
