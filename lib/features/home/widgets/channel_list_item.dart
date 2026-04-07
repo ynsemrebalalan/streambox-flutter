@@ -1,5 +1,6 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/providers/app_providers.dart';
@@ -19,29 +20,70 @@ final _epgCurrentProvider =
   },
 );
 
-class ChannelListItem extends ConsumerWidget {
+class ChannelListItem extends ConsumerStatefulWidget {
   final ChannelModel channel;
 
   const ChannelListItem({super.key, required this.channel});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final cs = Theme.of(context).colorScheme;
+  ConsumerState<ChannelListItem> createState() => _ChannelListItemState();
+}
 
-    return InkWell(
-      onTap: () => context.push(
-        AppRoutes.player,
-        extra: {
-          'channelId':  channel.id,
-          'channelUrl': channel.streamUrl,
-          'title':      channel.name,
-        },
-      ),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(
-            horizontal: Dimens.channelItemHPad,
-            vertical:   Dimens.channelItemVPad),
-        child: Row(
+class _ChannelListItemState extends ConsumerState<ChannelListItem> {
+  bool _focused = false;
+
+  void _openPlayer() {
+    final channel = widget.channel;
+    context.push(
+      AppRoutes.player,
+      extra: {
+        'channelId':  channel.id,
+        'channelUrl': channel.streamUrl,
+        'title':      channel.name,
+      },
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final channel = widget.channel;
+
+    return Focus(
+      onFocusChange: (v) => setState(() => _focused = v),
+      onKeyEvent: (node, event) {
+        if (event is! KeyDownEvent) return KeyEventResult.ignored;
+        final key = event.logicalKey;
+        // Enter/Select/Space/numpadEnter/gameButtonA → oynat
+        if (key == LogicalKeyboardKey.select ||
+            key == LogicalKeyboardKey.enter ||
+            key == LogicalKeyboardKey.numpadEnter ||
+            key == LogicalKeyboardKey.space ||
+            key == LogicalKeyboardKey.gameButtonA) {
+          _openPlayer();
+          return KeyEventResult.handled;
+        }
+        return KeyEventResult.ignored;
+      },
+      child: InkWell(
+        onTap: _openPlayer,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 120),
+          decoration: BoxDecoration(
+            color: _focused
+                ? AppColors.accent.withValues(alpha: 0.18)
+                : Colors.transparent,
+            // Focus halinde sol kenar belirgin cizgi (TV'de hangi
+            // kanal secili oldugunu net gosterir)
+            border: _focused
+                ? const Border(
+                    left: BorderSide(color: AppColors.accent, width: 3))
+                : null,
+          ),
+          padding: const EdgeInsets.symmetric(
+              horizontal: Dimens.channelItemHPad,
+              vertical:   Dimens.channelItemVPad),
+          child: Row(
           children: [
             _ChannelLogo(url: channel.logoUrl),
             const SizedBox(width: Spacing.md),
@@ -53,9 +95,11 @@ class ChannelListItem extends ConsumerWidget {
                     channel.name,
                     maxLines:  1,
                     overflow:  TextOverflow.ellipsis,
-                    style:     const TextStyle(
+                    style:     TextStyle(
                         fontSize:   TextSize.channel,
-                        fontWeight: FontWeight.w500),
+                        fontWeight: _focused
+                            ? FontWeight.w700
+                            : FontWeight.w500),
                   ),
                   if (channel.streamType == 'live' && channel.tvgId.isNotEmpty)
                     _EpgLine(tvgId: channel.tvgId)
@@ -70,9 +114,9 @@ class ChannelListItem extends ConsumerWidget {
               ),
             ),
             IconButton(
+              iconSize: 26,
               icon: Icon(
                 channel.isFavorite ? Icons.star : Icons.star_border,
-                size:  20,
                 color: channel.isFavorite
                     ? AppColors.accent
                     : cs.onSurfaceVariant,
@@ -81,6 +125,7 @@ class ChannelListItem extends ConsumerWidget {
                   ref.read(homeProvider.notifier).toggleFavorite(channel),
             ),
           ],
+        ),
         ),
       ),
     );
