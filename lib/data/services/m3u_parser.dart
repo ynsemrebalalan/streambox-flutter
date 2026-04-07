@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:uuid/uuid.dart';
+import '../../core/utils/device_tier.dart';
 import '../../core/utils/http_client.dart';
 import '../models/channel_model.dart';
 import '../models/playlist_model.dart';
@@ -9,7 +10,10 @@ class M3uParser {
   static const _uuid = Uuid();
 
   /// Fetches and parses an M3U playlist. Returns parsed channels.
-  /// Parse isolate'da calisir, UI thread donmaz (buyuk playlistler icin kritik).
+  /// Cihaz tier'ina gore adaptive parse:
+  /// - High/Mid: isolate'da parse (UI donmaz)
+  /// - Low: ana thread'de parse (isolate spawn overhead'i atlanir)
+  ///        AMA 5000+ kanal varsa low'da bile isolate kullanilir.
   static Future<List<ChannelModel>> fetchAndParse(PlaylistModel playlist) async {
     final response = await AppHttp.get(
       Uri.parse(playlist.url),
@@ -20,8 +24,22 @@ class M3uParser {
       throw HttpStatusException(response.statusCode, playlist.url);
     }
     final content = utf8.decode(response.bodyBytes);
-    // 10k+ kanalli M3U parse UI thread'i 1-3 sn dondurur → isolate'a at.
-    return compute(_parseInIsolate, _ParseArgs(playlist, content));
+
+    // Kaba satir sayisi tahmini: isolate karari icin
+    final estimatedLines = '\n'.allMatches(content).length;
+    final useIsolate = DeviceProfile.useIsolateForParse ||
+        estimatedLines > DeviceProfile.isolateThreshold;
+
+    if (kDebugMode) {
+      debugPrint('[M3uParser] lines~$estimatedLines, '
+          'isolate=$useIsolate, tier=${DeviceProfile.tier}');
+    }
+
+    if (useIsolate) {
+      return compute(_parseInIsolate, _ParseArgs(playlist, content));
+    } else {
+      return parse(playlist, content);
+    }
   }
 
   static List<ChannelModel> _parseInIsolate(_ParseArgs args) =>

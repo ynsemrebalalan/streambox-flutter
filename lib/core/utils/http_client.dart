@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
+import 'device_tier.dart';
 
 /// Global HTTP client: connection pooling + automatic retry with backoff.
 ///
@@ -21,7 +22,8 @@ class AppHttp {
     final ioClient = HttpClient()
       ..connectionTimeout = const Duration(seconds: 12)
       ..idleTimeout = const Duration(seconds: 30)
-      ..maxConnectionsPerHost = 6
+      // Adaptive: low=3, mid=6, high=8 eszamanli baglanti.
+      ..maxConnectionsPerHost = DeviceProfile.maxConnectionsPerHost
       // IPTV panelleri genelde self-signed veya gecersiz sertifika kullanir.
       // Bunlari kabul etmezsek "unable to parse TLS packet header" aliriz.
       ..badCertificateCallback = (cert, host, port) => true;

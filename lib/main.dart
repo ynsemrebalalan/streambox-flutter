@@ -7,6 +7,7 @@ import 'package:media_kit/media_kit.dart';
 import 'core/providers/app_providers.dart';
 import 'core/router/app_router.dart';
 import 'core/theme/app_theme.dart';
+import 'core/utils/device_tier.dart';
 import 'data/repositories/settings_repository.dart';
 
 void main() async {
@@ -39,6 +40,10 @@ void main() async {
 
   runZonedGuarded(() async {
     WidgetsFlutterBinding.ensureInitialized();
+
+    // Cihaz performans katmanini tespit et (RAM, core).
+    // Tum servisler buna gore adaptive strateji kullanir.
+    DeviceProfile.init();
 
     try {
       MediaKit.ensureInitialized();

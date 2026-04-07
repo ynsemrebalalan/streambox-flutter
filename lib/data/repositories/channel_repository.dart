@@ -1,5 +1,7 @@
+import 'package:flutter/foundation.dart';
 import 'package:sqflite/sqflite.dart';
 import '../../core/database/app_database.dart';
+import '../../core/utils/device_tier.dart';
 import '../models/channel_model.dart';
 
 class ChannelRepository {
@@ -104,23 +106,42 @@ class ChannelRepository {
     await db.delete(_table, where: 'playlistId = ?', whereArgs: [playlistId]);
   }
 
-  /// Atomik sync: eski kanallari sil + yenilerini yaz, tek transaction icinde.
-  /// Crash/kesinti olursa eski veri korunur (yarim state olusmaz).
+  /// Atomik sync: eski kanallari sil + yenilerini yaz.
+  /// Cihaz tier'ina gore adaptive strateji:
+  /// - High: tek buyuk transaction (en hizli, 10k+ kanal ~1sn)
+  /// - Mid:  2000'lik chunk'lar (bellek dostu, hala hizli)
+  /// - Low:  500'luk chunk'lar (eMMC/RAM dostu, donma yok)
   Future<void> replaceAllForPlaylist(
     String playlistId,
     List<ChannelModel> channels,
   ) async {
     if (channels.isEmpty) return;
     final db = await AppDatabase.instance;
+    final batchSize = DeviceProfile.dbBatchSize;
+
+    if (kDebugMode) {
+      debugPrint('[ChannelRepo] replaceAll: ${channels.length} channels, '
+          'batchSize=$batchSize, tier=${DeviceProfile.tier}');
+    }
+
+    // Tek transaction icinde: once sil, sonra chunk'li yaz.
+    // Transaction butunlugu korunur — crash'te eski veri kalir.
     await db.transaction((txn) async {
       await txn.delete(_table,
           where: 'playlistId = ?', whereArgs: [playlistId]);
-      final batch = txn.batch();
-      for (final ch in channels) {
-        batch.insert(_table, ch.toMap(),
-            conflictAlgorithm: ConflictAlgorithm.replace);
+
+      // Chunk'li batch: her chunk ayri batch.commit ile yazilir
+      // ama hepsi ayni transaction icinde → atomik.
+      for (var i = 0; i < channels.length; i += batchSize) {
+        final end = (i + batchSize < channels.length) ? i + batchSize : channels.length;
+        final chunk = channels.sublist(i, end);
+        final batch = txn.batch();
+        for (final ch in chunk) {
+          batch.insert(_table, ch.toMap(),
+              conflictAlgorithm: ConflictAlgorithm.replace);
+        }
+        await batch.commit(noResult: true);
       }
-      await batch.commit(noResult: true);
     });
   }
 

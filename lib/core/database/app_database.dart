@@ -1,5 +1,6 @@
 import 'package:path/path.dart';
 import 'package:sqflite/sqflite.dart';
+import '../utils/device_tier.dart';
 
 class AppDatabase {
   static const _version = 2;
@@ -23,16 +24,22 @@ class AppDatabase {
     );
   }
 
-  /// Performance PRAGMA'lari. Buyuk playlistlerde okuma/yazma ~2-3x hizlanir.
+  /// Performance PRAGMA'lari. Cihaz tier'ina gore adaptive.
+  /// High: 16MB cache, aggressive. Low: 2MB cache, guvenli.
   static Future<void> _onConfigure(Database db) async {
+    final cacheKB = DeviceProfile.sqliteCacheKB;
     // WAL: yazma sirasinda okumayi bloklanmaz (concurrent read/write).
     await db.execute('PRAGMA journal_mode = WAL');
     // NORMAL: FULL'a gore daha hizli, crash riskine karsi yine guvenli.
     await db.execute('PRAGMA synchronous = NORMAL');
-    // Bellek cache (10MB) - buyuk playlistlerde tekrar tekrar disk okuma azalir.
-    await db.execute('PRAGMA cache_size = -10000');
+    // Adaptive cache: low=2MB, mid=8MB, high=16MB.
+    await db.execute('PRAGMA cache_size = -$cacheKB');
     // Temp tablolari memory'de tut (siralama/join hizlanir).
     await db.execute('PRAGMA temp_store = MEMORY');
+    // High-tier cihazlarda mmap ile daha hizli I/O.
+    if (DeviceProfile.tier == DeviceTier.high) {
+      await db.execute('PRAGMA mmap_size = 67108864'); // 64MB
+    }
   }
 
   static Future<void> _onCreate(Database db, int version) async {

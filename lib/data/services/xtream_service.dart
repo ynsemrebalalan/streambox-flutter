@@ -1,17 +1,18 @@
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:uuid/uuid.dart';
+import '../../core/utils/device_tier.dart';
 import '../../core/utils/http_client.dart';
 import '../models/channel_model.dart';
 import '../models/playlist_model.dart';
 
 /// Xtream Codes API client.
-/// Fetches live streams, VOD, and series from an Xtream-compatible IPTV panel.
+/// Cihaz tier'ina gore adaptive fetch stratejisi kullanir:
+/// - High: 3 endpoint paralel, series concurrency 8
+/// - Mid:  3 endpoint paralel, series concurrency 4
+/// - Low:  sıralı fetch, series concurrency 2
 class XtreamService {
   static const _uuid = Uuid();
-
-  /// Paralel series_info fetch'te aynı anda atılacak istek sayısı.
-  /// 6 = nazik yük (provider'ı kızdırmaz), hızlı (50 dizi ~5sn yerine ~1sn).
-  static const _seriesConcurrency = 6;
 
   static String _base(PlaylistModel p) {
     final url = p.url.endsWith('/') ? p.url : '${p.url}/';
@@ -38,13 +39,19 @@ class XtreamService {
     final catMap  = _buildCatMap(cats);
     final series  = await _fetchJson('${_base(p)}&action=get_series');
 
-    // Her diziyi paralel fetch et (en fazla _seriesConcurrency eszamanli).
+    // Her diziyi paralel fetch et. Concurrency cihaz tier'ina gore ayarlanir.
     // Bir dizi fail olursa diger dizileri etkilemez, skip edilir.
+    final concurrency = DeviceProfile.seriesConcurrency;
     final channels = <ChannelModel>[];
     int sort = 0;
 
-    for (var i = 0; i < series.length; i += _seriesConcurrency) {
-      final batch = series.skip(i).take(_seriesConcurrency).toList();
+    if (kDebugMode) {
+      debugPrint('[Xtream] fetchSeries: ${series.length} series, '
+          'concurrency=$concurrency, tier=${DeviceProfile.tier}');
+    }
+
+    for (var i = 0; i < series.length; i += concurrency) {
+      final batch = series.skip(i).take(concurrency).toList();
       final results = await Future.wait(
         batch.map((s) => _fetchOneSeries(p, s, catMap)),
         eagerError: false,
@@ -112,14 +119,29 @@ class XtreamService {
 
   static Future<List<ChannelModel>> fetchAll(PlaylistModel p) async {
     final allowed = p.allowedTypes.split(',');
-    // 3 endpoint paralel: live + movie + series ayni anda cekilir.
-    // Provider'a 3 eszamanli istek yerine seri bekleme (3x hizlanma).
-    final futures = <Future<List<ChannelModel>>>[];
-    if (allowed.contains('live'))   futures.add(fetchLive(p));
-    if (allowed.contains('movie'))  futures.add(fetchVod(p));
-    if (allowed.contains('series')) futures.add(fetchSeries(p));
-    final lists = await Future.wait(futures, eagerError: false);
-    return lists.expand((l) => l).toList(growable: false);
+    final parallel = DeviceProfile.parallelFetch;
+
+    if (kDebugMode) {
+      debugPrint('[Xtream] fetchAll: parallel=$parallel, '
+          'allowed=$allowed, tier=${DeviceProfile.tier}');
+    }
+
+    if (parallel) {
+      // Mid/High: 3 endpoint paralel cekilir (3x hizlanma).
+      final futures = <Future<List<ChannelModel>>>[];
+      if (allowed.contains('live'))   futures.add(fetchLive(p));
+      if (allowed.contains('movie'))  futures.add(fetchVod(p));
+      if (allowed.contains('series')) futures.add(fetchSeries(p));
+      final lists = await Future.wait(futures, eagerError: false);
+      return lists.expand((l) => l).toList(growable: false);
+    } else {
+      // Low: sirayla cek — RAM/eMMC baskisi azalir, donma olmaz.
+      final all = <ChannelModel>[];
+      if (allowed.contains('live'))   all.addAll(await fetchLive(p));
+      if (allowed.contains('movie'))  all.addAll(await fetchVod(p));
+      if (allowed.contains('series')) all.addAll(await fetchSeries(p));
+      return all;
+    }
   }
 
   // ── helpers ────────────────────────────────────────────────────────────────
