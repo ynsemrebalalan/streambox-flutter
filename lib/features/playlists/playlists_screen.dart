@@ -6,6 +6,7 @@ import '../../core/providers/app_providers.dart';
 import '../../core/router/app_router.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_tokens.dart';
+import '../../core/utils/http_client.dart';
 import '../../data/models/playlist_model.dart';
 import '../../data/services/m3u_parser.dart';
 import '../../data/services/xtream_service.dart';
@@ -20,8 +21,10 @@ final playlistsProvider =
 
 class PlaylistsNotifier extends AsyncNotifier<List<PlaylistModel>> {
   final _syncing = <String>{};
+  final _lastError = <String, String>{};
 
   bool isSyncing(String id) => _syncing.contains(id);
+  String? lastError(String id) => _lastError[id];
 
   @override
   Future<List<PlaylistModel>> build() =>
@@ -49,17 +52,47 @@ class PlaylistsNotifier extends AsyncNotifier<List<PlaylistModel>> {
     }
   }
 
-  Future<void> sync(PlaylistModel p) async {
-    if (_syncing.contains(p.id)) return;
+  /// Returns: null on success, user-facing error message on failure.
+  Future<String?> sync(PlaylistModel p) async {
+    if (_syncing.contains(p.id)) return null;
     _syncing.add(p.id);
+    _lastError.remove(p.id);
     // Rebuild so UI shows spinner on this row
     if (state.value != null) state = AsyncData(List.of(state.value!));
+    String? errorMessage;
     try {
       await _doSync(p);
+    } catch (e) {
+      errorMessage = _errorToUserMessage(e, p);
+      _lastError[p.id] = errorMessage;
     } finally {
       _syncing.remove(p.id);
       await reload();
     }
+    return errorMessage;
+  }
+
+  String _errorToUserMessage(Object e, PlaylistModel p) {
+    if (e is HttpStatusException) {
+      return e.userMessage;
+    }
+    final msg = e.toString().toLowerCase();
+    if (msg.contains('handshake') ||
+        msg.contains('tls') ||
+        msg.contains('certificate') ||
+        msg.contains('ssl')) {
+      return 'Guvenli baglanti kurulamadi (TLS hatasi). '
+          'URL\'yi http:// ile deneyin veya saglayici adresini kontrol edin.';
+    }
+    if (msg.contains('timeout') || msg.contains('timedout')) {
+      return 'Saglayici cevap veremedi (timeout). Birazdan tekrar deneyin.';
+    }
+    if (msg.contains('socket') ||
+        msg.contains('failed host lookup') ||
+        msg.contains('connection')) {
+      return 'Internet baglantisi yok veya saglayiciya ulasilamiyor.';
+    }
+    return 'Playlist guncellenemedi: $e';
   }
 
   Future<void> delete(String id) async {
@@ -75,11 +108,21 @@ class PlaylistsNotifier extends AsyncNotifier<List<PlaylistModel>> {
   }
 
   Future<void> _doSync(PlaylistModel p) async {
+    // Once fetch+parse yap. Basarisiz olursa throw eder ve DB'ye dokunulmaz,
+    // yani eski kanallar olduğu gibi kalır (stale-but-usable cache).
     final channels = p.type == 'xtream'
         ? await XtreamService.fetchAll(p)
         : await M3uParser.fetchAndParse(p);
-    await ref.read(channelRepoProvider).deleteByPlaylist(p.id);
-    await ref.read(channelRepoProvider).bulkInsert(channels);
+
+    // Bos cevap geldiyse (provider kismi hata) eski veriyi koruma.
+    if (channels.isEmpty) {
+      throw Exception('Saglayici bos playlist dondu. Eski veri korundu.');
+    }
+
+    // Fetch basarili → atomik olarak eski kanallari sil + yenilerini yaz.
+    // Transaction icinde, crash'te yarim veri olusmaz.
+    final repo = ref.read(channelRepoProvider);
+    await repo.replaceAllForPlaylist(p.id, channels);
   }
 }
 
@@ -100,6 +143,7 @@ class PlaylistsScreen extends ConsumerWidget {
         leading: BackButton(onPressed: () => context.go(AppRoutes.home)),
         actions: [
           IconButton(
+            iconSize: 28,
             icon: const Icon(Icons.add),
             onPressed: () => _showAddDialog(context, ref),
           ),
@@ -174,16 +218,43 @@ class PlaylistsScreen extends ConsumerWidget {
                                 child: CircularProgressIndicator(strokeWidth: 2),
                               )
                             : IconButton(
-                                icon: const Icon(Icons.sync, size: 20),
+                                iconSize: 28,
+                                icon: const Icon(Icons.sync),
                                 tooltip: 'Yenile',
-                                onPressed: () => ref
-                                    .read(playlistsProvider.notifier)
-                                    .sync(p),
+                                onPressed: () async {
+                                  final err = await ref
+                                      .read(playlistsProvider.notifier)
+                                      .sync(p);
+                                  if (!context.mounted) return;
+                                  if (err != null) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Text(err),
+                                        backgroundColor: cs.error,
+                                        duration: const Duration(seconds: 4),
+                                        action: SnackBarAction(
+                                          label: 'TEKRAR',
+                                          textColor: Colors.white,
+                                          onPressed: () => ref
+                                              .read(playlistsProvider.notifier)
+                                              .sync(p),
+                                        ),
+                                      ),
+                                    );
+                                  } else {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(
+                                        content: Text('Playlist guncellendi.'),
+                                        duration: Duration(seconds: 2),
+                                      ),
+                                    );
+                                  }
+                                },
                               );
                       }),
                       IconButton(
-                        icon: Icon(Icons.delete_outline,
-                            size: 20, color: cs.error),
+                        iconSize: 28,
+                        icon: Icon(Icons.delete_outline, color: cs.error),
                         tooltip: 'Sil',
                         onPressed: () => _confirmDelete(context, ref, p),
                       ),
@@ -207,8 +278,11 @@ class PlaylistsScreen extends ConsumerWidget {
   void _showAddDialog(BuildContext context, WidgetRef ref) {
     showDialog(
       context: context,
-      builder: (_) => _AddPlaylistDialog(
-        onAdd: (p) => ref.read(playlistsProvider.notifier).add(p),
+      builder: (_) => FocusTraversalGroup(
+        policy: OrderedTraversalPolicy(),
+        child: _AddPlaylistDialog(
+          onAdd: (p) => ref.read(playlistsProvider.notifier).add(p),
+        ),
       ),
     );
   }
@@ -221,6 +295,7 @@ class PlaylistsScreen extends ConsumerWidget {
         content: Text('"${p.name}" silinsin mi?'),
         actions: [
           TextButton(
+            autofocus: true,
             onPressed: () => Navigator.pop(ctx),
             child: const Text('İptal'),
           ),
