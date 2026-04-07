@@ -63,6 +63,13 @@ class _ChannelListItemState extends ConsumerState<ChannelListItem> {
           _openPlayer();
           return KeyEventResult.handled;
         }
+        // Kumandayla favorileme: Sag ok → favori toggle
+        // (Google TV kumandalarinda sag ok yatay scroll yapar,
+        //  ama liste tek kolonsa favori icin kullanilabilir)
+        if (key == LogicalKeyboardKey.arrowRight) {
+          ref.read(homeProvider.notifier).toggleFavorite(channel);
+          return KeyEventResult.handled;
+        }
         return KeyEventResult.ignored;
       },
       child: InkWell(
@@ -113,16 +120,27 @@ class _ChannelListItemState extends ConsumerState<ChannelListItem> {
                 ],
               ),
             ),
-            IconButton(
-              iconSize: 26,
-              icon: Icon(
-                channel.isFavorite ? Icons.star : Icons.star_border,
-                color: channel.isFavorite
-                    ? AppColors.accent
-                    : cs.onSurfaceVariant,
-              ),
-              onPressed: () =>
-                  ref.read(homeProvider.notifier).toggleFavorite(channel),
+            // Favori yildizi + focus'taysa ipucu
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (_focused)
+                  Text('►',
+                      style: TextStyle(
+                          fontSize: 10,
+                          color: cs.onSurfaceVariant.withValues(alpha: 0.5))),
+                IconButton(
+                  iconSize: 26,
+                  icon: Icon(
+                    channel.isFavorite ? Icons.star : Icons.star_border,
+                    color: channel.isFavorite
+                        ? AppColors.accent
+                        : cs.onSurfaceVariant,
+                  ),
+                  onPressed: () =>
+                      ref.read(homeProvider.notifier).toggleFavorite(channel),
+                ),
+              ],
             ),
           ],
         ),

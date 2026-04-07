@@ -95,14 +95,29 @@ class HomeNotifier extends AsyncNotifier<HomeState> {
     state = AsyncData(current.copyWith(recentlyWatched: recent));
   }
 
-  void toggleFavorite(ChannelModel channel) {
+  Future<void> toggleFavorite(ChannelModel channel) async {
     final current = state.value;
     if (current == null) return;
     final newFav = !channel.isFavorite;
-    ref.read(channelRepoProvider).toggleFavorite(channel.id, newFav);
+    await ref.read(channelRepoProvider).toggleFavorite(channel.id, newFav);
+
+    // channels listesini guncelle
     final updated = current.channels.map((c) =>
         c.id == channel.id ? c.copyWith(isFavorite: newFav) : c).toList();
-    state = AsyncData(current.copyWith(channels: updated));
+
+    // searchResults listesini de guncelle (arama sonuclarinda favori)
+    final updatedSearch = current.searchResults.map((c) =>
+        c.id == channel.id ? c.copyWith(isFavorite: newFav) : c).toList();
+
+    // Favoriler tabindaysa ve favori kaldiriliyorsa → kanalı listeden cikar
+    if (current.activeTab == 'favorites' && !newFav) {
+      final filtered = updated.where((c) => c.isFavorite).toList();
+      state = AsyncData(current.copyWith(
+          channels: filtered, searchResults: updatedSearch));
+    } else {
+      state = AsyncData(current.copyWith(
+          channels: updated, searchResults: updatedSearch));
+    }
   }
 
   Future<void> search(String query) async {
