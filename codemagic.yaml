@@ -4,8 +4,6 @@ workflows:
     max_build_duration: 60
     instance_type: mac_mini_m2
 
-    working_directory: $CM_BUILD_DIR
-
     integrations:
       app_store_connect: Codemagic
 
@@ -45,8 +43,7 @@ workflows:
           # --release zorunlu, debug/profile UPLOAD EDILMEMELI
           flutter build ipa \
             --release \
-            --build-number=$(($(($(date +%s) - $(date -d "2024-01-01" +%s))) / 60)) \
-            --export-options-plist=$CM_BUILD_DIR/ios/ExportOptions.plist
+            --export-options-plist=ios/ExportOptions.plist
 
       - name: Build mode dogrulama
         script: |
