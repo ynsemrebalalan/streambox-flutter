@@ -4,8 +4,10 @@ import 'package:go_router/go_router.dart';
 import 'package:uuid/uuid.dart';
 import '../../core/providers/app_providers.dart';
 import '../../core/router/app_router.dart';
+import '../../core/analytics/analytics.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_tokens.dart';
+import '../../core/utils/responsive.dart';
 import '../../core/utils/http_client.dart';
 import '../../data/models/playlist_model.dart';
 import '../../data/services/m3u_parser.dart';
@@ -172,7 +174,9 @@ class PlaylistsScreen extends ConsumerWidget {
               ),
             );
           }
-          return ListView.separated(
+          return ResponsiveCenter(
+            maxWidth: Responsive.formMaxWidth(context),
+            child: ListView.separated(
             padding: const EdgeInsets.all(Spacing.lg),
             itemCount: list.length,
             separatorBuilder: (_, __) => const SizedBox(height: Spacing.sm),
@@ -269,6 +273,7 @@ class PlaylistsScreen extends ConsumerWidget {
                 ),
               );
             },
+          ),
           );
         },
       ),
@@ -508,6 +513,7 @@ class _AddPlaylistDialogState extends State<_AddPlaylistDialog> {
         allowedTypes: _type == 'xtream' ? _allowedTypes : 'live,movie,series',
       );
       await widget.onAdd(p);
+      Analytics.playlistAdded(type: _type, channelCount: 0);
       if (mounted) Navigator.pop(context);
     } catch (e) {
       setState(() { _loading = false; _error = 'Hata: $e'; });

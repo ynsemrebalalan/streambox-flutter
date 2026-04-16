@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../../core/providers/app_providers.dart';
 import '../../core/router/app_router.dart';
 import '../../core/theme/app_tokens.dart';
+import '../../core/utils/responsive.dart';
 import '../../data/models/channel_model.dart';
 import '../home/widgets/channel_list_item.dart';
 
@@ -52,7 +53,9 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
             ),
         ],
       ),
-      body: Column(
+      body: ResponsiveCenter(
+        maxWidth: Responsive.formMaxWidth(context),
+        child: Column(
         children: [
           // TV-friendly hızlı filtreler: kumanda ile klavye yazmaktan kurtarir
           if (_ctrl.text.isEmpty)
@@ -89,6 +92,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                     query: _ctrl.text.trim()),
           ),
         ],
+      ),
       ),
     );
   }

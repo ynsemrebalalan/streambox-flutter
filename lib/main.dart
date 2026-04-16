@@ -1,13 +1,17 @@
 import 'dart:async';
 import 'dart:ui';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:media_kit/media_kit.dart';
+import 'core/analytics/analytics.dart';
+import 'data/services/firebase_sync_service.dart';
 import 'core/providers/app_providers.dart';
 import 'core/router/app_router.dart';
 import 'core/theme/app_theme.dart';
 import 'core/utils/device_tier.dart';
+import 'core/utils/secure_storage.dart';
 import 'data/repositories/settings_repository.dart';
 
 void main() async {
@@ -45,6 +49,14 @@ void main() async {
     // Tum servisler buna gore adaptive strateji kullanir.
     DeviceProfile.init();
 
+    // Firebase (analytics, firestore, auth)
+    try {
+      await Firebase.initializeApp();
+      await Analytics.init();
+    } catch (e) {
+      debugPrint('Firebase init failed: $e');
+    }
+
     try {
       MediaKit.ensureInitialized();
     } catch (e) {
@@ -58,10 +70,29 @@ void main() async {
       DeviceOrientation.portraitUp,
     ]);
 
+    // Migrate plain-text secrets to encrypted storage (one-time).
+    _migrateSecrets();
+
+    // Fetch proxy secret from Firestore (non-blocking).
+    FirebaseSyncService.fetchAndCacheProxySecret();
+
     runApp(const ProviderScope(child: IPTVAIPlayerApp()));
   }, (error, stack) {
     debugPrint('Uncaught error: $error\n$stack');
   });
+}
+
+/// One-time migration: plain settings → encrypted Keychain storage.
+Future<void> _migrateSecrets() async {
+  try {
+    final repo = SettingsRepository();
+    final migrated = await repo.get(SettingsKeys.secureStorageMigrated);
+    if (migrated == 'true') return;
+    await SecureStorage.migrateFromPlainSettings(repo.get, repo.delete);
+    await repo.set(SettingsKeys.secureStorageMigrated, 'true');
+  } catch (e) {
+    debugPrint('Secret migration failed: $e');
+  }
 }
 
 class IPTVAIPlayerApp extends ConsumerStatefulWidget {

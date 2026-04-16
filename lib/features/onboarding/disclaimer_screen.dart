@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/providers/app_providers.dart';
 import '../../core/theme/app_colors.dart';
+import '../../core/utils/responsive.dart';
 import '../../data/repositories/settings_repository.dart';
 
 final disclaimerAcceptedProvider = FutureProvider<bool>((ref) async {
@@ -116,7 +117,9 @@ class _DisclaimerScreenState extends ConsumerState<DisclaimerScreen> {
         autofocus: true,
         onKeyEvent: _handleKeyEvent,
         child: SafeArea(
-        child: Padding(
+        child: ResponsiveCenter(
+          maxWidth: Responsive.formMaxWidth(context),
+          child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 20),
           child: Column(
             children: [
@@ -274,6 +277,7 @@ class _DisclaimerScreenState extends ConsumerState<DisclaimerScreen> {
             ],
           ),
         ),
+      ),
       ),
       ),
     );

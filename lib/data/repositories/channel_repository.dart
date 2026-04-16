@@ -79,16 +79,28 @@ class ChannelRepository {
   }
 
   Future<List<ChannelModel>> search(String playlistId, String query) async {
-    final db   = await AppDatabase.instance;
-    final q    = '%${query.toLowerCase()}%';
-    final rows = await db.query(
-      _table,
-      where:     'playlistId = ? AND LOWER(name) LIKE ?',
-      whereArgs: [playlistId, q],
-      orderBy:   'name ASC',
-      limit:     100,
-    );
-    return rows.map(ChannelModel.fromMap).toList();
+    final db = await AppDatabase.instance;
+    // FTS4 varsa hizli match, yoksa LIKE fallback.
+    try {
+      final rows = await db.rawQuery('''
+        SELECT c.* FROM $_table c
+        INNER JOIN channel_fts fts ON fts.rowid = c.rowid
+        WHERE c.playlistId = ? AND channel_fts MATCH ?
+        ORDER BY c.name ASC LIMIT 200
+      ''', [playlistId, '$query*']);
+      return rows.map(ChannelModel.fromMap).toList();
+    } catch (_) {
+      // FTS tablosu yoksa veya bozuksa LIKE fallback.
+      final q = '%${query.toLowerCase()}%';
+      final rows = await db.query(
+        _table,
+        where:     'playlistId = ? AND LOWER(name) LIKE ?',
+        whereArgs: [playlistId, q],
+        orderBy:   'name ASC',
+        limit:     200,
+      );
+      return rows.map(ChannelModel.fromMap).toList();
+    }
   }
 
   Future<void> bulkInsert(List<ChannelModel> channels) async {
@@ -143,6 +155,9 @@ class ChannelRepository {
         await batch.commit(noResult: true);
       }
     });
+
+    // FTS indexini guncelle (transaction disinda, non-blocking).
+    rebuildFts();
   }
 
   Future<void> toggleFavorite(String id, bool isFavorite) async {
@@ -154,16 +169,20 @@ class ChannelRepository {
     );
   }
 
-  Future<void> updateWatched(String id, {required int position}) async {
+  Future<void> updateWatched(String id, {required int position, int duration = 0}) async {
     final db = await AppDatabase.instance;
-    await db.update(
-      _table,
-      {
-        'lastWatched':  DateTime.now().millisecondsSinceEpoch,
-        'lastPosition': position,
-      },
-      where: 'id = ?', whereArgs: [id],
-    );
+    final values = <String, Object?>{
+      'lastWatched':  DateTime.now().millisecondsSinceEpoch,
+      'lastPosition': position,
+    };
+    if (duration > 0) {
+      values['duration'] = duration;
+      // %90 izlendiyse "izlendi" say.
+      if (position > duration * 0.9) {
+        values['isWatched'] = 1;
+      }
+    }
+    await db.update(_table, values, where: 'id = ?', whereArgs: [id]);
   }
 
   Future<void> markWatched(String id) async {
@@ -173,6 +192,22 @@ class ChannelRepository {
       {'isWatched': 1},
       where: 'id = ?', whereArgs: [id],
     );
+  }
+
+  /// FTS4 indexini channels tablosundan yeniden olusturur.
+  /// replaceAllForPlaylist sonrasi cagirilir.
+  Future<void> rebuildFts() async {
+    final db = await AppDatabase.instance;
+    try {
+      // Eski veriyi sil, channels'tan tekrar doldur.
+      await db.execute('DELETE FROM channel_fts');
+      await db.execute(
+        'INSERT INTO channel_fts(rowid, name, category) '
+        'SELECT rowid, name, category FROM $_table',
+      );
+    } catch (e) {
+      debugPrint('[ChannelRepo] FTS rebuild failed: $e');
+    }
   }
 
   Future<int> countByPlaylist(String playlistId) async {

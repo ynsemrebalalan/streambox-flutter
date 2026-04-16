@@ -7,6 +7,7 @@ import '../../core/router/app_router.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_tokens.dart';
 import '../../core/utils/http_client.dart';
+import '../../core/utils/responsive.dart';
 import '../../core/utils/tv_focus.dart';
 import '../../data/models/channel_model.dart';
 import 'home_provider.dart';
@@ -437,12 +438,13 @@ class _ChannelList extends ConsumerWidget {
       return SeriesSection(channels: channels);
     }
 
-    // Movie: poster grid
+    // Movie: poster grid (responsive columns for iPad)
     if (state.activeTab == 'movie') {
+      final columns = Responsive.posterGridColumns(context);
       return GridView.builder(
         padding:     const EdgeInsets.all(Spacing.md),
-        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount:   3,
+        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount:   columns,
           childAspectRatio: 0.65,
           crossAxisSpacing: Spacing.sm,
           mainAxisSpacing:  Spacing.sm,
@@ -517,9 +519,11 @@ class _RecentlyWatchedStrip extends StatelessWidget {
                 onTap: () => context.push(
                   AppRoutes.player,
                   extra: {
-                    'channelId':  ch.id,
-                    'channelUrl': ch.streamUrl,
-                    'title':      ch.name,
+                    'channelId':       ch.id,
+                    'channelUrl':      ch.streamUrl,
+                    'title':           ch.name,
+                    'initialPosition': ch.lastPosition,
+                    'streamType':      ch.streamType,
                   },
                 ),
                 semanticLabel: ch.name,
@@ -584,9 +588,11 @@ class _PosterCard extends ConsumerWidget {
       onTap: () => context.push(
         AppRoutes.player,
         extra: {
-          'channelId':  channel.id,
-          'channelUrl': channel.streamUrl,
-          'title':      channel.name,
+          'channelId':       channel.id,
+          'channelUrl':      channel.streamUrl,
+          'title':           channel.name,
+          'initialPosition': channel.lastPosition,
+          'streamType':      channel.streamType,
         },
       ),
       child: Column(

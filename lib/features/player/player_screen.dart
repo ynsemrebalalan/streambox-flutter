@@ -4,20 +4,26 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:media_kit_video/media_kit_video.dart';
+import '../../core/analytics/analytics.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_tokens.dart';
 import '../home/home_provider.dart';
+import 'widgets/subtitle_overlay.dart';
 
 class PlayerScreen extends ConsumerStatefulWidget {
   final String channelId;
   final String channelUrl;
   final String title;
+  final int    initialPosition; // ms — VOD resume icin
+  final String streamType;      // 'live' | 'movie' | 'series'
 
   const PlayerScreen({
     super.key,
     required this.channelId,
     required this.channelUrl,
     required this.title,
+    this.initialPosition = 0,
+    this.streamType      = 'live',
   });
 
   @override
@@ -42,6 +48,8 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
   StreamSubscription<Duration>? _positionSub;
   StreamSubscription<String>?   _errorSub;
   StreamSubscription<bool>?     _completedSub;
+
+  bool _aiSubtitleEnabled = false;
 
   // Takildi sayilan esik (saniye). IPTV kaynak donmasinda bu surede
   // pozisyon ilerlemezse otomatik yeniden baglan.
@@ -129,6 +137,8 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
     });
     _errorSub = _player.stream.error.listen((err) {
       debugPrint('[Player] error: $err');
+      Analytics.playbackError(
+          errorCode: err, streamType: widget.streamType);
       _scheduleReconnect(reason: 'error: $err');
     });
     _completedSub = _player.stream.completed.listen((completed) {
@@ -191,6 +201,15 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
 
   void _play() {
     _player.open(Media(widget.channelUrl));
+    // VOD resume: canli yayinda resume olmaz, sadece film/dizi.
+    if (widget.initialPosition > 0 && widget.streamType != 'live') {
+      // Player acilinca stream hazir olunca seek et.
+      _player.stream.playing.firstWhere((p) => p).then((_) {
+        if (mounted) {
+          _player.seek(Duration(milliseconds: widget.initialPosition));
+        }
+      }).ignore();
+    }
   }
 
   void _manualReconnect() {
@@ -213,6 +232,18 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
 
   @override
   void dispose() {
+    // VOD resume: pozisyonu kaydet (canli yayinda anlamsiz).
+    if (widget.streamType != 'live') {
+      final pos = _player.state.position.inMilliseconds;
+      final dur = _player.state.duration.inMilliseconds;
+      if (pos > 0) {
+        ref.read(homeProvider.notifier).markWatched(
+          widget.channelId,
+          position: pos,
+          duration: dur,
+        );
+      }
+    }
     _hideTimer?.cancel();
     _watchdog?.cancel();
     _playingSub?.cancel();
@@ -353,6 +384,15 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
               child: Video(controller: _controller),
             ),
 
+            // AI Subtitle overlay
+            SubtitleOverlay(
+              channelId: widget.channelId,
+              streamUrl: widget.channelUrl,
+              streamType: widget.streamType,
+              positionStream: _player.stream.position,
+              enabled: _aiSubtitleEnabled,
+            ),
+
             // Buffering / reconnect indicator
             if (_isBuffering || _isReconnecting)
               Center(
@@ -381,12 +421,15 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
                 opacity:  1.0,
                 duration: const Duration(milliseconds: 250),
                 child: _ControlsOverlay(
-                  player:      _player,
-                  title:       widget.title,
-                  onClose:     () => Navigator.pop(context),
-                  onTap:       _showControls,
-                  onReconnect: _manualReconnect,
-                  volume:      _player.state.volume,
+                  player:           _player,
+                  title:            widget.title,
+                  onClose:          () => Navigator.pop(context),
+                  onTap:            _showControls,
+                  onReconnect:      _manualReconnect,
+                  volume:           _player.state.volume,
+                  subtitleEnabled:  _aiSubtitleEnabled,
+                  onSubtitleToggle: () => setState(
+                      () => _aiSubtitleEnabled = !_aiSubtitleEnabled),
                 ),
               ),
             ],
@@ -406,6 +449,8 @@ class _ControlsOverlay extends StatefulWidget {
   final VoidCallback onTap;
   final VoidCallback onReconnect;
   final double       volume;
+  final bool         subtitleEnabled;
+  final VoidCallback onSubtitleToggle;
 
   const _ControlsOverlay({
     required this.player,
@@ -414,6 +459,8 @@ class _ControlsOverlay extends StatefulWidget {
     required this.onTap,
     required this.onReconnect,
     required this.volume,
+    required this.subtitleEnabled,
+    required this.onSubtitleToggle,
   });
 
   @override
@@ -643,10 +690,23 @@ class _ControlsOverlayState extends State<_ControlsOverlay> {
                           ],
                         ),
                       const SizedBox(height: Spacing.sm),
-                      // Playback speed + audio tracks + mute
+                      // AI subtitle + speed + audio tracks + mute
                       Row(
                         mainAxisAlignment: MainAxisAlignment.end,
                         children: [
+                          FocusTraversalOrder(
+                            order: const NumericFocusOrder(3.5),
+                            child: _TvIconButton(
+                              icon: widget.subtitleEnabled
+                                  ? Icons.subtitles
+                                  : Icons.subtitles_off_outlined,
+                              tooltip: widget.subtitleEnabled
+                                  ? 'AI Altyazi Kapat'
+                                  : 'AI Altyazi Ac',
+                              onTap: widget.onSubtitleToggle,
+                            ),
+                          ),
+                          const SizedBox(width: Spacing.sm),
                           FocusTraversalOrder(
                             order: const NumericFocusOrder(4),
                             child: _SpeedButton(player: widget.player),

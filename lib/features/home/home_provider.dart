@@ -1,6 +1,8 @@
+import 'dart:convert';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/providers/app_providers.dart';
 import '../../data/models/channel_model.dart';
+import '../../data/repositories/settings_repository.dart';
 import 'home_state.dart';
 
 final homeProvider = AsyncNotifierProvider<HomeNotifier, HomeState>(
@@ -83,9 +85,9 @@ class HomeNotifier extends AsyncNotifier<HomeState> {
     state = AsyncData(current.copyWith(sortOrder: order));
   }
 
-  Future<void> markWatched(String channelId, {int position = 0}) async {
+  Future<void> markWatched(String channelId, {int position = 0, int duration = 0}) async {
     await ref.read(channelRepoProvider)
-        .updateWatched(channelId, position: position);
+        .updateWatched(channelId, position: position, duration: duration);
     // Refresh recently watched list
     final current = state.value;
     if (current == null || current.activePlaylistId.isEmpty) return;
@@ -156,9 +158,16 @@ class HomeNotifier extends AsyncNotifier<HomeState> {
     final type = _typeForTab(s.activeTab);
     if (type == null) return s.copyWith(categories: []);
 
-    final cats = await ref
+    var cats = await ref
         .read(channelRepoProvider)
         .getCategories(s.activePlaylistId, type);
+
+    // Hidden categories'i filtrele.
+    final hidden = await _hiddenCategories();
+    if (hidden.isNotEmpty) {
+      cats = cats.where((c) => !hidden.contains(c)).toList();
+    }
+
     final selected = cats.contains(s.selectedCategory)
         ? s.selectedCategory
         : (cats.firstOrNull ?? '');
@@ -183,7 +192,26 @@ class HomeNotifier extends AsyncNotifier<HomeState> {
         channels = await repo.getByType(s.activePlaylistId, type);
       }
     }
+
+    // Hidden categories filtresi uygula.
+    final hidden = await _hiddenCategories();
+    if (hidden.isNotEmpty) {
+      channels = channels.where((c) => !hidden.contains(c.category)).toList();
+    }
+
     return s.copyWith(channels: channels, isLoading: false, clearError: true);
+  }
+
+  Future<Set<String>> _hiddenCategories() async {
+    try {
+      final raw = await ref
+          .read(settingsRepoProvider)
+          .get(SettingsKeys.hiddenCategories);
+      if (raw == null || raw.isEmpty) return {};
+      return (jsonDecode(raw) as List).cast<String>().toSet();
+    } catch (_) {
+      return {};
+    }
   }
 
   static String? _typeForTab(String tab) => switch (tab) {

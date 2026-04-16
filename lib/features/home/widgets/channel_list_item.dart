@@ -37,9 +37,11 @@ class _ChannelListItemState extends ConsumerState<ChannelListItem> {
     context.push(
       AppRoutes.player,
       extra: {
-        'channelId':  channel.id,
-        'channelUrl': channel.streamUrl,
-        'title':      channel.name,
+        'channelId':       channel.id,
+        'channelUrl':      channel.streamUrl,
+        'title':           channel.name,
+        'initialPosition': channel.lastPosition,
+        'streamType':      channel.streamType,
       },
     );
   }

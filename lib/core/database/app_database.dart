@@ -3,7 +3,7 @@ import 'package:sqflite/sqflite.dart';
 import '../utils/device_tier.dart';
 
 class AppDatabase {
-  static const _version = 2;
+  static const _version = 3;
   static const _name    = 'iptvai.db';
 
   static Database? _db;
@@ -133,6 +133,27 @@ class AppDatabase {
         value TEXT NOT NULL
       )
     ''');
+
+    // AI subtitle cache (60-saniyelik segment boundary).
+    await db.execute('''
+      CREATE TABLE subtitle_cache (
+        id         TEXT PRIMARY KEY,
+        channelId  TEXT NOT NULL,
+        segmentSec INTEGER NOT NULL,
+        cuesJson   TEXT NOT NULL DEFAULT '',
+        provider   TEXT NOT NULL DEFAULT '',
+        cachedAt   INTEGER NOT NULL DEFAULT 0
+      )
+    ''');
+    await db.execute('''
+      CREATE INDEX idx_subtitle_cache ON subtitle_cache(channelId, segmentSec)
+    ''');
+
+    // FTS4 full-text search (100K+ kanalda hizli arama).
+    await db.execute('''
+      CREATE VIRTUAL TABLE IF NOT EXISTS channel_fts
+      USING fts4(name, category, content="channels", tokenize=unicode61)
+    ''');
   }
 
   static Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
@@ -145,6 +166,27 @@ class AppDatabase {
       await db.execute('''
         CREATE INDEX IF NOT EXISTS idx_channels_recent
         ON channels(playlistId, lastWatched DESC)
+      ''');
+    }
+    // v2 → v3: subtitle_cache + FTS4 tablosu.
+    if (oldVersion < 3) {
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS subtitle_cache (
+          id         TEXT PRIMARY KEY,
+          channelId  TEXT NOT NULL,
+          segmentSec INTEGER NOT NULL,
+          cuesJson   TEXT NOT NULL DEFAULT '',
+          provider   TEXT NOT NULL DEFAULT '',
+          cachedAt   INTEGER NOT NULL DEFAULT 0
+        )
+      ''');
+      await db.execute('''
+        CREATE INDEX IF NOT EXISTS idx_subtitle_cache
+        ON subtitle_cache(channelId, segmentSec)
+      ''');
+      await db.execute('''
+        CREATE VIRTUAL TABLE IF NOT EXISTS channel_fts
+        USING fts4(name, category, content="channels", tokenize=unicode61)
       ''');
     }
     // Ensure all tables exist even if upgrading from a corrupted/partial state

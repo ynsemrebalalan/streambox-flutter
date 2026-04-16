@@ -46,4 +46,10 @@ abstract final class SettingsKeys {
   static const String parentalPin      = 'parental_pin';
   static const String lastCategory       = 'last_category';
   static const String disclaimerAccepted = 'disclaimer_accepted';
+  static const String hiddenCategories   = 'hidden_categories'; // JSON Set<String>
+  static const String subtitleTextColor  = 'subtitle_text_color';
+  static const String subtitleBgColor    = 'subtitle_bg_color';
+  static const String subtitleFontSize   = 'subtitle_font_size';
+  static const String refreshIntervalH   = 'refresh_interval_hours'; // 0=off, -1=on_open
+  static const String secureStorageMigrated = 'secure_storage_migrated';
 }

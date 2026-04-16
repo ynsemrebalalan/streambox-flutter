@@ -240,9 +240,11 @@ class _EpisodeTileState extends State<_EpisodeTile> {
     context.push(
       AppRoutes.player,
       extra: {
-        'channelId':  widget.episode.id,
-        'channelUrl': widget.episode.streamUrl,
-        'title':      widget.episode.name,
+        'channelId':       widget.episode.id,
+        'channelUrl':      widget.episode.streamUrl,
+        'title':           widget.episode.name,
+        'initialPosition': widget.episode.lastPosition,
+        'streamType':      widget.episode.streamType,
       },
     );
   }
