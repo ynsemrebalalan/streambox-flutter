@@ -6,13 +6,13 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:media_kit/media_kit.dart';
 import 'core/analytics/analytics.dart';
-import 'data/services/firebase_sync_service.dart';
 import 'core/providers/app_providers.dart';
 import 'core/router/app_router.dart';
 import 'core/theme/app_theme.dart';
 import 'core/utils/device_tier.dart';
 import 'core/utils/secure_storage.dart';
 import 'data/repositories/settings_repository.dart';
+import 'data/services/demo_seed_service.dart';
 
 void main() async {
   // Catch all uncaught Flutter framework errors
@@ -73,8 +73,15 @@ void main() async {
     // Migrate plain-text secrets to encrypted storage (one-time).
     _migrateSecrets();
 
-    // Fetch proxy secret from Firestore (non-blocking).
-    FirebaseSyncService.fetchAndCacheProxySecret();
+    // Seed CC-licensed public demo content on first launch.
+    // Apple 4.2.2 Minimum Functionality guarantee: the app is usable
+    // before the user adds their own M3U/Xtream playlist.
+    unawaited(DemoSeedService.seedIfNeeded());
+
+    // NOTE: FirebaseSyncService.fetchAndCacheProxySecret() deliberately NOT
+    // called on startup. Anonymous auth + Firestore fetch on first launch
+    // can cause iOS assertion crashes (App Review). Invoked lazily from
+    // Settings / playlist import when the user opts in.
 
     runApp(const ProviderScope(child: IPTVAIPlayerApp()));
   }, (error, stack) {

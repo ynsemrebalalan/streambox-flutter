@@ -13,23 +13,53 @@ workflows:
       ios_signing:
         distribution_type: app_store
         bundle_identifier: com.ynsemrebalalan.iptvai
-      flutter: stable
+      # Spesifik Flutter version — VSyncClient/CADisplayLink crash'i icin
+      # 3.24+ zorunlu (iOS 26 CADisplayLink uyumsuzlugu 3.24 oncesi surumlerde var).
+      flutter: 3.27.1
       xcode: latest
       cocoapods: default
+      vars:
+        XCODE_WORKSPACE: "ios/Runner.xcworkspace"
+        XCODE_SCHEME: "Runner"
+        BUNDLE_ID: "com.ynsemrebalalan.iptvai"
 
     scripts:
+      - name: Flutter version (log)
+        script: flutter --version
+
+      - name: Temiz ortam
+        script: |
+          flutter clean
+          rm -rf ios/Pods ios/Podfile.lock ios/.symlinks
+
       - name: Flutter pub get
         script: flutter pub get
 
       - name: Pod install
         script: |
           cd ios
-          pod install
+          pod install --repo-update
 
-      - name: Build iOS IPA
+      - name: Build iOS IPA (RELEASE MODE — KESIN)
         script: |
-          flutter build ipa --release \
+          # --release zorunlu, debug/profile UPLOAD EDILMEMELI
+          flutter build ipa \
+            --release \
+            --build-number=$(($(($(date +%s) - $(date -d "2024-01-01" +%s))) / 60)) \
             --export-options-plist=$CM_BUILD_DIR/ios/ExportOptions.plist
+
+      - name: Build mode dogrulama
+        script: |
+          # IPA icindeki Info.plist'i extract edip DTCompiler + release kontrolu yap
+          IPA_PATH=$(find build/ios/ipa -name "*.ipa" | head -1)
+          unzip -o "$IPA_PATH" -d /tmp/ipa_verify > /dev/null
+          APP_PATH=$(find /tmp/ipa_verify/Payload -name "*.app" -type d | head -1)
+          # Release build'de Flutter.framework icinde FlutterDebug.xcconfig olmaz
+          if [ -f "$APP_PATH/Frameworks/App.framework/flutter_assets/vm_snapshot_data" ]; then
+            echo "❌ DEBUG BUILD DETECTED — vm_snapshot_data var (sadece debug'da olur)!"
+            exit 1
+          fi
+          echo "✅ Release build dogrulandi"
 
     artifacts:
       - build/ios/ipa/*.ipa

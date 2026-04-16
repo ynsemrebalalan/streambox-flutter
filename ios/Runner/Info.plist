@@ -26,8 +26,6 @@
 	<true/>
 	<key>UILaunchStoryboardName</key>
 	<string>LaunchScreen</string>
-	<key>UIMainStoryboardFile</key>
-	<string>Main</string>
 	<key>UISupportedInterfaceOrientations</key>
 	<array>
 		<string>UIInterfaceOrientationPortrait</string>
@@ -64,5 +62,17 @@
 	<!-- App does not use non-exempt encryption -->
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
+	<!-- Firebase Auth / Google Sign-In URL scheme (REVERSED_CLIENT_ID) -->
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>com.googleusercontent.apps.583696434507-dp78u7jc99i07f28qb4othk7quk73tfq</string>
+			</array>
+		</dict>
+	</array>
 </dict>
 </plist>

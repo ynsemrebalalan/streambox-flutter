@@ -3,8 +3,14 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 /// iOS Keychain / Android EncryptedSharedPreferences ile
 /// hassas verileri güvenli saklama.
 class SecureStorage {
+  // App Review / fresh install cihazlarinda first_unlock
+  // errSecInteractionNotAllowed atabilir. first_unlock_this_device + synchronizable:false
+  // ile bu riski kaldiriyoruz.
   static const _storage = FlutterSecureStorage(
-    iOptions: IOSOptions(accessibility: KeychainAccessibility.first_unlock),
+    iOptions: IOSOptions(
+      accessibility: KeychainAccessibility.first_unlock_this_device,
+      synchronizable: false,
+    ),
   );
 
   // ── OpenAI API Key ─────────────────────────────────────────────────────────
