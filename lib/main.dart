@@ -14,7 +14,7 @@ import 'core/utils/secure_storage.dart';
 import 'data/repositories/settings_repository.dart';
 import 'data/services/demo_seed_service.dart';
 
-void main() async {
+void main() {
   // Catch all uncaught Flutter framework errors
   FlutterError.onError = (details) {
     FlutterError.presentError(details);
@@ -42,51 +42,67 @@ void main() async {
     ),
   );
 
-  runZonedGuarded(() async {
+  runZonedGuarded(() {
     WidgetsFlutterBinding.ensureInitialized();
 
-    // Cihaz performans katmanini tespit et (RAM, core).
-    // Tum servisler buna gore adaptive strateji kullanir.
+    // Sync, hizli — blocking olmaz.
     DeviceProfile.init();
 
-    // Firebase (analytics, firestore, auth)
-    try {
-      await Firebase.initializeApp();
-      await Analytics.init();
-    } catch (e) {
-      debugPrint('Firebase init failed: $e');
-    }
+    // iOS 26.4.1'de Firebase/MediaKit gibi agir init'ler bazen
+    // runApp oncesinde takiliyor ve siyah ekrana yol aciyor.
+    // runApp'i HEMEN cagir, kalan init'leri arka planda timeout ile yap.
+    runApp(const ProviderScope(child: IPTVAIPlayerApp()));
 
-    try {
-      MediaKit.ensureInitialized();
-    } catch (e) {
-      debugPrint('MediaKit init failed: $e');
-      // Non-fatal: video playback may be limited
-    }
+    unawaited(_bootstrapInBackground());
+  }, (error, stack) {
+    debugPrint('Uncaught error: $error\n$stack');
+  });
+}
 
+/// runApp sonrasi arka planda calisir; UI'i bloklamaz.
+/// Her init bagimsiz timeout ile korunur — biri takilirsa digerleri devam eder.
+Future<void> _bootstrapInBackground() async {
+  await Future.wait([
+    _initFirebaseAndAnalytics(),
+    _initMediaKit(),
+    _initOrientation(),
+  ], eagerError: false);
+
+  await _migrateSecrets();
+
+  unawaited(DemoSeedService.seedIfNeeded());
+}
+
+Future<void> _initFirebaseAndAnalytics() async {
+  try {
+    await Firebase.initializeApp().timeout(const Duration(seconds: 5));
+    await Analytics.init().timeout(const Duration(seconds: 3));
+  } catch (e) {
+    debugPrint('Firebase/Analytics init failed or timed out: $e');
+  }
+}
+
+Future<void> _initMediaKit() async {
+  try {
+    // ensureInitialized() sync ama native tarafta takilma ihtimaline karsi
+    // Future'a sarilir ve timeout uygulanir.
+    await Future(() => MediaKit.ensureInitialized())
+        .timeout(const Duration(seconds: 5));
+  } catch (e) {
+    debugPrint('MediaKit init failed or timed out: $e');
+  }
+}
+
+Future<void> _initOrientation() async {
+  try {
     await SystemChrome.setPreferredOrientations([
       DeviceOrientation.landscapeLeft,
       DeviceOrientation.landscapeRight,
       DeviceOrientation.portraitUp,
-    ]);
-
-    // Migrate plain-text secrets to encrypted storage (one-time).
-    _migrateSecrets();
-
-    // Seed CC-licensed public demo content on first launch.
-    // Apple 4.2.2 Minimum Functionality guarantee: the app is usable
-    // before the user adds their own M3U/Xtream playlist.
-    unawaited(DemoSeedService.seedIfNeeded());
-
-    // NOTE: FirebaseSyncService.fetchAndCacheProxySecret() deliberately NOT
-    // called on startup. Anonymous auth + Firestore fetch on first launch
-    // can cause iOS assertion crashes (App Review). Invoked lazily from
-    // Settings / playlist import when the user opts in.
-
-    runApp(const ProviderScope(child: IPTVAIPlayerApp()));
-  }, (error, stack) {
-    debugPrint('Uncaught error: $error\n$stack');
-  });
+    ]).timeout(const Duration(seconds: 2));
+  } catch (e) {
+    debugPrint('Orientation init failed: $e');
+  }
 }
 
 /// One-time migration: plain settings → encrypted Keychain storage.
