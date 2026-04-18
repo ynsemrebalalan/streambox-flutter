@@ -39,8 +39,11 @@
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
-	<key>CADisableMinimumFrameDurationOnPhone</key>
-	<true/>
+	<!-- CADisableMinimumFrameDurationOnPhone kasten kaldirildi:
+	     iOS 26.4.1 + ProMotion (iPhone 14/17 Pro Max) Flutter'da
+	     createTouchRateCorrectionVSyncClientIfNeeded -> VSyncClient init
+	     null CADisplayLink hatasina yol aciyor, siyah ekran oluyor.
+	     60Hz fallback yeterli; video oynatma etkilenmiyor. -->
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
 	<!-- iPad multitasking support -->

@@ -11,10 +11,12 @@ workflows:
       ios_signing:
         distribution_type: app_store
         bundle_identifier: com.ynsemrebalalan.iptvai
-      # Spesifik Flutter version — iOS 26.4+ CADisplayLink/VSyncClient
-      # hang/siyah ekran sorunu icin 3.32+ zorunlu (3.27 iOS 26.0'da fix
-      # icerir ama 26.4 regresyonunu kapsamaz).
-      flutter: 3.32.4
+      # iOS 26.4.1 + ProMotion (iPhone 14/17 Pro Max) siyah ekran fix:
+      # 3.32.4 VSyncClient crash'ini yutuyor ama rendering loop
+      # baslamiyor (silent black screen). Native tarafta swizzle guard
+      # (AppDelegate.swift) + ProMotion opt-out (Info.plist) eklendi.
+      # Stable kanal iOS 26 icin en guncel fix'leri de aliyor.
+      flutter: stable
       xcode: latest
       cocoapods: default
       vars:
