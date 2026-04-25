@@ -4,21 +4,27 @@ workflows:
     max_build_duration: 60
     instance_type: mac_mini_m2
 
+    # App Store Connect API key entegrasyonu — Codemagic UI'daki integration
+    # adi BUYUK/KUCUK harf duyarli olarak buraya ESLESMELI.
+    # UI: Teams -> Integrations -> App Store Connect -> "Codemagic"
     integrations:
       app_store_connect: Codemagic
 
     environment:
-      ios_signing:
-        distribution_type: app_store
-        bundle_identifier: com.ynsemrebalalan.iptvai
-      # iOS 26.4.1 + ProMotion (iPhone 14/17 Pro Max) siyah ekran fix:
-      # 3.32.4 VSyncClient crash'ini yutuyor ama rendering loop
-      # baslamiyor (silent black screen). Native tarafta swizzle guard
-      # (AppDelegate.swift) + ProMotion opt-out (Info.plist) eklendi.
-      # Stable kanal iOS 26 icin en guncel fix'leri de aliyor.
-      flutter: stable
+      # iOS 26 ProMotion siyah ekran KESIN cozumu AppDelegate.swift'te
+      # explicit FlutterEngine prewarm pattern. Flutter 3.41.5 = Subat 2026
+      # son stable; "stable" dinamik olmasin, reproducible build icin pin.
+      flutter: 3.41.5
       xcode: latest
       cocoapods: default
+
+      # NOT: environment.ios_signing BLOGU KASTEN YOK.
+      # Declarative ios_signing manuel signing icindir (onceden upload
+      # edilmis profile arar). Bizim akis App Store Connect API ile
+      # otomatik fetch + create. Ikisi yan yana olursa Codemagic once
+      # manuel arar, "No matching profiles found" hatasi verir.
+      # Ref: github.com/orgs/codemagic-ci-cd/discussions/3362
+
       vars:
         XCODE_WORKSPACE: "ios/Runner.xcworkspace"
         XCODE_SCHEME: "Runner"
@@ -32,7 +38,6 @@ workflows:
         script: |
           flutter clean
           rm -rf ios/Pods ios/Podfile.lock ios/.symlinks
-          # Flutter major upgrade sonrasi lock catismasi olmasin
           rm -f pubspec.lock
 
       - name: Flutter pub get
@@ -43,22 +48,56 @@ workflows:
           cd ios
           pod install --repo-update
 
-      - name: Build iOS IPA (RELEASE MODE — KESIN)
+      # Code signing — App Store Connect API ile tam otomatik:
+      # 1) keychain initialize: temiz build keychain
+      # 2) fetch-signing-files --create: profile yoksa yeni olustur
+      # 3) keychain add-certificates: cert'i keychain'e ekle
+      # 4) xcode-project use-profiles: Xcode project signing settings'i
+      #    + ExportOptions.plist'i otomatik gunceller
+      - name: Code signing setup
         script: |
-          # --release zorunlu, debug/profile UPLOAD EDILMEMELI
+          keychain initialize
+          app-store-connect fetch-signing-files "$BUNDLE_ID" \
+            --type=IOS_APP_STORE \
+            --create
+          keychain add-certificates
+          xcode-project use-profiles
+
+      # Auto-increment build number — App Store Connect'teki son TestFlight
+      # build no'su +1; pubspec'teki +N max ile. "Duplicate bundle version"
+      # hatasini onler.
+      - name: Auto-increment build number
+        script: |
+          set +e
+          LATEST_TF=$(app-store-connect get-latest-testflight-build-number "$BUNDLE_ID" 2>/dev/null || echo "0")
+          set -e
+          PUBSPEC_BUILD=$(grep "^version:" pubspec.yaml | sed -E 's/.*\+([0-9]+).*/\1/')
+          if [ "$LATEST_TF" -gt "$PUBSPEC_BUILD" ]; then
+            NEW_BUILD=$((LATEST_TF + 1))
+          else
+            NEW_BUILD=$PUBSPEC_BUILD
+          fi
+          echo "Latest TestFlight: $LATEST_TF, pubspec: $PUBSPEC_BUILD, building: $NEW_BUILD"
+          echo "BUILD_NUMBER=$NEW_BUILD" >> $CM_ENV
+
+      # Build IPA — release zorunlu, debug/profile UPLOAD EDILMEZ.
+      # NOT: --export-options-plist parametresi KASTEN YOK.
+      # xcode-project use-profiles ExportOptions.plist'i kendi olusturur/
+      # gunceller; harici plist verirsek signing config'i ezeriz.
+      - name: Build iOS IPA (release)
+        script: |
           flutter build ipa \
             --release \
-            --export-options-plist=ios/ExportOptions.plist
+            --build-number=$BUILD_NUMBER
 
-      - name: Build mode dogrulama
+      - name: Release build dogrulama
         script: |
-          # IPA icindeki Info.plist'i extract edip DTCompiler + release kontrolu yap
           IPA_PATH=$(find build/ios/ipa -name "*.ipa" | head -1)
           unzip -o "$IPA_PATH" -d /tmp/ipa_verify > /dev/null
           APP_PATH=$(find /tmp/ipa_verify/Payload -name "*.app" -type d | head -1)
-          # Release build'de Flutter.framework icinde FlutterDebug.xcconfig olmaz
+          # vm_snapshot_data sadece debug build'lerde olur — release ise yok
           if [ -f "$APP_PATH/Frameworks/App.framework/flutter_assets/vm_snapshot_data" ]; then
-            echo "❌ DEBUG BUILD DETECTED — vm_snapshot_data var (sadece debug'da olur)!"
+            echo "❌ DEBUG BUILD DETECTED — vm_snapshot_data var (sadece debug'da)!"
             exit 1
           fi
           echo "✅ Release build dogrulandi"
