@@ -6,11 +6,22 @@ enum SortOrder { defaultOrder, nameAsc, nameDesc }
 class HomeState {
   final List<PlaylistModel> playlists;
   final String              activePlaylistId;
-  final String              activeTab;       // 'live' | 'movie' | 'series' | 'favorites'
+  final String              activeTab;       // 'home' | 'live' | 'movie' | 'series' | 'favorites'
   final List<String>        categories;
   final String              selectedCategory;
+  /// Favoriler sekmesindeyken tip filtresi: '' (tümü) | 'live' | 'movie' | 'series'
+  final String              favoritesTypeFilter;
   final List<ChannelModel>  channels;
   final List<ChannelModel>  recentlyWatched;
+  // ── Ana Sayfa row'ları ───────────────────────────────────────────────────
+  /// Dizi bölümleri için devam ettirilebilir olanlar
+  final List<ChannelModel>  continueWatching;
+  /// En son eklenen filmler (rowid DESC)
+  final List<ChannelModel>  newlyAddedMovies;
+  /// En son eklenen dizi bölümleri
+  final List<ChannelModel>  newlyAddedSeries;
+  /// En son eklenen canlı kanallar
+  final List<ChannelModel>  latestLive;
   final bool                isLoading;
   final String?             error;
   final SortOrder           sortOrder;
@@ -21,11 +32,16 @@ class HomeState {
   const HomeState({
     this.playlists          = const [],
     this.activePlaylistId   = '',
-    this.activeTab          = 'live',
+    this.activeTab          = 'home',
     this.categories         = const [],
     this.selectedCategory   = '',
+    this.favoritesTypeFilter = '',
     this.channels           = const [],
     this.recentlyWatched    = const [],
+    this.continueWatching   = const [],
+    this.newlyAddedMovies   = const [],
+    this.newlyAddedSeries   = const [],
+    this.latestLive         = const [],
     this.isLoading          = false,
     this.error,
     this.sortOrder          = SortOrder.defaultOrder,
@@ -40,8 +56,13 @@ class HomeState {
     String?              activeTab,
     List<String>?        categories,
     String?              selectedCategory,
+    String?              favoritesTypeFilter,
     List<ChannelModel>?  channels,
     List<ChannelModel>?  recentlyWatched,
+    List<ChannelModel>?  continueWatching,
+    List<ChannelModel>?  newlyAddedMovies,
+    List<ChannelModel>?  newlyAddedSeries,
+    List<ChannelModel>?  latestLive,
     bool?                isLoading,
     String?              error,
     bool                 clearError = false,
@@ -55,8 +76,13 @@ class HomeState {
     activeTab:          activeTab        ?? this.activeTab,
     categories:         categories       ?? this.categories,
     selectedCategory:   selectedCategory ?? this.selectedCategory,
+    favoritesTypeFilter: favoritesTypeFilter ?? this.favoritesTypeFilter,
     channels:           channels         ?? this.channels,
     recentlyWatched:    recentlyWatched  ?? this.recentlyWatched,
+    continueWatching:   continueWatching ?? this.continueWatching,
+    newlyAddedMovies:   newlyAddedMovies ?? this.newlyAddedMovies,
+    newlyAddedSeries:   newlyAddedSeries ?? this.newlyAddedSeries,
+    latestLive:         latestLive       ?? this.latestLive,
     isLoading:          isLoading        ?? this.isLoading,
     error:              clearError ? null : error ?? this.error,
     sortOrder:          sortOrder        ?? this.sortOrder,
@@ -72,9 +98,11 @@ class HomeState {
   };
 
   String get activeTabLabel => switch (activeTab) {
+    'home'      => 'Ana Sayfa',
+    'live'      => 'Canlı',
     'movie'     => 'Film',
     'series'    => 'Dizi',
     'favorites' => 'Favoriler',
-    _           => 'Canlı',
+    _           => '',
   };
 }

@@ -102,7 +102,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 ref.read(homeProvider.notifier).search(q),
           ),
           if (!_showSearch) _TabBar(state: state),
-          if (!_showSearch && state.categories.isNotEmpty)
+          if (!_showSearch && state.activeTab == 'favorites')
+            _FavoritesTypeBar(state: state),
+          if (!_showSearch &&
+              state.activeTab != 'favorites' &&
+              state.categories.isNotEmpty)
             _CategoryBar(state: state),
           Expanded(
             child: _showSearch
@@ -231,6 +235,31 @@ class _TopBar extends ConsumerWidget {
             tooltip: 'Ayarlar',
             onPressed: () => context.push(AppRoutes.settings),
           ),
+          // Daha Fazla — kategori yönetimi gibi ikincil eylemler için üç nokta
+          PopupMenuButton<String>(
+            iconSize: 28,
+            tooltip: 'Daha Fazla',
+            icon: const Icon(Icons.more_vert),
+            onSelected: (value) {
+              switch (value) {
+                case 'category_filter':
+                  context.push(AppRoutes.categoryFilter);
+                  break;
+              }
+            },
+            itemBuilder: (ctx) => const [
+              PopupMenuItem(
+                value: 'category_filter',
+                child: Row(
+                  children: [
+                    Icon(Icons.filter_list, size: 20),
+                    SizedBox(width: Spacing.sm),
+                    Text('Kategori Yönetimi'),
+                  ],
+                ),
+              ),
+            ],
+          ),
         ],
       ),
     );
@@ -244,6 +273,7 @@ class _TabBar extends ConsumerWidget {
   const _TabBar({required this.state});
 
   static const _tabs = [
+    ('home',      'Ana Sayfa', Icons.home),
     ('live',      'Canlı',     Icons.live_tv),
     ('movie',     'Film',      Icons.movie),
     ('series',    'Dizi',      Icons.video_library),
@@ -412,6 +442,81 @@ class _CategoryBar extends ConsumerWidget {
   }
 }
 
+// ── Favorites type filter bar ─────────────────────────────────────────────────
+//
+// Favoriler sekmesinde "Tümü / Canlı / Filmler / Diziler" chip'leri. Tek listede
+// üç içerik tipi karıştığı için kullanıcı şikayeti vardı (v3.5.3 öncesi).
+
+class _FavoritesTypeBar extends ConsumerWidget {
+  final HomeState state;
+  const _FavoritesTypeBar({required this.state});
+
+  static const _filters = [
+    ('',       'Tümü',     Icons.star),
+    ('live',   'Canlı',    Icons.live_tv),
+    ('movie',  'Filmler',  Icons.movie),
+    ('series', 'Diziler',  Icons.video_library),
+  ];
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final cs = Theme.of(context).colorScheme;
+
+    return SizedBox(
+      height: 48,
+      child: FocusTraversalGroup(
+        policy: OrderedTraversalPolicy(),
+        child: ListView.separated(
+          scrollDirection: Axis.horizontal,
+          padding: const EdgeInsets.symmetric(
+              horizontal: Spacing.md, vertical: 6),
+          itemCount:       _filters.length,
+          separatorBuilder: (_, __) => const SizedBox(width: 6),
+          itemBuilder: (ctx, i) {
+            final (value, label, icon) = _filters[i];
+            final active = value == state.favoritesTypeFilter;
+            return TvFocusable(
+              borderRadius: BorderRadius.circular(Radius.badge + 8),
+              onTap: () => ref
+                  .read(homeProvider.notifier)
+                  .setFavoritesTypeFilter(value),
+              semanticLabel: label,
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(
+                  color: active
+                      ? AppColors.accent
+                      : cs.surfaceContainerHighest,
+                  borderRadius: BorderRadius.circular(Radius.badge + 5),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(icon,
+                        size: 16,
+                        color: active ? cs.onPrimary : cs.onSurfaceVariant),
+                    const SizedBox(width: 6),
+                    Text(label,
+                        style: TextStyle(
+                            fontSize: TextSize.label,
+                            fontWeight: active
+                                ? FontWeight.w600
+                                : FontWeight.normal,
+                            color: active
+                                ? cs.onPrimary
+                                : cs.onSurfaceVariant)),
+                  ],
+                ),
+              ),
+            );
+          },
+        ),
+      ),
+    );
+  }
+}
+
 // ── Channel list ──────────────────────────────────────────────────────────────
 
 class _ChannelList extends ConsumerWidget {
@@ -421,13 +526,27 @@ class _ChannelList extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final channels = state.sortedChannels;
+
+    // Ana Sayfa: channels yerine row'lar gösterilir, boş empty state olmamalı
+    if (state.activeTab == 'home') {
+      if (state.isLoading) {
+        return const Center(child: CircularProgressIndicator());
+      }
+      return _HomeRowsLayout(state: state);
+    }
+
     if (state.isLoading) {
       return const Center(child: CircularProgressIndicator());
     }
     if (channels.isEmpty) {
+      final msg = state.activeTab == 'favorites'
+          ? (state.favoritesTypeFilter.isEmpty
+              ? 'Favori eklenmemiş'
+              : 'Bu tipte favori yok')
+          : 'Bu kategoride içerik yok';
       return Center(
         child: Text(
-          'Bu kategoride içerik yok',
+          msg,
           style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant),
         ),
       );
@@ -477,6 +596,187 @@ class _ChannelList extends ConsumerWidget {
     return ListView.builder(
       itemCount:   channels.length,
       itemBuilder: (ctx, i) => ChannelListItem(channel: channels[i]),
+    );
+  }
+}
+
+// ── Home rows layout (Ana Sayfa sekmesi) ──────────────────────────────────────
+//
+// Netflix tarzı yatay row'lar. Tek dikey ListView içinde her row bir bölüm.
+// Boş row'lar gizlenir. TV D-pad: dikey ListView dikey geçişi yönetir,
+// her horizontal row FocusTraversalGroup ile soldan sağa sıralı.
+
+class _HomeRowsLayout extends StatelessWidget {
+  final HomeState state;
+  const _HomeRowsLayout({required this.state});
+
+  @override
+  Widget build(BuildContext context) {
+    final sections = <(String, List<ChannelModel>, _HomeCardStyle)>[
+      if (state.continueWatching.isNotEmpty)
+        ('Devam Et',       state.continueWatching, _HomeCardStyle.poster),
+      if (state.recentlyWatched.isNotEmpty)
+        ('Son İzlenenler', state.recentlyWatched,  _HomeCardStyle.poster),
+      if (state.newlyAddedMovies.isNotEmpty)
+        ('Yeni Filmler',   state.newlyAddedMovies, _HomeCardStyle.poster),
+      if (state.newlyAddedSeries.isNotEmpty)
+        ('Yeni Diziler',   state.newlyAddedSeries, _HomeCardStyle.poster),
+      if (state.latestLive.isNotEmpty)
+        ('Yeni Kanallar',  state.latestLive,       _HomeCardStyle.logo),
+    ];
+
+    if (sections.isEmpty) {
+      final cs = Theme.of(context).colorScheme;
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(Spacing.xl),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.home_outlined,
+                  size: 56, color: cs.onSurfaceVariant),
+              const SizedBox(height: Spacing.md),
+              Text(
+                'Henüz içerik yok',
+                style: TextStyle(
+                    fontSize: TextSize.title,
+                    color: cs.onSurface),
+              ),
+              const SizedBox(height: Spacing.xs),
+              Text(
+                'Film / Dizi / Canlı sekmelerinden göz atmaya başlayın',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: cs.onSurfaceVariant),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    return ListView.separated(
+      padding: const EdgeInsets.symmetric(vertical: Spacing.sm),
+      itemCount: sections.length,
+      separatorBuilder: (_, __) => const SizedBox(height: Spacing.md),
+      itemBuilder: (ctx, i) {
+        final (title, items, style) = sections[i];
+        return _HomeRow(title: title, items: items, style: style);
+      },
+    );
+  }
+}
+
+enum _HomeCardStyle { poster, logo }
+
+class _HomeRow extends StatelessWidget {
+  final String             title;
+  final List<ChannelModel> items;
+  final _HomeCardStyle     style;
+
+  const _HomeRow({
+    required this.title,
+    required this.items,
+    required this.style,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    // Poster: 120x180 (2/3 aspect), Logo: 140x80 (landscape)
+    final itemWidth  = style == _HomeCardStyle.poster ? 120.0 : 140.0;
+    final itemHeight = style == _HomeCardStyle.poster ? 200.0 : 110.0;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: Spacing.md),
+          child: Text(
+            title,
+            style: TextStyle(
+                fontSize:   TextSize.title,
+                fontWeight: FontWeight.w600,
+                color:      cs.onSurface),
+          ),
+        ),
+        const SizedBox(height: 6),
+        SizedBox(
+          height: itemHeight,
+          child: FocusTraversalGroup(
+            policy: OrderedTraversalPolicy(),
+            child: ListView.separated(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.symmetric(horizontal: Spacing.md),
+              itemCount:       items.length,
+              separatorBuilder: (_, __) =>
+                  const SizedBox(width: Spacing.sm),
+              itemBuilder: (ctx, i) => SizedBox(
+                width: itemWidth,
+                child: style == _HomeCardStyle.poster
+                    ? _PosterCard(channel: items[i])
+                    : _LogoCard(channel: items[i]),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// Canlı TV kanalları için landscape kart (logo + isim).
+class _LogoCard extends StatelessWidget {
+  final ChannelModel channel;
+  const _LogoCard({required this.channel});
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return TvFocusableScale(
+      borderRadius: BorderRadius.circular(Radius.card + 3),
+      onTap: () => context.push(
+        AppRoutes.player,
+        extra: {
+          'channelId':       channel.id,
+          'channelUrl':      channel.streamUrl,
+          'title':           channel.name,
+          'initialPosition': channel.lastPosition,
+          'streamType':      channel.streamType,
+        },
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            height: 72,
+            decoration: BoxDecoration(
+              color: cs.surfaceContainerHighest,
+              borderRadius: BorderRadius.circular(Radius.card),
+            ),
+            padding: const EdgeInsets.all(8),
+            child: channel.logoUrl.isNotEmpty
+                ? CachedNetworkImage(
+                    imageUrl:    channel.logoUrl,
+                    fit:         BoxFit.contain,
+                    placeholder: (_, __) => const SizedBox.shrink(),
+                    errorWidget: (_, __, ___) => Icon(Icons.live_tv,
+                        color: cs.onSurfaceVariant, size: 28),
+                  )
+                : Icon(Icons.live_tv,
+                    color: cs.onSurfaceVariant, size: 28),
+          ),
+          const SizedBox(height: 4),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 4),
+            child: Text(
+              channel.name,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(fontSize: TextSize.caption),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

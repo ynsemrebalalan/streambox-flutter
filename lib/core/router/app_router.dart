@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../features/home/home_screen.dart';
 import '../../features/onboarding/disclaimer_screen.dart';
@@ -20,6 +21,16 @@ abstract final class AppRoutes {
 final appRouter = GoRouter(
   initialLocation: AppRoutes.disclaimer,
   debugLogDiagnostics: false,
+  // Bilinmeyen path veya navigation hatasinda crash yerine home'a yonlendir.
+  errorBuilder: (ctx, state) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (ctx.mounted) ctx.go(AppRoutes.home);
+    });
+    return const Scaffold(
+      backgroundColor: Colors.black,
+      body: Center(child: CircularProgressIndicator()),
+    );
+  },
   routes: [
     GoRoute(
       path: AppRoutes.disclaimer,
@@ -34,11 +45,40 @@ final appRouter = GoRouter(
     GoRoute(
       path: AppRoutes.player,
       builder: (ctx, state) {
-        final extra = state.extra as Map<String, dynamic>;
+        // Defensive: extra null veya yanlis tipte gelirse home'a geri don.
+        // Player'a manuel navigation hatasinda crash yerine graceful fallback.
+        final raw = state.extra;
+        if (raw is! Map) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (ctx.mounted) ctx.go(AppRoutes.home);
+          });
+          return const Scaffold(
+            backgroundColor: Colors.black,
+            body: Center(child: CircularProgressIndicator()),
+          );
+        }
+        final extra = Map<String, dynamic>.from(raw);
+        final channelId  = extra['channelId']  as String? ?? '';
+        final channelUrl = extra['channelUrl'] as String? ?? '';
+        final title      = extra['title']      as String? ?? '';
+        if (channelUrl.isEmpty) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (ctx.mounted) ctx.go(AppRoutes.home);
+          });
+          return const Scaffold(
+            backgroundColor: Colors.black,
+            body: Center(
+              child: Text(
+                'Yayin URL bulunamadi',
+                style: TextStyle(color: Colors.white70),
+              ),
+            ),
+          );
+        }
         return PlayerScreen(
-          channelId:       extra['channelId']       as String,
-          channelUrl:      extra['channelUrl']      as String,
-          title:           extra['title']           as String,
+          channelId:       channelId,
+          channelUrl:      channelUrl,
+          title:           title,
           initialPosition: extra['initialPosition'] as int? ?? 0,
           streamType:      extra['streamType']      as String? ?? 'live',
         );

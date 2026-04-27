@@ -7,6 +7,7 @@ import '../../core/router/app_router.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_tokens.dart';
 import '../../data/repositories/settings_repository.dart';
+import '../home/home_provider.dart';
 
 // ── State ────────────────────────────────────────────────────────────────────
 
@@ -132,7 +133,11 @@ class CategoryFilterScreen extends ConsumerWidget {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Kategori Filtresi'),
-        leading: BackButton(onPressed: () => context.go(AppRoutes.settings)),
+        leading: BackButton(onPressed: () async {
+          // Gizli kategori listesi değişmiş olabilir: home'u re-load et
+          await ref.read(homeProvider.notifier).refreshVisibility();
+          if (context.mounted) context.go(AppRoutes.settings);
+        }),
         actions: [
           TextButton(
             onPressed: () =>

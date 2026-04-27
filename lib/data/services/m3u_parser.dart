@@ -123,17 +123,134 @@ class M3uParser {
     return 'live';
   }
 
+  // Android M3uParser.kt:103-203 pattern'lariyla eslesir.
+  // Sira onemli: once en spesifik (SxxExx), sonra 1x05, sonra dil tabanli.
+  //
+  // Regex'ler ayri const olarak tutulur (isolate'da her parse'da yeniden
+  // compile edilmesin diye static).
+  static final _reSxEx      = RegExp(r'[Ss](\d{1,2})\s*[\.\-]?\s*[Ee](\d{1,3})');
+  static final _reDxD       = RegExp(r'(?<![\d])(\d{1,2})x(\d{1,3})(?![\d])');
+  static final _reSezon     = RegExp(
+      r'sezon\s*(\d{1,2}).*?b[oö]l[uü]m\s*(\d{1,3})',
+      caseSensitive: false);
+  // Turkce tersten: "1. Sezon 5. Bolum" / "1.Sezon 5.Bölüm"
+  static final _reSezonRev  = RegExp(
+      r'(\d{1,2})\s*\.?\s*sezon.*?(\d{1,3})\s*\.?\s*b[oö]l[uü]m',
+      caseSensitive: false);
+  static final _reSeason    = RegExp(
+      r'[Ss]eason\s*(\d{1,2}).*?[Ee]pisode\s*(\d{1,3})',
+      caseSensitive: false);
+  static final _reBolumOnly = RegExp(
+      r'(?:^|\s)(?:b[oö]l[uü]m|episode|ep|bolum)\.?\s*(\d{1,3})\b',
+      caseSensitive: false);
+  // Rakam onde: "5. Bolum" / "5.Bölüm" / "12 Episode" / "05.Ep"
+  static final _reNumBolum  = RegExp(
+      r'(?<![\d])(\d{1,3})\s*\.?\s*(?:b[oö]l[uü]m|bolum|episode|ep)\b',
+      caseSensitive: false);
+  // Son care: isim sonundaki son sayi (yil 1900-2099 haric, max 999).
+  // Provider bazen sadece "Dizi Adi - 05" / "Dizi Adi 12" gibi verir.
+  static final _reTrailing  = RegExp(r'(\d+)(?:[^\d]*)$');
+
+  /// Public wrapper — DB migration / in-memory re-parse icin kullanilabilir.
+  /// (cleanedSeriesName, season, episode) doner. Eslesme yoksa (name, 0, 0).
+  static (String, int, int) parseSeriesInfo(String name) => _parseSeries(name);
+
   static (String, int, int) _parseSeries(String name) {
-    // S01E01 pattern
-    final r = RegExp(r'[Ss](\d{1,2})[Ee](\d{1,3})');
-    final m = r.firstMatch(name);
+    // 1) S01E05 / s01 e05 / S01.E05 / S01-E05
+    var m = _reSxEx.firstMatch(name);
     if (m != null) {
-      final s = int.tryParse(m.group(1) ?? '0') ?? 0;
-      final e = int.tryParse(m.group(2) ?? '0') ?? 0;
-      final clean = name.replaceAll(r, '').trim();
-      return (clean, s, e);
+      final s = int.tryParse(m.group(1) ?? '') ?? 0;
+      final e = int.tryParse(m.group(2) ?? '') ?? 0;
+      if (s > 0 || e > 0) {
+        return (_cleanName(name, m.start), s, e);
+      }
     }
+
+    // 2) 1x05 compact format (basinda/sonunda rakam olmayacak sekilde)
+    m = _reDxD.firstMatch(name);
+    if (m != null) {
+      final s = int.tryParse(m.group(1) ?? '') ?? 0;
+      final e = int.tryParse(m.group(2) ?? '') ?? 0;
+      if (s > 0 || e > 0) {
+        return (_cleanName(name, m.start), s, e);
+      }
+    }
+
+    // 3) Turkce: "Sezon 1 Bolum 5" / "Sezon 1 Bölüm 5"
+    m = _reSezon.firstMatch(name);
+    if (m != null) {
+      final s = int.tryParse(m.group(1) ?? '') ?? 0;
+      final e = int.tryParse(m.group(2) ?? '') ?? 0;
+      if (s > 0 || e > 0) {
+        return (_cleanName(name, m.start), s, e);
+      }
+    }
+
+    // 3b) Turkce tersten: "1. Sezon 5. Bolum"
+    m = _reSezonRev.firstMatch(name);
+    if (m != null) {
+      final s = int.tryParse(m.group(1) ?? '') ?? 0;
+      final e = int.tryParse(m.group(2) ?? '') ?? 0;
+      if (s > 0 || e > 0) {
+        return (_cleanName(name, m.start), s, e);
+      }
+    }
+
+    // 4) Ingilizce: "Season 1 Episode 5"
+    m = _reSeason.firstMatch(name);
+    if (m != null) {
+      final s = int.tryParse(m.group(1) ?? '') ?? 0;
+      final e = int.tryParse(m.group(2) ?? '') ?? 0;
+      if (s > 0 || e > 0) {
+        return (_cleanName(name, m.start), s, e);
+      }
+    }
+
+    // 5) "Bolum 5", "Episode 5", "Ep 5" — season belirsiz, 0 don.
+    // Caller mevcut seasonNumber'i korur; 3. sezondaki bolum yanlislikla
+    // 1. sezona tasinmaz.
+    m = _reBolumOnly.firstMatch(name);
+    if (m != null) {
+      final e = int.tryParse(m.group(1) ?? '') ?? 0;
+      if (e > 0) {
+        return (_cleanName(name, m.start), 0, e);
+      }
+    }
+
+    // 5b) "5. Bolum", "5.Bölüm", "12 Episode" (rakam onde) — season belirsiz.
+    m = _reNumBolum.firstMatch(name);
+    if (m != null) {
+      final e = int.tryParse(m.group(1) ?? '') ?? 0;
+      if (e > 0) {
+        return (_cleanName(name, m.start), 0, e);
+      }
+    }
+
+    // 6) Son care: isim sonundaki son sayi. Yil (1900-2099) / 999+ atla.
+    // Season belirsiz → 0.
+    m = _reTrailing.firstMatch(name);
+    if (m != null) {
+      final n = int.tryParse(m.group(1) ?? '') ?? 0;
+      final isYear = n >= 1900 && n <= 2099;
+      if (n > 0 && n <= 999 && !isYear) {
+        return (_cleanName(name, m.start), 0, n);
+      }
+    }
+
     return (name, 0, 0);
+  }
+
+  /// Match baslangicindan once kalan kismi dizi adi olarak al,
+  /// sonundaki ayirici karakterleri temizle.
+  static String _cleanName(String name, int matchStart) {
+    if (matchStart <= 0) return name.trim();
+    var s = name.substring(0, matchStart).trim();
+    while (s.isNotEmpty && (s.endsWith('-') ||
+           s.endsWith('_') || s.endsWith('.') || s.endsWith(':') ||
+           s.endsWith('|'))) {
+      s = s.substring(0, s.length - 1).trim();
+    }
+    return s;
   }
 }
 

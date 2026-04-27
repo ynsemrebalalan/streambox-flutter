@@ -7,6 +7,9 @@ import '../models/channel_model.dart';
 class ChannelRepository {
   static const _table = 'channels';
 
+  // KULLANICI KURALI: Provider ne isim verdiyse aynen gosterilir.
+  // Runtime title parse / reparse / DB UPDATE YAPILMIYOR.
+
   Future<List<ChannelModel>> getByPlaylist(String playlistId) async {
     final db   = await AppDatabase.instance;
     final rows = await db.query(
@@ -18,13 +21,29 @@ class ChannelRepository {
     return rows.map(ChannelModel.fromMap).toList();
   }
 
+  /// v3.8.2: Kullanici raporu — bazi provider'lar title'i yanlis veriyor
+  /// ("S01E04" etiketli bolum aslinda 1. bolum). Title parse ile episodeNumber
+  /// sort etmek yaniltici. Arama zaten sortOrder kullaniyor — sezon listesi de
+  /// ayni kaynaga geldi. **sortOrder primary**: provider API response'undaki
+  /// sira tek guvenilir izleme sirasidir.
+  static String _orderFor(String streamType) {
+    if (streamType == 'series') {
+      return '''
+        seriesName COLLATE NOCASE ASC,
+        CASE WHEN seasonNumber = 0 THEN 9999 ELSE seasonNumber END ASC,
+        sortOrder ASC
+      ''';
+    }
+    return 'sortOrder ASC, name ASC';
+  }
+
   Future<List<ChannelModel>> getByType(String playlistId, String streamType) async {
     final db   = await AppDatabase.instance;
     final rows = await db.query(
       _table,
       where:     'playlistId = ? AND streamType = ?',
       whereArgs: [playlistId, streamType],
-      orderBy:   'sortOrder ASC, name ASC',
+      orderBy:   _orderFor(streamType),
     );
     return rows.map(ChannelModel.fromMap).toList();
   }
@@ -39,7 +58,7 @@ class ChannelRepository {
       _table,
       where:     'playlistId = ? AND streamType = ? AND category = ?',
       whereArgs: [playlistId, streamType, category],
-      orderBy:   'sortOrder ASC, name ASC',
+      orderBy:   _orderFor(streamType),
     );
     return rows.map(ChannelModel.fromMap).toList();
   }
@@ -71,6 +90,37 @@ class ChannelRepository {
     final rows = await db.query(
       _table,
       where:     'playlistId = ? AND lastWatched > 0',
+      whereArgs: [playlistId],
+      orderBy:   'lastWatched DESC',
+      limit:     limit,
+    );
+    return rows.map(ChannelModel.fromMap).toList();
+  }
+
+  /// En son eklenen kanallar — rowid DESC'e göre (SQLite'ta insert sırası).
+  /// Ana Sayfa row'ları için kullanılır.
+  Future<List<ChannelModel>> getLatestByType(
+    String playlistId,
+    String streamType, {
+    int limit = 20,
+  }) async {
+    final db   = await AppDatabase.instance;
+    final rows = await db.query(
+      _table,
+      where:     'playlistId = ? AND streamType = ?',
+      whereArgs: [playlistId, streamType],
+      orderBy:   'rowid DESC',
+      limit:     limit,
+    );
+    return rows.map(ChannelModel.fromMap).toList();
+  }
+
+  /// Dizi bölümleri için devam ettirilebilir olanlar (lastPosition > 0 ve izlenmemiş)
+  Future<List<ChannelModel>> getContinueWatching(String playlistId, {int limit = 20}) async {
+    final db   = await AppDatabase.instance;
+    final rows = await db.query(
+      _table,
+      where:     'playlistId = ? AND lastPosition > 0 AND isWatched = 0 AND lastWatched > 0',
       whereArgs: [playlistId],
       orderBy:   'lastWatched DESC',
       limit:     limit,

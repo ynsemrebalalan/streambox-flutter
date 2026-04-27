@@ -5,6 +5,7 @@ import '../../core/utils/device_tier.dart';
 import '../../core/utils/http_client.dart';
 import '../models/channel_model.dart';
 import '../models/playlist_model.dart';
+import 'm3u_parser.dart';
 
 /// Xtream Codes API client.
 /// Cihaz tier'ina gore adaptive fetch stratejisi kullanir:
@@ -88,24 +89,41 @@ class XtreamService {
         final seasonNum = int.tryParse(seasonEntry.key) ?? 0;
         final eps = (seasonEntry.value as List).cast<Map<String, dynamic>>();
 
+        // v1.3.5: Adaptive sort ROLLBACK — provider episode_num'u sequential
+        // atayabiliyor (title "TR-S01E08" iken episode_num=1). Heuristic
+        // false-positive veriyor, sort label ile stream'i esitsizlestiriyor.
+        // IPTV Extreme davranisi: API array sirasi + provider title raw.
         for (final ep in eps) {
-          final epId   = ep['id']?.toString() ?? '';
-          final epNum  = int.tryParse(ep['episode_num']?.toString() ?? '0') ?? 0;
-          final epName = ep['title']?.toString() ?? 'Bölüm $epNum';
-          final ext    = ep['container_extension']?.toString() ?? 'mkv';
-          final url    = '${p.url}/series/${p.username}/${p.password}/$epId.$ext';
+          final epId      = ep['id']?.toString() ?? '';
+          final rawEpNum  = int.tryParse(ep['episode_num']?.toString() ?? '0') ?? 0;
+          final epName    = ep['title']?.toString() ?? '';
+
+          int parsedSeason = 0;
+          int parsedEpisode = 0;
+          if (epName.isNotEmpty) {
+            final (_, s, e) = M3uParser.parseSeriesInfo(epName);
+            parsedSeason  = s;
+            parsedEpisode = e;
+          }
+          final finalSeason = parsedSeason > 0
+              ? parsedSeason
+              : (seasonNum > 0 ? seasonNum : 1);
+          final finalEpisode = parsedEpisode > 0 ? parsedEpisode : rawEpNum;
+
+          final ext = ep['container_extension']?.toString() ?? 'mkv';
+          final url = '${p.url}/series/${p.username}/${p.password}/$epId.$ext';
 
           out.add(ChannelModel(
             id:            _uuid.v5(Namespace.url.value, '${p.id}:series:$epId'),
             playlistId:    p.id,
-            name:          '$name S${seasonNum.toString().padLeft(2, '0')}E${epNum.toString().padLeft(2, '0')} - $epName',
+            name:          epName,   // provider raw — display
             streamUrl:     url,
             logoUrl:       logo,
             category:      cat,
             streamType:    'series',
             seriesName:    name,
-            seasonNumber:  seasonNum,
-            episodeNumber: epNum,
+            seasonNumber:  finalSeason,
+            episodeNumber: finalEpisode,
             sortOrder:     0, // caller overrides
           ));
         }

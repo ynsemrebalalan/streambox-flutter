@@ -47,10 +47,18 @@ class SeriesSection extends StatelessWidget {
       result.putIfAbsent(key, () => {})[season] =
           [...(result[key]?[season] ?? []), ch];
     }
-    // Sort episodes within each season
+    // Sort episodes within each season.
+    // Parse edilemeyen (episodeNumber=0) kayitlari sona at; aralarinda
+    // sortOrder (playlist sirasi) ile dengele. Boylece "Bolum 10" < "Bolum 2"
+    // bug'i yasanmaz, parse basarisiz olanlar da listeyi bozmaz.
+    int rank(int n) => n == 0 ? 1 << 30 : n;
     for (final seasons in result.values) {
       for (final eps in seasons.values) {
-        eps.sort((a, b) => a.episodeNumber.compareTo(b.episodeNumber));
+        eps.sort((a, b) {
+          final byEp = rank(a.episodeNumber).compareTo(rank(b.episodeNumber));
+          if (byEp != 0) return byEp;
+          return a.sortOrder.compareTo(b.sortOrder);
+        });
       }
     }
     return result;
@@ -237,14 +245,22 @@ class _EpisodeTileState extends State<_EpisodeTile> {
   bool _focused = false;
 
   void _play() {
+    final ep = widget.episode;
+    // v1.3.5: Player basligi = provider title primary. Sezon listesindeki
+    // kart ile ayni etiket kaynagi → stream label her zaman eslesir.
+    final label = (ep.streamType == 'series' &&
+                   ep.seriesName.isNotEmpty &&
+                   !ep.name.toLowerCase().contains(ep.seriesName.toLowerCase()))
+        ? '${ep.seriesName} · ${ep.name}'
+        : ep.name;
     context.push(
       AppRoutes.player,
       extra: {
-        'channelId':       widget.episode.id,
-        'channelUrl':      widget.episode.streamUrl,
-        'title':           widget.episode.name,
-        'initialPosition': widget.episode.lastPosition,
-        'streamType':      widget.episode.streamType,
+        'channelId':       ep.id,
+        'channelUrl':      ep.streamUrl,
+        'title':           label,
+        'initialPosition': ep.lastPosition,
+        'streamType':      ep.streamType,
       },
     );
   }
@@ -281,13 +297,19 @@ class _EpisodeTileState extends State<_EpisodeTile> {
             backgroundColor: _focused
                 ? AppColors.accent.withValues(alpha: 0.3)
                 : cs.surfaceContainerHighest,
+            // v1.3.5: Leading = provider episode numarası; yoksa API sıra fallback.
+            // Kart label'ı (title) provider name olduğu için leading rakamı
+            // label ile tutarlı göstergedir.
             child: Text(
-              '${ep.episodeNumber > 0 ? ep.episodeNumber : widget.index + 1}',
+              ep.episodeNumber > 0 ? '${ep.episodeNumber}' : '${widget.index + 1}',
               style: TextStyle(
                   fontSize: TextSize.caption,
                   color: _focused ? AppColors.accent : cs.onSurfaceVariant),
             ),
           ),
+          // v1.3.5: Primary label = provider title (ch.name). Stream ile etiket
+          // ayni kaynaktan → kullanici ne gorurse onu oynatir. IPTV Extreme
+          // davranisi.
           title: Text(
             ep.name,
             maxLines:  1,

@@ -26,26 +26,22 @@ class HomeNotifier extends AsyncNotifier<HomeState> {
     );
 
     if (id.isNotEmpty) {
-      // Paralel yukle: categories + channels + recentlyWatched ayni anda.
-      // Sequential'dan ~3x hizli home ekran acilmasi.
-      final type = _typeForTab(state.activeTab);
+      // İlk açılışta Ana Sayfa sekmesi default: recentlyWatched + continueWatching
+      // + yeni eklenen film/dizi/canlı row'larını paralel yükle.
       final repo = ref.read(channelRepoProvider);
       final results = await Future.wait<dynamic>([
-        if (type != null) repo.getCategories(id, type) else Future.value(<String>[]),
-        if (type != null) repo.getByType(id, type) else Future.value(<ChannelModel>[]),
         repo.getRecentlyWatched(id),
+        repo.getContinueWatching(id),
+        repo.getLatestByType(id, 'movie',  limit: 20),
+        repo.getLatestByType(id, 'series', limit: 20),
+        repo.getLatestByType(id, 'live',   limit: 20),
       ]);
-      final cats     = results[0] as List<String>;
-      final channels = results[1] as List<ChannelModel>;
-      final recent   = results[2] as List<ChannelModel>;
-      final selected = cats.contains(state.selectedCategory)
-          ? state.selectedCategory
-          : (cats.firstOrNull ?? '');
       state = state.copyWith(
-        categories:       cats,
-        selectedCategory: selected,
-        channels:         channels,
-        recentlyWatched:  recent,
+        recentlyWatched:  results[0] as List<ChannelModel>,
+        continueWatching: results[1] as List<ChannelModel>,
+        newlyAddedMovies: results[2] as List<ChannelModel>,
+        newlyAddedSeries: results[3] as List<ChannelModel>,
+        latestLive:       results[4] as List<ChannelModel>,
         isLoading:        false,
         clearError:       true,
       );
@@ -54,28 +50,97 @@ class HomeNotifier extends AsyncNotifier<HomeState> {
     return state;
   }
 
+  /// Ana Sayfa row'larını yeniden yükler (örn. yeni içerik eklenince).
+  Future<HomeState> _loadHomeRows(HomeState s) async {
+    if (s.activePlaylistId.isEmpty) return s;
+    final repo = ref.read(channelRepoProvider);
+    final results = await Future.wait<dynamic>([
+      repo.getRecentlyWatched(s.activePlaylistId),
+      repo.getContinueWatching(s.activePlaylistId),
+      repo.getLatestByType(s.activePlaylistId, 'movie',  limit: 20),
+      repo.getLatestByType(s.activePlaylistId, 'series', limit: 20),
+      repo.getLatestByType(s.activePlaylistId, 'live',   limit: 20),
+    ]);
+    return s.copyWith(
+      recentlyWatched:  results[0] as List<ChannelModel>,
+      continueWatching: results[1] as List<ChannelModel>,
+      newlyAddedMovies: results[2] as List<ChannelModel>,
+      newlyAddedSeries: results[3] as List<ChannelModel>,
+      latestLive:       results[4] as List<ChannelModel>,
+    );
+  }
+
   // ── Public actions ──────────────────────────────────────────────────────────
 
   Future<void> selectTab(String tab) async {
     final current = state.value;
     if (current == null) return;
+    // isLoading:true → _ChannelList loader gösterir, "içerik yok" flash engellenir
     var next = current.copyWith(
-      activeTab:        tab,
-      selectedCategory: '',
-      channels:         [],
+      activeTab:           tab,
+      selectedCategory:    '',
+      favoritesTypeFilter: '',
+      channels:            [],
+      isLoading:           true,
     );
     state = AsyncData(next);
-    next = await _loadCategories(next);
-    next = await _loadChannels(next);
+    if (tab == 'home') {
+      // Ana Sayfa: kategori/channels yerine row'ları güncelle
+      next = await _loadHomeRows(next);
+      next = next.copyWith(
+        categories: const [],
+        isLoading: false,
+        clearError: true,
+      );
+    } else {
+      next = await _loadCategories(next);
+      next = await _loadChannels(next);
+    }
     state = AsyncData(next);
   }
 
   Future<void> selectCategory(String category) async {
     final current = state.value;
     if (current == null) return;
-    var next = current.copyWith(selectedCategory: category, channels: []);
+    var next = current.copyWith(
+      selectedCategory: category,
+      channels:         [],
+      isLoading:        true,
+    );
     state = AsyncData(next);
     next  = await _loadChannels(next);
+    state = AsyncData(next);
+  }
+
+  /// Favoriler sekmesinde tip filtresini değiştirir ('', 'live', 'movie', 'series')
+  Future<void> setFavoritesTypeFilter(String filter) async {
+    final current = state.value;
+    if (current == null) return;
+    var next = current.copyWith(
+      favoritesTypeFilter: filter,
+      channels:            [],
+      isLoading:           true,
+    );
+    state = AsyncData(next);
+    next  = await _loadChannels(next);
+    state = AsyncData(next);
+  }
+
+  /// CategoryFilterScreen'den dönüşte çağır: gizli kategori listesi değişmiş
+  /// olabilir, mevcut tab'ı re-load et. reload()'dan farkı: tüm state'i
+  /// sıfırdan kurmak yerine sadece liste fetch'i.
+  Future<void> refreshVisibility() async {
+    final current = state.value;
+    if (current == null) return;
+    var next = current.copyWith(isLoading: true);
+    state = AsyncData(next);
+    if (current.activeTab == 'home') {
+      next = await _loadHomeRows(next);
+      next = next.copyWith(isLoading: false, clearError: true);
+    } else {
+      next = await _loadCategories(next);
+      next = await _loadChannels(next);
+    }
     state = AsyncData(next);
   }
 
@@ -182,6 +247,12 @@ class HomeNotifier extends AsyncNotifier<HomeState> {
 
     if (s.activeTab == 'favorites') {
       channels = await repo.getFavorites(s.activePlaylistId);
+      // Tip filtresi uygula (canlı/film/dizi ayrımı)
+      if (s.favoritesTypeFilter.isNotEmpty) {
+        channels = channels
+            .where((c) => c.streamType == s.favoritesTypeFilter)
+            .toList();
+      }
     } else {
       final type = _typeForTab(s.activeTab);
       if (type == null) return s;

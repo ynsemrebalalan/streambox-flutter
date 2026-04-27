@@ -28,14 +28,20 @@ class _DisclaimerScreenState extends ConsumerState<DisclaimerScreen> {
   Future<void> _accept() async {
     if (_accepting) return;
     setState(() => _accepting = true);
+    // DB write best-effort: fail etse veya zaman alsa bile navigation'i blokama.
+    // Kullanici disclaimer'da takilir kalirsa en kotu UX. DB hata verirse bir
+    // sonraki acilista disclaimer tekrar gosterilir — kabul edilebilir.
     try {
       await ref
           .read(settingsRepoProvider)
-          .set(SettingsKeys.disclaimerAccepted, 'true');
-      widget.onAccepted();
-    } finally {
-      if (mounted) setState(() => _accepting = false);
+          .set(SettingsKeys.disclaimerAccepted, 'true')
+          .timeout(const Duration(seconds: 3));
+    } catch (e) {
+      debugPrint('Disclaimer DB write failed/timeout: $e');
     }
+    if (!mounted) return;
+    widget.onAccepted();
+    if (mounted) setState(() => _accepting = false);
   }
 
   void _openLegal() {
