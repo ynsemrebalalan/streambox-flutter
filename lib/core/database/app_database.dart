@@ -9,36 +9,63 @@ class AppDatabase {
   static Database? _db;
 
   static Future<Database> get instance async {
-    _db ??= await _open();
+    if (_db != null && _db!.isOpen) return _db!;
+    _db = await _open();
     return _db!;
   }
 
   static Future<Database> _open() async {
     final dbPath = await getDatabasesPath();
-    return openDatabase(
-      join(dbPath, _name),
-      version: _version,
-      onCreate: _onCreate,
-      onUpgrade: _onUpgrade,
-      onConfigure: _onConfigure,
-    );
+    final fullPath = join(dbPath, _name);
+    try {
+      return await openDatabase(
+        fullPath,
+        version: _version,
+        onCreate: _onCreate,
+        onUpgrade: _onUpgrade,
+        onConfigure: _onConfigure,
+      );
+    } catch (e) {
+      // Open ile pragma'siz retry — onConfigure tarafinda beklenmedik bir
+      // exception olursa DB hic acilmasin yerine, yavas ama calisir bir DB
+      // ile devam et. Kullaniciya hata patlatmaktan iyidir.
+      // ignore: avoid_print
+      print('AppDatabase: primary open failed ($e), retrying without pragmas');
+      return await openDatabase(
+        fullPath,
+        version: _version,
+        onCreate: _onCreate,
+        onUpgrade: _onUpgrade,
+      );
+    }
   }
 
   /// Performance PRAGMA'lari. Cihaz tier'ina gore adaptive.
   /// High: 16MB cache, aggressive. Low: 2MB cache, guvenli.
+  ///
+  /// iOS notu: PRAGMA journal_mode result set dondurur ("wal") — execute()
+  /// bunu sqflite_darwin'de "code=0 not an error" exception'i ile reddeder.
+  /// rawQuery dogru API. Ayrica her pragma kendi try-catch'inde: biri fail
+  /// olsa bile diger pragma'lar uygulanir, DB acik kalir.
   static Future<void> _onConfigure(Database db) async {
     final cacheKB = DeviceProfile.sqliteCacheKB;
-    // WAL: yazma sirasinda okumayi bloklanmaz (concurrent read/write).
-    await db.execute('PRAGMA journal_mode = WAL');
-    // NORMAL: FULL'a gore daha hizli, crash riskine karsi yine guvenli.
-    await db.execute('PRAGMA synchronous = NORMAL');
-    // Adaptive cache: low=2MB, mid=8MB, high=16MB.
-    await db.execute('PRAGMA cache_size = -$cacheKB');
-    // Temp tablolari memory'de tut (siralama/join hizlanir).
-    await db.execute('PRAGMA temp_store = MEMORY');
-    // High-tier cihazlarda mmap ile daha hizli I/O.
+
+    Future<void> tryPragma(String pragma) async {
+      try {
+        await db.rawQuery(pragma);
+      } catch (_) {
+        // Sessizce yut: pragma uygulanamadi, default davranis devam eder.
+      }
+    }
+
+    // WAL: yazma sirasinda okumayi bloklanmaz. iOS sandbox bazen reddeder —
+    // o durumda DELETE journal mode (default) ile devam, performans hafif duser.
+    await tryPragma('PRAGMA journal_mode = WAL');
+    await tryPragma('PRAGMA synchronous = NORMAL');
+    await tryPragma('PRAGMA cache_size = -$cacheKB');
+    await tryPragma('PRAGMA temp_store = MEMORY');
     if (DeviceProfile.tier == DeviceTier.high) {
-      await db.execute('PRAGMA mmap_size = 67108864'); // 64MB
+      await tryPragma('PRAGMA mmap_size = 67108864'); // 64MB
     }
   }
 

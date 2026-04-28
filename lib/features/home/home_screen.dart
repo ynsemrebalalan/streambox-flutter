@@ -35,7 +35,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     if (msg.contains('socket') || msg.contains('failed host lookup')) {
       return 'Internet baglantisi yok veya saglayiciya ulasilamiyor.';
     }
-    return 'Bir hata olustu: $e';
+    if (msg.contains('database') ||
+        msg.contains('sqlite') ||
+        msg.contains('sqfliteexception')) {
+      return 'Veri tabani gecici olarak yanit vermedi. Lutfen tekrar deneyin.';
+    }
+    return 'Bir sorun olustu. Lutfen tekrar deneyin.';
   }
 
   @override

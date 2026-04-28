@@ -66,13 +66,17 @@ workflows:
       # Auto-increment build number — App Store Connect'teki son TestFlight
       # build no'su +1; pubspec'teki +N max ile. "Duplicate bundle version"
       # hatasini onler.
+      #
+      # NOT: -ge (greater-or-equal) sart. -gt iken LATEST_TF == PUBSPEC olunca
+      # pubspec'i kullaniyordu ve ASC ayni numarayi tekrar reddediyordu
+      # (ENTITY_ERROR.ATTRIBUTE.INVALID.DUPLICATE).
       - name: Auto-increment build number
         script: |
           set +e
           LATEST_TF=$(app-store-connect get-latest-testflight-build-number "$BUNDLE_ID" 2>/dev/null || echo "0")
           set -e
           PUBSPEC_BUILD=$(grep "^version:" pubspec.yaml | sed -E 's/.*\+([0-9]+).*/\1/')
-          if [ "$LATEST_TF" -gt "$PUBSPEC_BUILD" ]; then
+          if [ "$LATEST_TF" -ge "$PUBSPEC_BUILD" ]; then
             NEW_BUILD=$((LATEST_TF + 1))
           else
             NEW_BUILD=$PUBSPEC_BUILD
