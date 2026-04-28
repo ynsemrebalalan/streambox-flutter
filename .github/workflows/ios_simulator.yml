@@ -1,0 +1,55 @@
+name: iOS Simulator Build (Appetize)
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - simulator-build
+
+jobs:
+  build-simulator:
+    runs-on: macos-15
+    timeout-minutes: 45
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.41.5'
+          channel: 'stable'
+          cache: true
+
+      - name: Show versions
+        run: |
+          flutter --version
+          xcodebuild -version
+          pod --version
+
+      - name: Flutter pub get
+        run: flutter pub get
+
+      - name: Pod install
+        working-directory: ios
+        run: |
+          pod repo update
+          pod install
+
+      - name: Build iOS Simulator
+        run: flutter build ios --simulator --no-codesign
+
+      - name: Zip Runner.app
+        working-directory: build/ios/iphonesimulator
+        run: |
+          ls -la
+          zip -r Runner.zip Runner.app
+          ls -lh Runner.zip
+
+      - name: Upload simulator artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-simulator-app
+          path: build/ios/iphonesimulator/Runner.zip
+          retention-days: 14
