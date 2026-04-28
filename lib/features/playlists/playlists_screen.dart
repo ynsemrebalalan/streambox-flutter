@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:uuid/uuid.dart';
@@ -389,10 +390,36 @@ class _AddPlaylistDialogState extends State<_AddPlaylistDialog> {
                   controller: _urlCtrl,
                   decoration: const InputDecoration(
                     labelText: 'M3U URL',
-                    hintText:  'http://...',
+                    hintText:  'http://... veya https://...',
                     border:    OutlineInputBorder(),
                   ),
                   keyboardType: TextInputType.url,
+                  autocorrect: false,
+                ),
+                const SizedBox(height: Spacing.xs),
+                // Panodan yapistir kisayolu — kullanici email/Notes/Mesajlar
+                // uygulamasindan kopyaladigi M3U URL'ini tek dokunusla
+                // alaninin icine alabilsin.
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: TextButton.icon(
+                    icon: const Icon(Icons.content_paste, size: 16),
+                    label: const Text('Panodan Yapıştır',
+                        style: TextStyle(fontSize: TextSize.label)),
+                    onPressed: () async {
+                      final data = await Clipboard.getData('text/plain');
+                      final text = data?.text?.trim() ?? '';
+                      if (!mounted) return;
+                      if (text.isEmpty) {
+                        setState(() => _error = 'Pano boş');
+                        return;
+                      }
+                      setState(() {
+                        _urlCtrl.text = text;
+                        _error = null;
+                      });
+                    },
+                  ),
                 ),
               ] else ...[
                 TextField(

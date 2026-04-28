@@ -2,7 +2,6 @@ import 'dart:async';
 import 'dart:ui';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:media_kit/media_kit.dart';
 import 'core/analytics/analytics.dart';
@@ -61,11 +60,15 @@ void main() {
 
 /// runApp sonrasi arka planda calisir; UI'i bloklamaz.
 /// Her init bagimsiz timeout ile korunur — biri takilirsa digerleri devam eder.
+///
+/// NOT: Orientation Info.plist tarafindan yonetiliyor (Portrait + Landscape
+/// her iki yon). setPreferredOrientations cagrilmiyor cunku async olarak
+/// runApp sonrasi calisinca ilk frame'lerde rotation lock yanlis uygulanip
+/// otomatik donusu engelleyebiliyordu.
 Future<void> _bootstrapInBackground() async {
   await Future.wait([
     _initFirebaseAndAnalytics(),
     _initMediaKit(),
-    _initOrientation(),
   ], eagerError: false);
 
   await _migrateSecrets();
@@ -90,18 +93,6 @@ Future<void> _initMediaKit() async {
         .timeout(const Duration(seconds: 5));
   } catch (e) {
     debugPrint('MediaKit init failed or timed out: $e');
-  }
-}
-
-Future<void> _initOrientation() async {
-  try {
-    await SystemChrome.setPreferredOrientations([
-      DeviceOrientation.landscapeLeft,
-      DeviceOrientation.landscapeRight,
-      DeviceOrientation.portraitUp,
-    ]).timeout(const Duration(seconds: 2));
-  } catch (e) {
-    debugPrint('Orientation init failed: $e');
   }
 }
 

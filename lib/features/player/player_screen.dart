@@ -379,9 +379,15 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
           onTap: _showControls,
           child: Stack(
             children: [
-            // Video
+            // Video — media_kit_video default MaterialVideoControls'i KAPAT.
+            // Bizim custom overlay (Stack icindeki _PlayPauseButton + seek bar
+            // + ust bar) zaten butun kontrolleri sagliyor. Default controls'u
+            // birakirsak iki play/pause butonu ust uste cikiyor.
             Center(
-              child: Video(controller: _controller),
+              child: Video(
+                controller: _controller,
+                controls: (_) => const SizedBox.shrink(),
+              ),
             ),
 
             // AI Subtitle overlay
@@ -486,7 +492,11 @@ class _ControlsOverlayState extends State<_ControlsOverlay> {
             stops: [0, 0.25, 0.75, 1],
           ),
         ),
-        child: Column(
+        // Gradient tum alani kaplasin ama icerik (butonlar, seekbar, vs)
+        // SafeArea icinde kalsin — iPhone notch/Dynamic Island/home
+        // indicator + landscape'te yan kameralar.
+        child: SafeArea(
+          child: Column(
           children: [
             // Top bar
             Padding(
@@ -742,6 +752,7 @@ class _ControlsOverlayState extends State<_ControlsOverlay> {
               },
             ),
           ],
+        ),
         ),
       ),
     );

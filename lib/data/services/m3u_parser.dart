@@ -109,17 +109,46 @@ class M3uParser {
     return idx >= 0 ? line.substring(idx + 1).trim() : '';
   }
 
+  // Stream type detection. Sira kritik:
+  //   1) Series kategori sinyali (en guclu)
+  //   2) Series isim pattern (Sxx Exx / Bolum / Episode)
+  //   3) Movie kategori sinyali
+  //   4) Movie isim pattern (yil parantezi)
+  //   5) Default live
+  //
+  // Onceki implementasyon movie'yi seriyi onunde kontrol ediyordu —
+  // "Dirilis Ertugrul (2014)" gibi yil parantezli diziler movie'ye
+  // gidiyordu ve dizi sekmesinde gorunmuyordu. Ayrica series sadece
+  // season>0 ile yakalanip "Yargi - Bolum 5" (season=0, episode=5)
+  // live'a dusuyordu.
   static String _detectStreamType(String category, String name) {
-    final cat  = category.toLowerCase();
-    final nm   = name.toLowerCase();
-    if (cat.contains('movie') || cat.contains('film') ||
-        cat.contains('vod')   || nm.contains(' (') && nm.contains(RegExp(r'\d{4}'))) {
-      return 'movie';
-    }
+    final cat = category.toLowerCase();
+    final nm  = name.toLowerCase();
+
+    // 1) Series — kategori sinyali
     if (cat.contains('series') || cat.contains('dizi') ||
-        cat.contains('show')   || _parseSeries(name).$2 > 0) {
+        cat.contains('show')   || cat.contains('drama') ||
+        cat.contains('tv shows')) {
       return 'series';
     }
+
+    // 2) Series — isim pattern: season VEYA episode tespit edildiyse seri
+    final p = _parseSeries(name);
+    if (p.$2 > 0 || p.$3 > 0) return 'series';
+
+    // 3) Movie — kategori sinyali
+    if (cat.contains('movie') || cat.contains('film') ||
+        cat.contains('vod')   || cat.contains('cinema')) {
+      return 'movie';
+    }
+
+    // 4) Movie — isim sonu yil parantezi: "Film Adi (2024)"
+    // Series check'ten SONRA: yil parantezli dizi olursa series'e
+    // atanmis olur, buraya gelmez.
+    if (RegExp(r'\(\d{4}\)\s*$').hasMatch(nm)) {
+      return 'movie';
+    }
+
     return 'live';
   }
 
