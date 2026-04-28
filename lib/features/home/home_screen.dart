@@ -90,7 +90,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
     return Scaffold(
       backgroundColor: cs.surface,
-      body: Column(
+      // SafeArea: iPhone Dynamic Island / notch + home indicator alanlarini
+      // koru. bottom: false → BottomBar kendi padding'ini iceride yapiyor,
+      // double-padding olmasin.
+      body: SafeArea(
+        bottom: false,
+        child: Column(
         children: [
           _TopBar(
             state:       state,
@@ -120,6 +125,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           ),
           _BottomBar(state: state),
         ],
+        ),
       ),
     );
   }
@@ -138,27 +144,29 @@ class _NoPlaylistView extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final cs = Theme.of(context).colorScheme;
     return Scaffold(
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.live_tv, size: 80, color: cs.onSurfaceVariant),
-            const SizedBox(height: Spacing.xl),
-            Text('IPTV AI Player',
-                style: TextStyle(
-                    fontSize: TextSize.titleLg,
-                    fontWeight: FontWeight.bold,
-                    color: cs.onSurface)),
-            const SizedBox(height: Spacing.sm),
-            Text('Başlamak için bir playlist ekleyin',
-                style: TextStyle(color: cs.onSurfaceVariant)),
-            const SizedBox(height: Spacing.xl),
-            FilledButton.icon(
-              icon:    const Icon(Icons.add),
-              label:   const Text('Playlist Ekle'),
-              onPressed: () => context.push(AppRoutes.playlists),
-            ),
-          ],
+      body: SafeArea(
+        child: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.live_tv, size: 80, color: cs.onSurfaceVariant),
+              const SizedBox(height: Spacing.xl),
+              Text('IPTV AI Player',
+                  style: TextStyle(
+                      fontSize: TextSize.titleLg,
+                      fontWeight: FontWeight.bold,
+                      color: cs.onSurface)),
+              const SizedBox(height: Spacing.sm),
+              Text('Başlamak için bir playlist ekleyin',
+                  style: TextStyle(color: cs.onSurfaceVariant)),
+              const SizedBox(height: Spacing.xl),
+              FilledButton.icon(
+                icon:    const Icon(Icons.add),
+                label:   const Text('Playlist Ekle'),
+                onPressed: () => context.push(AppRoutes.playlists),
+              ),
+            ],
+          ),
         ),
       ),
     );
