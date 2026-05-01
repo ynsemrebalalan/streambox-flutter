@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:media_kit_video/media_kit_video.dart';
+import 'package:screen_brightness/screen_brightness.dart';
 import '../../core/analytics/analytics.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_tokens.dart';
@@ -51,6 +52,20 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
   StreamSubscription<bool>?     _completedSub;
 
   bool _aiSubtitleEnabled = false;
+  BoxFit _videoFit = BoxFit.contain; // 20.2: Original=contain | Fill=cover | Stretch=fill
+
+  // ── Swipe gesture state (sol yarı = parlaklık, sağ yarı = ses) ──────────────
+  // Android paritesi (StreamBox PlayerScreen.kt). Tuzaklar: memory
+  // `feedback_brightness_gesture_init.md` — drag eşiği 40px, min brightness
+  // 0.05, dispose'da restore zorunlu.
+  double? _initialBrightness;       // dispose'da geri yüklenir
+  double  _gestureStartBrightness = 0.0;
+  double  _gestureStartVolume = 0.0;
+  String  _gestureType  = '';        // '' | 'volume' | 'brightness'
+  double  _gestureValue = 0.0;       // 0..1 — overlay'de gösterilir
+  double  _gestureAccDy = 0.0;       // toplam dy
+  Timer?  _gestureHideTimer;
+  static const _gestureMinDy = 40.0; // titremeden ayırt etmek için
 
   // Takildi sayilan esik (saniye). IPTV kaynak donmasinda bu surede
   // pozisyon ilerlemezse otomatik yeniden baglan.
@@ -79,6 +94,11 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
     Future.microtask(() => ref
         .read(homeProvider.notifier)
         .markWatched(widget.channelId));
+    // İlk parlaklık değerini sakla — dispose'da bu değere geri dön.
+    // Ekrana özel override yapmadığımız sürece sistem değeri.
+    ScreenBrightness().application.then((b) {
+      _initialBrightness = b;
+    }).catchError((_) {});
   }
 
   /// libmpv/FFmpeg icin HLS ve genel ag kopmalarina karsi otomatik
@@ -222,7 +242,9 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
 
   void _startHideTimer() {
     _hideTimer?.cancel();
-    _hideTimer = Timer(const Duration(seconds: 4), () {
+    // 4 sn çok kısaydı — kullanıcı kontrol panellerini bulmadan kayboluyordu.
+    // 8 sn modern video oynatıcı standartı (YouTube/VLC/Netflix mobile).
+    _hideTimer = Timer(const Duration(seconds: 8), () {
       if (mounted) setState(() => _controlsVisible = false);
     });
   }
@@ -247,6 +269,16 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
       }
     }
     _hideTimer?.cancel();
+    _gestureHideTimer?.cancel();
+    // Parlaklık override'ını kaldır — kullanıcı player'da değiştirdiyse
+    // restore et, yoksa sistem default'una geri dön.
+    if (_initialBrightness != null) {
+      ScreenBrightness()
+          .setApplicationScreenBrightness(_initialBrightness!)
+          .catchError((_) {});
+    } else {
+      ScreenBrightness().resetApplicationScreenBrightness().catchError((_) {});
+    }
     _watchdog?.cancel();
     _playingSub?.cancel();
     _bufferingSub?.cancel();
@@ -375,16 +407,92 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
     _player.seek(target);
   }
 
+  // ── Swipe gesture handlers ───────────────────────────────────────────────────
+
+  void _onVerticalDragStart(DragStartDetails d) async {
+    final width = MediaQuery.of(context).size.width;
+    final isRightSide = d.localPosition.dx > width / 2;
+    _gestureType   = isRightSide ? 'volume' : 'brightness';
+    _gestureAccDy  = 0;
+    _gestureStartVolume = _player.state.volume / 100.0; // 0..1
+    if (!isRightSide) {
+      try {
+        _gestureStartBrightness = await ScreenBrightness().application;
+      } catch (_) {
+        _gestureStartBrightness = 0.5;
+      }
+    }
+  }
+
+  void _onVerticalDragUpdate(DragUpdateDetails d) {
+    if (_gestureType.isEmpty) return;
+    _gestureAccDy += d.delta.dy;
+    // Eşiğin altında: titreme/phantom touch — overlay gösterme
+    if (_gestureAccDy.abs() < _gestureMinDy) return;
+
+    final height = MediaQuery.of(context).size.height;
+    // Yukarı = artır, aşağı = azalt → -dy ratio
+    final ratio = -_gestureAccDy / height;
+
+    if (_gestureType == 'volume') {
+      final newVol = (_gestureStartVolume + ratio).clamp(0.0, 1.0);
+      _player.setVolume(newVol * 100);
+      setState(() => _gestureValue = newVol);
+    } else {
+      // Min 0.05 — kullanıcı ekranı tamamen siyaha indirmesin
+      final newBright = (_gestureStartBrightness + ratio).clamp(0.05, 1.0);
+      ScreenBrightness()
+          .setApplicationScreenBrightness(newBright)
+          .catchError((_) {});
+      setState(() => _gestureValue = newBright);
+    }
+  }
+
+  void _onVerticalDragEnd(DragEndDetails d) {
+    // Overlay 800ms görünür kalsın, sonra fade
+    _gestureHideTimer?.cancel();
+    _gestureHideTimer = Timer(const Duration(milliseconds: 800), () {
+      if (mounted) setState(() => _gestureType = '');
+    });
+  }
+
+  /// Player'ı kapatmadan önce ses/video'yu kesin durdur, sonra route'tan çık.
+  ///
+  /// [dispose] async olamadığı için sadece `_player.dispose()` çağırmak ses
+  /// pipeline'ını anında susturmuyor (native thread asenkron biter, kullanıcı
+  /// Home'a dönünce 1-2 saniye daha ses duyabiliyor). Bu helper hem custom
+  /// back button (`onClose`) hem sistem back tuşu (`PopScope`) tarafından
+  /// çağrılır → pop **öncesi** await ile stop sequence garanti edilir.
+  Future<void> _stopAndPop() async {
+    try { await _player.setVolume(0);     } catch (_) {}
+    try { await _player.pause();          } catch (_) {}
+    try { await _player.stop();           } catch (_) {}
+    if (mounted) Navigator.of(context).pop();
+  }
+
   @override
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context);
-    return Scaffold(
+    return PopScope(
+      // canPop:false + manuel pop — sistem back tuşu (Android back / iOS edge
+      // swipe) tetiklendiğinde önce stop bekleyelim, sonra pop. Default
+      // davranış pop'u önce çalıştırıyor, _stopAndPop fırsatı bulamadan
+      // dispose() tetikleniyordu.
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) async {
+        if (didPop) return;
+        await _stopAndPop();
+      },
+      child: Scaffold(
       backgroundColor: Colors.black,
       body: Focus(
         autofocus: true,
         onKeyEvent: _onKeyEvent,
         child: GestureDetector(
           onTap: _showControls,
+          onVerticalDragStart:  _onVerticalDragStart,
+          onVerticalDragUpdate: _onVerticalDragUpdate,
+          onVerticalDragEnd:    _onVerticalDragEnd,
           child: Stack(
             children: [
             // Video — media_kit_video default MaterialVideoControls'i KAPAT.
@@ -395,6 +503,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
               child: Video(
                 controller: _controller,
                 controls: (_) => const SizedBox.shrink(),
+                fit: _videoFit,
               ),
             ),
 
@@ -439,19 +548,28 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
                 child: _ControlsOverlay(
                   player:           _player,
                   title:            widget.title,
-                  onClose:          () => Navigator.pop(context),
+                  onClose:          _stopAndPop,
                   onTap:            _showControls,
                   onReconnect:      _manualReconnect,
                   volume:           _player.state.volume,
                   subtitleEnabled:  _aiSubtitleEnabled,
                   onSubtitleToggle: () => setState(
                       () => _aiSubtitleEnabled = !_aiSubtitleEnabled),
+                  videoFit:         _videoFit,
+                  onFitChange:      (f) => setState(() => _videoFit = f),
                 ),
+              ),
+            // Swipe gesture feedback overlay — sol yarı parlaklık, sağ yarı ses
+            if (_gestureType.isNotEmpty)
+              _GestureOverlay(
+                type:  _gestureType,
+                value: _gestureValue,
               ),
             ],
           ),
         ),
       ),
+      ),  // PopScope close
     );
   }
 }
@@ -467,6 +585,8 @@ class _ControlsOverlay extends StatefulWidget {
   final double       volume;
   final bool         subtitleEnabled;
   final VoidCallback onSubtitleToggle;
+  final BoxFit              videoFit;
+  final ValueChanged<BoxFit> onFitChange;
 
   const _ControlsOverlay({
     required this.player,
@@ -477,6 +597,8 @@ class _ControlsOverlay extends StatefulWidget {
     required this.volume,
     required this.subtitleEnabled,
     required this.onSubtitleToggle,
+    required this.videoFit,
+    required this.onFitChange,
   });
 
   @override
@@ -548,19 +670,46 @@ class _ControlsOverlayState extends State<_ControlsOverlay> {
 
             const Spacer(),
 
-            // Center play/pause (TV-friendly: buyuk, focusable)
-            FocusTraversalOrder(
-              order: const NumericFocusOrder(3),
-              child: StreamBuilder<bool>(
-                stream: widget.player.stream.playing,
-                builder: (ctx, snap) {
-                  final playing = snap.data ?? false;
-                  return _PlayPauseButton(
-                    playing: playing,
-                    onTap: widget.player.playOrPause,
-                  );
-                },
-              ),
+            // Center play/pause + 10s seek butonları (TV+touch friendly)
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                _TvIconButton(
+                  icon: Icons.replay_10,
+                  tooltip: '-10s',
+                  onTap: () => widget.player.seek(
+                    widget.player.state.position - const Duration(seconds: 10),
+                  ),
+                  size: 32,
+                ),
+                const SizedBox(width: Spacing.xl),
+                FocusTraversalOrder(
+                  order: const NumericFocusOrder(3),
+                  child: StreamBuilder<bool>(
+                    stream: widget.player.stream.playing,
+                    builder: (ctx, snap) {
+                      final playing = snap.data ?? false;
+                      return _PlayPauseButton(
+                        playing: playing,
+                        onTap: widget.player.playOrPause,
+                      );
+                    },
+                  ),
+                ),
+                const SizedBox(width: Spacing.xl),
+                _TvIconButton(
+                  icon: Icons.forward_10,
+                  tooltip: '+10s',
+                  onTap: () {
+                    final pos = widget.player.state.position;
+                    final dur = widget.player.state.duration;
+                    var target = pos + const Duration(seconds: 10);
+                    if (dur > Duration.zero && target > dur) target = dur;
+                    widget.player.seek(target);
+                  },
+                  size: 32,
+                ),
+              ],
             ),
 
             const Spacer(),
@@ -711,33 +860,37 @@ class _ControlsOverlayState extends State<_ControlsOverlay> {
                           ],
                         ),
                       const SizedBox(height: Spacing.sm),
-                      // AI subtitle + speed + audio tracks + mute
+                      // Subtitle + speed + audio + aspect-ratio + resolution + mute
                       Row(
-                        mainAxisAlignment: MainAxisAlignment.end,
+                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                         children: [
                           FocusTraversalOrder(
                             order: const NumericFocusOrder(3.5),
-                            child: _TvIconButton(
-                              icon: widget.subtitleEnabled
-                                  ? Icons.subtitles
-                                  : Icons.subtitles_off_outlined,
-                              tooltip: widget.subtitleEnabled
-                                  ? l.playerSubtitleDisable
-                                  : l.playerSubtitleEnable,
-                              onTap: widget.onSubtitleToggle,
+                            child: _SubtitleButton(
+                              aiEnabled: widget.subtitleEnabled,
+                              player:    widget.player,
+                              onAiToggle: widget.onSubtitleToggle,
                             ),
                           ),
-                          const SizedBox(width: Spacing.sm),
                           FocusTraversalOrder(
                             order: const NumericFocusOrder(4),
                             child: _SpeedButton(player: widget.player),
                           ),
-                          const SizedBox(width: Spacing.sm),
                           FocusTraversalOrder(
                             order: const NumericFocusOrder(5),
                             child: _AudioTrackButton(player: widget.player),
                           ),
-                          const SizedBox(width: Spacing.sm),
+                          FocusTraversalOrder(
+                            order: const NumericFocusOrder(5.5),
+                            child: _AspectRatioButton(
+                              fit:      widget.videoFit,
+                              onChange: widget.onFitChange,
+                            ),
+                          ),
+                          FocusTraversalOrder(
+                            order: const NumericFocusOrder(5.8),
+                            child: _ResolutionButton(player: widget.player),
+                          ),
                           FocusTraversalOrder(
                             order: const NumericFocusOrder(6),
                             child: StreamBuilder<double>(
@@ -783,11 +936,13 @@ class _TvIconButton extends StatefulWidget {
   final IconData icon;
   final String tooltip;
   final VoidCallback onTap;
+  final double size;
 
   const _TvIconButton({
     required this.icon,
     required this.tooltip,
     required this.onTap,
+    this.size = 28,
   });
 
   @override
@@ -831,7 +986,7 @@ class _TvIconButtonState extends State<_TvIconButton> {
                 width: 2.5,
               ),
             ),
-            child: Icon(widget.icon, color: Colors.white, size: 28),
+            child: Icon(widget.icon, color: Colors.white, size: widget.size),
           ),
         ),
       ),
@@ -971,8 +1126,8 @@ class _TvDialogOption extends StatefulWidget {
   final VoidCallback onTap;
 
   const _TvDialogOption({
-    required this.autofocus,
-    required this.selected,
+    this.autofocus = false,
+    this.selected  = false,
     required this.label,
     required this.onTap,
   });
@@ -1116,6 +1271,228 @@ class _SpeedButtonState extends State<_SpeedButton> {
                       color: Colors.white, fontSize: TextSize.label)),
             ],
           ),
+        ),
+      ),
+    );
+  }
+}
+
+// ── Subtitle picker (AI / Embedded tracks / Off) ────────────────────────────
+
+class _SubtitleButton extends StatelessWidget {
+  final bool aiEnabled;
+  final Player player;
+  final VoidCallback onAiToggle;
+
+  const _SubtitleButton({
+    required this.aiEnabled,
+    required this.player,
+    required this.onAiToggle,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context);
+    return _TvIconButton(
+      icon: aiEnabled ? Icons.subtitles : Icons.subtitles_off_outlined,
+      tooltip: l.playerSubtitleEnable,
+      onTap: () async {
+        final tracks = player.state.tracks.subtitle;
+        // 'no' / 'auto' tracks otomatik gelir, gerçek embedded'ları ayır
+        final embedded = tracks.where((t) => t.id != 'no' && t.id != 'auto').toList();
+        final result = await showDialog<String>(
+          context: context,
+          builder: (ctx) => SimpleDialog(
+            title: const Text('Altyazı'),
+            children: [
+              _TvDialogOption(
+                label: 'AI Altyazı ${aiEnabled ? "(Aktif)" : ""}',
+                onTap: () => Navigator.pop(ctx, 'ai'),
+              ),
+              for (var i = 0; i < embedded.length; i++)
+                _TvDialogOption(
+                  label: 'Yerleşik ${i + 1}'
+                      '${embedded[i].language != null ? " (${embedded[i].language})" : ""}',
+                  onTap: () => Navigator.pop(ctx, 'emb_${embedded[i].id}'),
+                ),
+              _TvDialogOption(
+                label: 'Kapalı',
+                onTap: () => Navigator.pop(ctx, 'off'),
+              ),
+            ],
+          ),
+        );
+        if (result == null) return;
+        if (result == 'ai') {
+          // AI toggle — varsa kapat, yoksa aç
+          onAiToggle();
+          // Embedded varsa onu da kapat
+          await player.setSubtitleTrack(SubtitleTrack.no());
+        } else if (result == 'off') {
+          if (aiEnabled) onAiToggle();
+          await player.setSubtitleTrack(SubtitleTrack.no());
+        } else if (result.startsWith('emb_')) {
+          if (aiEnabled) onAiToggle(); // AI varsa kapat
+          final id = result.substring(4);
+          final track = embedded.firstWhere((t) => t.id == id,
+              orElse: () => SubtitleTrack.no());
+          await player.setSubtitleTrack(track);
+        }
+      },
+    );
+  }
+}
+
+// ── Aspect ratio (Orijinal / Doldur / Esnet) ────────────────────────────────
+
+class _AspectRatioButton extends StatelessWidget {
+  final BoxFit fit;
+  final ValueChanged<BoxFit> onChange;
+
+  const _AspectRatioButton({required this.fit, required this.onChange});
+
+  @override
+  Widget build(BuildContext context) {
+    return _TvIconButton(
+      icon: Icons.aspect_ratio,
+      tooltip: 'Ekran Boyutu',
+      onTap: () async {
+        final result = await showDialog<BoxFit>(
+          context: context,
+          builder: (ctx) => SimpleDialog(
+            title: const Text('Ekran Boyutu'),
+            children: [
+              _TvDialogOption(
+                label: 'Orijinal${fit == BoxFit.contain ? " ✓" : ""}',
+                onTap: () => Navigator.pop(ctx, BoxFit.contain),
+              ),
+              _TvDialogOption(
+                label: 'Ekranı Doldur (Kırp)${fit == BoxFit.cover ? " ✓" : ""}',
+                onTap: () => Navigator.pop(ctx, BoxFit.cover),
+              ),
+              _TvDialogOption(
+                label: 'Esnet${fit == BoxFit.fill ? " ✓" : ""}',
+                onTap: () => Navigator.pop(ctx, BoxFit.fill),
+              ),
+            ],
+          ),
+        );
+        if (result != null) onChange(result);
+      },
+    );
+  }
+}
+
+// ── Resolution / Quality picker (HLS / Multi-bitrate) ───────────────────────
+
+class _ResolutionButton extends StatelessWidget {
+  final Player player;
+  const _ResolutionButton({required this.player});
+
+  @override
+  Widget build(BuildContext context) {
+    return _TvIconButton(
+      icon: Icons.high_quality,
+      tooltip: 'Çözünürlük',
+      onTap: () async {
+        final tracks = player.state.tracks.video;
+        // Auto (id='auto') + gerçek varyantları göster
+        final variants = tracks
+            .where((t) => t.id != 'no' && (t.w ?? 0) > 0)
+            .toList()
+          ..sort((a, b) => (b.h ?? 0).compareTo(a.h ?? 0));
+
+        final result = await showDialog<String>(
+          context: context,
+          builder: (ctx) => SimpleDialog(
+            title: const Text('Çözünürlük'),
+            children: [
+              _TvDialogOption(
+                label: 'Otomatik',
+                onTap: () => Navigator.pop(ctx, 'auto'),
+              ),
+              for (final t in variants)
+                _TvDialogOption(
+                  label: '${t.h}p${t.fps != null ? " ${t.fps!.round()}fps" : ""}',
+                  onTap: () => Navigator.pop(ctx, t.id),
+                ),
+              if (variants.isEmpty)
+                const Padding(
+                  padding: EdgeInsets.all(16),
+                  child: Text(
+                    'Bu yayın tek kalite sunuyor.',
+                    style: TextStyle(color: Colors.white54),
+                  ),
+                ),
+            ],
+          ),
+        );
+        if (result == null) return;
+        if (result == 'auto') {
+          await player.setVideoTrack(VideoTrack.auto());
+        } else {
+          final track = variants.firstWhere((t) => t.id == result,
+              orElse: () => VideoTrack.auto());
+          await player.setVideoTrack(track);
+        }
+      },
+    );
+  }
+}
+
+// ── Gesture overlay (volume / brightness vertical swipe feedback) ────────────
+
+class _GestureOverlay extends StatelessWidget {
+  /// 'volume' (sağ) veya 'brightness' (sol)
+  final String type;
+  /// 0..1
+  final double value;
+
+  const _GestureOverlay({required this.type, required this.value});
+
+  @override
+  Widget build(BuildContext context) {
+    final isVolume = type == 'volume';
+    final icon = isVolume
+        ? (value < 0.01
+            ? Icons.volume_off
+            : value < 0.5
+                ? Icons.volume_down
+                : Icons.volume_up)
+        : (value < 0.5 ? Icons.brightness_low : Icons.brightness_high);
+    return Center(
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+        decoration: BoxDecoration(
+          color: Colors.black.withValues(alpha: 0.65),
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, color: Colors.white, size: 32),
+            const SizedBox(height: 10),
+            SizedBox(
+              width: 140,
+              child: LinearProgressIndicator(
+                value: value,
+                minHeight: 4,
+                backgroundColor: Colors.white24,
+                valueColor: AlwaysStoppedAnimation(
+                  isVolume ? Colors.amber : Colors.lightBlueAccent,
+                ),
+              ),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              '${(value * 100).round()}%',
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
         ),
       ),
     );

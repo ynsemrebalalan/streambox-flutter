@@ -135,10 +135,17 @@ class CategoryFilterScreen extends ConsumerWidget {
     return Scaffold(
       appBar: AppBar(
         title: Text(l.categoryFilterTitle),
-        leading: BackButton(onPressed: () async {
-          // Gizli kategori listesi değişmiş olabilir: home'u re-load et
-          await ref.read(homeProvider.notifier).refreshVisibility();
-          if (context.mounted) context.go(AppRoutes.settings);
+        leading: BackButton(onPressed: () {
+          // Önce navigate — refreshVisibility içindeki async SQL fetch'leri
+          // back tuşuna immediate feedback engelliyor + exception fırlarsa
+          // navigation hiç çalışmıyordu. Refresh fire-and-forget background'da.
+          if (context.canPop()) {
+            context.pop();
+          } else {
+            context.go(AppRoutes.settings);
+          }
+          ref.read(homeProvider.notifier).refreshVisibility()
+              .catchError((_) {});
         }),
         actions: [
           TextButton(

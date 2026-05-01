@@ -51,7 +51,10 @@ class HomeNotifier extends AsyncNotifier<HomeState> {
     final newMovies = results[2] as List<ChannelModel>;
     final newSeries = results[3] as List<ChannelModel>;
     final newLive   = results[4] as List<ChannelModel>;
-    final deduped = _dedupNew(newMovies, newSeries, newLive);
+    // Featured banner SADECE film+dizi — Android HomeViewModel paritesi.
+    // (Adım 10'da live eklenmişti, kullanıcı "üst slider'da canlı görünmesin"
+    // dedi; Adım 19'da live geri çıkarıldı.)
+    final deduped = _dedupNew(newMovies, newSeries);
     return s.copyWith(
       recentlyWatched:        results[0] as List<ChannelModel>,
       continueWatching:       results[1] as List<ChannelModel>,
@@ -67,21 +70,24 @@ class HomeNotifier extends AsyncNotifier<HomeState> {
     );
   }
 
-  /// Yeni eklenen film + dizi + canlı karışımını dedup'lar.
-  ///   - Dizi:   `seriesName` doluysa `S:{name}`
-  ///   - Film:   `streamUrl` doluysa `U:{url}`
-  ///   - Canlı:  `streamUrl` doluysa `U:{url}`
-  ///   - Diğer:  `id` fallback
+  /// Yeni eklenen film + dizi karışımını dedup'lar (live BANNER DIŞINDA —
+  /// kullanıcı geri bildirimi "üst slider'da canlı görünmesin").
+  ///   - Dizi: `seriesName` doluysa `S:{name}`
+  ///   - Film: `streamUrl` doluysa `U:{url}`
+  ///   - Diğer: `id` fallback
   /// Featured banner ilk 10'u alır, Popüler satırı sonraki 10'u.
   static List<ChannelModel> _dedupNew(
     List<ChannelModel> newMovies,
     List<ChannelModel> newSeries,
-    List<ChannelModel> newLive,
   ) {
-    final combined = <ChannelModel>[...newMovies, ...newSeries, ...newLive];
+    final combined = <ChannelModel>[...newMovies, ...newSeries];
     final seen = <String>{};
     final deduped = <ChannelModel>[];
     for (final ch in combined) {
+      // Defansif: M3U parser bazı canlı kanalları yanlış streamType ile
+      // sınıflandırırsa banner'a sızmasın. SQL filter zaten live'ı dışarıda
+      // tutuyor ama parser hatası olası — burada da kapı kapalı olsun.
+      if (ch.streamType == 'live') continue;
       final key = ch.streamType == 'series' && ch.seriesName.isNotEmpty
           ? 'S:${ch.seriesName}'
           : ch.streamUrl.isNotEmpty
