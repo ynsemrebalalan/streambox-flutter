@@ -4,6 +4,7 @@ import '../../core/providers/app_providers.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/utils/responsive.dart';
 import '../../data/repositories/settings_repository.dart';
+import '../../l10n/generated/app_localizations.dart';
 import 'legal_notice_screen.dart';
 
 /// Yumusatilmis welcome ekrani.
@@ -53,6 +54,7 @@ class _DisclaimerScreenState extends ConsumerState<DisclaimerScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context);
     return Scaffold(
       backgroundColor: AppColors.darkBg,
       body: SafeArea(
@@ -67,18 +69,18 @@ class _DisclaimerScreenState extends ConsumerState<DisclaimerScreen> {
                 Icon(Icons.play_circle_outline,
                     size: 72, color: AppColors.accent),
                 const SizedBox(height: 20),
-                const Text(
-                  'IPTV AI Player',
-                  style: TextStyle(
+                Text(
+                  l.homeAppTitle,
+                  style: const TextStyle(
                     fontSize: 28,
                     fontWeight: FontWeight.bold,
                     color: Colors.white,
                   ),
                 ),
                 const SizedBox(height: 12),
-                const Text(
-                  'Welcome',
-                  style: TextStyle(
+                Text(
+                  l.disclaimerWelcome,
+                  style: const TextStyle(
                     fontSize: 18,
                     color: Colors.white70,
                   ),
@@ -94,30 +96,24 @@ class _DisclaimerScreenState extends ConsumerState<DisclaimerScreen> {
                       color: Colors.white.withValues(alpha: 0.08),
                     ),
                   ),
-                  child: const Column(
+                  child: Column(
                     children: [
                       Text(
-                        'IPTV AI Player is a media player for your own '
-                        'M3U playlists and Xtream Codes sources.\n\n'
-                        'This app does not provide, host, or distribute '
-                        'any content. You must supply your own legally '
-                        'obtained playlist URL.',
+                        l.disclaimerBodyEn,
                         textAlign: TextAlign.center,
-                        style: TextStyle(
+                        style: const TextStyle(
                           fontSize: 13,
                           height: 1.5,
                           color: Colors.white70,
                         ),
                       ),
-                      SizedBox(height: 10),
-                      Divider(height: 1, color: Colors.white12),
-                      SizedBox(height: 10),
+                      const SizedBox(height: 10),
+                      const Divider(height: 1, color: Colors.white12),
+                      const SizedBox(height: 10),
                       Text(
-                        'IPTV AI Player, kendi M3U veya Xtream Codes '
-                        'oynatma listeleriniz icin bir medya oynaticidir. '
-                        'Icerik sunmaz, barindirmaz.',
+                        l.disclaimerBodyTr,
                         textAlign: TextAlign.center,
-                        style: TextStyle(
+                        style: const TextStyle(
                           fontSize: 12,
                           height: 1.5,
                           color: Colors.white54,
@@ -130,7 +126,7 @@ class _DisclaimerScreenState extends ConsumerState<DisclaimerScreen> {
                 TextButton.icon(
                   onPressed: _openLegal,
                   icon: const Icon(Icons.description_outlined, size: 18),
-                  label: const Text('Legal Notice / Yasal Bildirim'),
+                  label: Text(l.disclaimerLegalNoticeButton),
                   style: TextButton.styleFrom(
                     foregroundColor: Colors.white54,
                   ),
@@ -157,9 +153,9 @@ class _DisclaimerScreenState extends ConsumerState<DisclaimerScreen> {
                               color: Colors.black,
                             ),
                           )
-                        : const Text(
-                            'Continue',
-                            style: TextStyle(
+                        : Text(
+                            l.disclaimerContinue,
+                            style: const TextStyle(
                               fontWeight: FontWeight.bold,
                               fontSize: 16,
                             ),
@@ -167,10 +163,10 @@ class _DisclaimerScreenState extends ConsumerState<DisclaimerScreen> {
                   ),
                 ),
                 const SizedBox(height: 10),
-                const Text(
-                  'By continuing you agree to the Legal Notice.',
+                Text(
+                  l.disclaimerFooter,
                   textAlign: TextAlign.center,
-                  style: TextStyle(fontSize: 11, color: Colors.white38),
+                  style: const TextStyle(fontSize: 11, color: Colors.white38),
                 ),
                 const SizedBox(height: 20),
               ],

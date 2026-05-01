@@ -22,7 +22,19 @@ class HomeState {
   final List<ChannelModel>  newlyAddedSeries;
   /// En son eklenen canlı kanallar
   final List<ChannelModel>  latestLive;
+  /// "Featured" cinematik banner — newlyAdded film+dizi karışımının ilk 10 dilimi (Android paritesi)
+  final List<ChannelModel>  featuredVodItems;
+  /// "Popüler" satırı — newlyAdded film+dizi karışımının 11-20 dilimi (Android paritesi)
+  final List<ChannelModel>  popularVodItems;
+  /// Sadece film tipi izlenmiş kanallar (lastWatched DESC)
+  final List<ChannelModel>  watchedMovies;
+  /// Sadece dizi bölümü tipi izlenmiş kayıtlar (lastWatched DESC)
+  final List<ChannelModel>  watchedSeriesEpisodes;
   final bool                isLoading;
+  /// Üstte ince bir progress + status text gösterilirken `true` — refresh/sync sırasında
+  final bool                isBackgroundLoading;
+  /// Background loader yanında gösterilecek kısa mesaj ("EPG indiriliyor...")
+  final String?             loadingMessage;
   final String?             error;
   final SortOrder           sortOrder;
   final String              searchQuery;
@@ -42,7 +54,13 @@ class HomeState {
     this.newlyAddedMovies   = const [],
     this.newlyAddedSeries   = const [],
     this.latestLive         = const [],
+    this.featuredVodItems      = const [],
+    this.popularVodItems       = const [],
+    this.watchedMovies         = const [],
+    this.watchedSeriesEpisodes = const [],
     this.isLoading          = false,
+    this.isBackgroundLoading = false,
+    this.loadingMessage,
     this.error,
     this.sortOrder          = SortOrder.defaultOrder,
     this.searchQuery        = '',
@@ -63,7 +81,14 @@ class HomeState {
     List<ChannelModel>?  newlyAddedMovies,
     List<ChannelModel>?  newlyAddedSeries,
     List<ChannelModel>?  latestLive,
+    List<ChannelModel>?  featuredVodItems,
+    List<ChannelModel>?  popularVodItems,
+    List<ChannelModel>?  watchedMovies,
+    List<ChannelModel>?  watchedSeriesEpisodes,
     bool?                isLoading,
+    bool?                isBackgroundLoading,
+    String?              loadingMessage,
+    bool                 clearLoadingMessage = false,
     String?              error,
     bool                 clearError = false,
     SortOrder?           sortOrder,
@@ -83,7 +108,13 @@ class HomeState {
     newlyAddedMovies:   newlyAddedMovies ?? this.newlyAddedMovies,
     newlyAddedSeries:   newlyAddedSeries ?? this.newlyAddedSeries,
     latestLive:         latestLive       ?? this.latestLive,
+    featuredVodItems:      featuredVodItems      ?? this.featuredVodItems,
+    popularVodItems:       popularVodItems       ?? this.popularVodItems,
+    watchedMovies:         watchedMovies         ?? this.watchedMovies,
+    watchedSeriesEpisodes: watchedSeriesEpisodes ?? this.watchedSeriesEpisodes,
     isLoading:          isLoading        ?? this.isLoading,
+    isBackgroundLoading: isBackgroundLoading ?? this.isBackgroundLoading,
+    loadingMessage:     clearLoadingMessage ? null : loadingMessage ?? this.loadingMessage,
     error:              clearError ? null : error ?? this.error,
     sortOrder:          sortOrder        ?? this.sortOrder,
     searchQuery:        searchQuery      ?? this.searchQuery,

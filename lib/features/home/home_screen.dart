@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -6,10 +8,12 @@ import 'package:go_router/go_router.dart';
 import '../../core/router/app_router.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_tokens.dart';
+import '../../core/theme/category_icons.dart';
 import '../../core/utils/http_client.dart';
 import '../../core/utils/responsive.dart';
 import '../../core/utils/tv_focus.dart';
 import '../../data/models/channel_model.dart';
+import '../../l10n/generated/app_localizations.dart';
 import 'home_provider.dart';
 import 'home_state.dart';
 import 'widgets/channel_list_item.dart';
@@ -26,26 +30,27 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   final _searchCtrl = TextEditingController();
   bool  _showSearch = false;
 
-  String _homeErrorMessage(Object e) {
+  String _homeErrorMessage(Object e, AppLocalizations l) {
     if (e is HttpStatusException) return e.userMessage;
     final msg = e.toString().toLowerCase();
     if (msg.contains('timeout')) {
-      return 'Saglayici cevap veremedi. Birazdan tekrar deneyin.';
+      return l.errorTimeoutProvider;
     }
     if (msg.contains('socket') || msg.contains('failed host lookup')) {
-      return 'Internet baglantisi yok veya saglayiciya ulasilamiyor.';
+      return l.errorNoConnection;
     }
     if (msg.contains('database') ||
         msg.contains('sqlite') ||
         msg.contains('sqfliteexception')) {
-      return 'Veri tabani gecici olarak yanit vermedi. Lutfen tekrar deneyin.';
+      return l.errorDatabaseTemporary;
     }
-    return 'Bir sorun olustu. Lutfen tekrar deneyin.';
+    return l.errorGenericRetry;
   }
 
   @override
   Widget build(BuildContext context) {
     final homeAsync = ref.watch(homeProvider);
+    final l = AppLocalizations.of(context);
 
     return homeAsync.when(
       loading: () => const Scaffold(
@@ -61,7 +66,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 const Icon(Icons.cloud_off, size: 56, color: Colors.redAccent),
                 const SizedBox(height: 12),
                 Text(
-                  _homeErrorMessage(e),
+                  _homeErrorMessage(e, l),
                   textAlign: TextAlign.center,
                   style: const TextStyle(fontSize: 14),
                 ),
@@ -69,7 +74,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 FilledButton.icon(
                   autofocus: true,
                   icon: const Icon(Icons.refresh),
-                  label: const Text('Tekrar Dene'),
+                  label: Text(l.retry),
                   onPressed: () => ref.invalidate(homeProvider),
                 ),
               ],
@@ -111,6 +116,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             onSearchChanged: (q) =>
                 ref.read(homeProvider.notifier).search(q),
           ),
+          // Background refresh bar — full-screen spinner yerine içerik üzerinde
+          // ince ilerleyen progress + opsiyonel status mesajı.
+          if (state.isBackgroundLoading)
+            _BackgroundLoadingBar(message: state.loadingMessage),
           if (!_showSearch) _TabBar(state: state),
           if (!_showSearch && state.activeTab == 'favorites')
             _FavoritesTypeBar(state: state),
@@ -143,6 +152,7 @@ class _NoPlaylistView extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final cs = Theme.of(context).colorScheme;
+    final l = AppLocalizations.of(context);
     return Scaffold(
       body: SafeArea(
         child: Center(
@@ -151,18 +161,18 @@ class _NoPlaylistView extends ConsumerWidget {
             children: [
               Icon(Icons.live_tv, size: 80, color: cs.onSurfaceVariant),
               const SizedBox(height: Spacing.xl),
-              Text('IPTV AI Player',
+              Text(l.homeAppTitle,
                   style: TextStyle(
                       fontSize: TextSize.titleLg,
                       fontWeight: FontWeight.bold,
                       color: cs.onSurface)),
               const SizedBox(height: Spacing.sm),
-              Text('Başlamak için bir playlist ekleyin',
+              Text(l.homeNoPlaylistMessage,
                   style: TextStyle(color: cs.onSurfaceVariant)),
               const SizedBox(height: Spacing.xl),
               FilledButton.icon(
                 icon:    const Icon(Icons.add),
-                label:   const Text('Playlist Ekle'),
+                label:   Text(l.homeAddPlaylist),
                 onPressed: () => context.push(AppRoutes.playlists),
               ),
             ],
@@ -174,6 +184,19 @@ class _NoPlaylistView extends ConsumerWidget {
 }
 
 // ── Top bar ───────────────────────────────────────────────────────────────────
+
+/// Üç nokta menü için ortak satır widget'ı — icon + 8dp gap + label.
+PopupMenuItem<String> _menuItem(String value, IconData icon, String label) =>
+    PopupMenuItem(
+      value: value,
+      child: Row(
+        children: [
+          Icon(icon, size: 20),
+          const SizedBox(width: Spacing.sm),
+          Text(label),
+        ],
+      ),
+    );
 
 class _TopBar extends ConsumerWidget {
   final HomeState         state;
@@ -193,6 +216,7 @@ class _TopBar extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final cs = Theme.of(context).colorScheme;
+    final l = AppLocalizations.of(context);
 
     return Container(
       height:     Dimens.topBarHeight,
@@ -206,7 +230,7 @@ class _TopBar extends ConsumerWidget {
               children: [
                 Icon(Icons.live_tv, color: AppColors.accent, size: 26),
                 const SizedBox(width: Spacing.sm),
-                Text('IPTV AI Player',
+                Text(l.homeAppTitle,
                     style: TextStyle(
                         fontSize:   TextSize.title,
                         fontWeight: FontWeight.bold,
@@ -221,7 +245,7 @@ class _TopBar extends ConsumerWidget {
                 onChanged:    onSearchChanged,
                 style: const TextStyle(fontSize: TextSize.body),
                 decoration: InputDecoration(
-                  hintText:      'Kanal, film, dizi ara...',
+                  hintText:      l.homeSearchHint,
                   border:        InputBorder.none,
                   hintStyle:     TextStyle(color: cs.onSurfaceVariant),
                   prefixIcon:    Icon(Icons.search, color: cs.onSurfaceVariant),
@@ -230,47 +254,41 @@ class _TopBar extends ConsumerWidget {
             )
           else
             const Spacer(),
-          // Actions (TV-friendly: buyuk ikonlar)
+          // Top bar minimalize — sadece arama icon + üç nokta menü.
+          // Android paritesi (HomeScreen.kt:1043+): playlist/settings/feedback
+          // gibi tüm ikincil eylemler tek menüde toplanır, üst bar yorulmaz.
           IconButton(
             iconSize: 28,
             icon: Icon(showSearch ? Icons.close : Icons.search),
             onPressed: onSearchToggle,
           ),
-          IconButton(
-            iconSize: 28,
-            icon: const Icon(Icons.playlist_play),
-            tooltip: 'Playlist\'ler',
-            onPressed: () => context.push(AppRoutes.playlists),
-          ),
-          IconButton(
-            iconSize: 28,
-            icon: const Icon(Icons.settings_outlined),
-            tooltip: 'Ayarlar',
-            onPressed: () => context.push(AppRoutes.settings),
-          ),
-          // Daha Fazla — kategori yönetimi gibi ikincil eylemler için üç nokta
           PopupMenuButton<String>(
             iconSize: 28,
-            tooltip: 'Daha Fazla',
+            tooltip: l.homeMore,
             icon: const Icon(Icons.more_vert),
             onSelected: (value) {
               switch (value) {
-                case 'category_filter':
+                case 'playlists':
+                  context.push(AppRoutes.playlists);
+                  break;
+                case 'category':
                   context.push(AppRoutes.categoryFilter);
+                  break;
+                case 'epg':
+                case 'settings':
+                  context.push(AppRoutes.settings);
                   break;
               }
             },
-            itemBuilder: (ctx) => const [
-              PopupMenuItem(
-                value: 'category_filter',
-                child: Row(
-                  children: [
-                    Icon(Icons.filter_list, size: 20),
-                    SizedBox(width: Spacing.sm),
-                    Text('Kategori Yönetimi'),
-                  ],
-                ),
-              ),
+            // Son İzlenenler / Yeni Eklenenler / Nerede Kaldım menü item'ları
+            // kaldırıldı — Home tab'ında zaten ayrı satır olarak görünüyor,
+            // menüden tekrar listelemek redundant idi (kullanıcı geri bildirimi).
+            itemBuilder: (ctx) => [
+              _menuItem('playlists', Icons.playlist_play,     l.menuMyPlaylists),
+              _menuItem('category',  Icons.filter_list,       l.homeCategoryManagement),
+              _menuItem('epg',       Icons.rss_feed,          l.menuEpgSettings),
+              const PopupMenuDivider(),
+              _menuItem('settings',  Icons.settings_outlined, l.settingsTitle),
             ],
           ),
         ],
@@ -285,23 +303,24 @@ class _TabBar extends ConsumerWidget {
   final HomeState state;
   const _TabBar({required this.state});
 
-  static const _tabs = [
-    ('home',      'Ana Sayfa', Icons.home),
-    ('live',      'Canlı',     Icons.live_tv),
-    ('movie',     'Film',      Icons.movie),
-    ('series',    'Dizi',      Icons.video_library),
-    ('favorites', 'Favoriler', Icons.star),
-  ];
-
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final cs = Theme.of(context).colorScheme;
+    final l = AppLocalizations.of(context);
+
+    final tabs = <(String, String, IconData)>[
+      ('home',      l.homeTabHome,      Icons.home),
+      ('live',      l.homeTabLive,      Icons.live_tv),
+      ('movie',     l.homeTabMovie,     Icons.movie),
+      ('series',    l.homeTabSeries,    Icons.video_library),
+      ('favorites', l.homeTabFavorites, Icons.star),
+    ];
 
     return Container(
       height: 44,
       color:  cs.surface,
       child: Row(
-        children: _tabs.map((t) {
+        children: tabs.map((t) {
           final (tab, label, icon) = t;
           final active = state.activeTab == tab;
           return Expanded(
@@ -405,50 +424,100 @@ class _TabButtonState extends State<_TabButton> {
 
 // ── Category bar ──────────────────────────────────────────────────────────────
 
+/// Sabit "comfortable" görünüm — modern streaming app pattern'i (Netflix,
+/// AppleTV+, Spotify): horizontal scroll, 56 dp yüksekliğinde, kategori-özel
+/// ikon + text yan yana. iOS HIG ve Material 3 her ikisinin de normuna uyar.
+///
+/// Density toggle (compact/comfortable/spacious) v3.9.0 (Adım 6 redesign)
+/// sırasında kaldırıldı — kullanıcı geri bildirimi: "tek görünüm yeterli, en
+/// uygun olanı seç". Profile yapısı dolayısıyla geri eklenmesi kolay.
 class _CategoryBar extends ConsumerWidget {
   final HomeState state;
   const _CategoryBar({required this.state});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final cs = Theme.of(context).colorScheme;
-
     return SizedBox(
-      height: 48,
+      height: 56,
       child: FocusTraversalGroup(
         policy: OrderedTraversalPolicy(),
         child: ListView.separated(
           scrollDirection: Axis.horizontal,
           padding: const EdgeInsets.symmetric(
-              horizontal: Spacing.md, vertical: 6),
-          itemCount:       state.categories.length,
-          separatorBuilder: (_, __) => const SizedBox(width: 6),
+              horizontal: Spacing.md, vertical: 8),
+          itemCount:        state.categories.length,
+          separatorBuilder: (_, __) => const SizedBox(width: 8),
           itemBuilder: (ctx, i) {
             final cat    = state.categories[i];
             final active = cat == state.selectedCategory;
-            return TvFocusable(
-              borderRadius: BorderRadius.circular(Radius.badge + 8),
-              onTap: () =>
+            final type   = _typeForTab(state.activeTab);
+            final icon   = mapCategoryToIcon(cat, streamType: type);
+            return _CategoryChip(
+              label:   cat,
+              icon:    icon,
+              active:  active,
+              onTap:   () =>
                   ref.read(homeProvider.notifier).selectCategory(cat),
-              semanticLabel: cat,
-              child: Container(
-                padding: const EdgeInsets.symmetric(
-                    horizontal: 12, vertical: 6),
-                decoration: BoxDecoration(
-                  color: active
-                      ? AppColors.accent
-                      : cs.surfaceContainerHighest,
-                  borderRadius: BorderRadius.circular(Radius.badge + 5),
-                ),
-                child: Text(cat,
-                    style: TextStyle(
-                        fontSize: TextSize.label,
-                        fontWeight:
-                            active ? FontWeight.w600 : FontWeight.normal,
-                        color: active ? cs.onPrimary : cs.onSurfaceVariant)),
-              ),
             );
           },
+        ),
+      ),
+    );
+  }
+
+  static String? _typeForTab(String tab) => switch (tab) {
+        'live'   => 'live',
+        'movie'  => 'movie',
+        'series' => 'series',
+        _        => null,
+      };
+}
+
+class _CategoryChip extends StatelessWidget {
+  final String label;
+  final IconData icon;
+  final bool   active;
+  final VoidCallback onTap;
+
+  const _CategoryChip({
+    required this.label,
+    required this.icon,
+    required this.active,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final fg = active ? cs.onPrimary : cs.onSurfaceVariant;
+    final bg = active ? AppColors.accent : cs.surfaceContainerHighest;
+
+    return TvFocusable(
+      borderRadius: BorderRadius.circular(Radius.badge + 8),
+      onTap: onTap,
+      semanticLabel: label,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        decoration: BoxDecoration(
+          color:        bg,
+          borderRadius: BorderRadius.circular(Radius.badge + 5),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 18, color: fg),
+            const SizedBox(width: 6),
+            Text(
+              label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontSize:   TextSize.label,
+                fontWeight: active ? FontWeight.w600 : FontWeight.normal,
+                color:      fg,
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -464,16 +533,17 @@ class _FavoritesTypeBar extends ConsumerWidget {
   final HomeState state;
   const _FavoritesTypeBar({required this.state});
 
-  static const _filters = [
-    ('',       'Tümü',     Icons.star),
-    ('live',   'Canlı',    Icons.live_tv),
-    ('movie',  'Filmler',  Icons.movie),
-    ('series', 'Diziler',  Icons.video_library),
-  ];
-
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final cs = Theme.of(context).colorScheme;
+    final l = AppLocalizations.of(context);
+
+    final filters = <(String, String, IconData)>[
+      ('',       l.homeFavoritesAll,    Icons.star),
+      ('live',   l.homeFavoritesLive,   Icons.live_tv),
+      ('movie',  l.homeFavoritesMovie,  Icons.movie),
+      ('series', l.homeFavoritesSeries, Icons.video_library),
+    ];
 
     return SizedBox(
       height: 48,
@@ -483,10 +553,10 @@ class _FavoritesTypeBar extends ConsumerWidget {
           scrollDirection: Axis.horizontal,
           padding: const EdgeInsets.symmetric(
               horizontal: Spacing.md, vertical: 6),
-          itemCount:       _filters.length,
+          itemCount:       filters.length,
           separatorBuilder: (_, __) => const SizedBox(width: 6),
           itemBuilder: (ctx, i) {
-            final (value, label, icon) = _filters[i];
+            final (value, label, icon) = filters[i];
             final active = value == state.favoritesTypeFilter;
             return TvFocusable(
               borderRadius: BorderRadius.circular(Radius.badge + 8),
@@ -552,11 +622,12 @@ class _ChannelList extends ConsumerWidget {
       return const Center(child: CircularProgressIndicator());
     }
     if (channels.isEmpty) {
+      final l = AppLocalizations.of(context);
       final msg = state.activeTab == 'favorites'
           ? (state.favoritesTypeFilter.isEmpty
-              ? 'Favori eklenmemiş'
-              : 'Bu tipte favori yok')
-          : 'Bu kategoride içerik yok';
+              ? l.homeEmptyFavorites
+              : l.homeEmptyFavoritesType)
+          : l.homeEmptyCategory;
       return Center(
         child: Text(
           msg,
@@ -625,17 +696,26 @@ class _HomeRowsLayout extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context);
+    // Android paritesi (HomeOverviewLayout): Devam Et → İzlediğin Filmler →
+    // İzlediğin Diziler → Yeni Filmler → Yeni Diziler → Popüler → Yeni Kanallar.
+    // Eski "homeRowRecentlyWatched" satırı kaldırıldı çünkü watchedMovies +
+    // watchedSeriesEpisodes kombinasyonu aynı içeriği daha temiz tipte gösteriyor.
     final sections = <(String, List<ChannelModel>, _HomeCardStyle)>[
       if (state.continueWatching.isNotEmpty)
-        ('Devam Et',       state.continueWatching, _HomeCardStyle.poster),
-      if (state.recentlyWatched.isNotEmpty)
-        ('Son İzlenenler', state.recentlyWatched,  _HomeCardStyle.poster),
+        (l.homeRowContinueWatching,   state.continueWatching,       _HomeCardStyle.poster),
+      if (state.watchedMovies.isNotEmpty)
+        (l.homeRowWatchedMovies,      state.watchedMovies,          _HomeCardStyle.poster),
+      if (state.watchedSeriesEpisodes.isNotEmpty)
+        (l.homeRowWatchedSeries,      state.watchedSeriesEpisodes,  _HomeCardStyle.poster),
       if (state.newlyAddedMovies.isNotEmpty)
-        ('Yeni Filmler',   state.newlyAddedMovies, _HomeCardStyle.poster),
+        (l.homeRowNewMovies,          state.newlyAddedMovies,       _HomeCardStyle.poster),
       if (state.newlyAddedSeries.isNotEmpty)
-        ('Yeni Diziler',   state.newlyAddedSeries, _HomeCardStyle.poster),
+        (l.homeRowNewSeries,          state.newlyAddedSeries,       _HomeCardStyle.poster),
+      if (state.popularVodItems.isNotEmpty)
+        (l.homeRowPopular,            state.popularVodItems,        _HomeCardStyle.poster),
       if (state.latestLive.isNotEmpty)
-        ('Yeni Kanallar',  state.latestLive,       _HomeCardStyle.logo),
+        (l.homeRowNewChannels,        state.latestLive,             _HomeCardStyle.logo),
     ];
 
     if (sections.isEmpty) {
@@ -650,14 +730,14 @@ class _HomeRowsLayout extends StatelessWidget {
                   size: 56, color: cs.onSurfaceVariant),
               const SizedBox(height: Spacing.md),
               Text(
-                'Henüz içerik yok',
+                l.homeEmptyContent,
                 style: TextStyle(
                     fontSize: TextSize.title,
                     color: cs.onSurface),
               ),
               const SizedBox(height: Spacing.xs),
               Text(
-                'Film / Dizi / Canlı sekmelerinden göz atmaya başlayın',
+                l.homeEmptyContentHint,
                 textAlign: TextAlign.center,
                 style: TextStyle(color: cs.onSurfaceVariant),
               ),
@@ -667,14 +747,230 @@ class _HomeRowsLayout extends StatelessWidget {
       );
     }
 
+    final hasBanner = state.featuredVodItems.isNotEmpty;
     return ListView.separated(
       padding: const EdgeInsets.symmetric(vertical: Spacing.sm),
-      itemCount: sections.length,
+      itemCount: sections.length + (hasBanner ? 1 : 0),
       separatorBuilder: (_, __) => const SizedBox(height: Spacing.md),
       itemBuilder: (ctx, i) {
-        final (title, items, style) = sections[i];
+        if (hasBanner && i == 0) {
+          return _FeaturedBanner(items: state.featuredVodItems);
+        }
+        final (title, items, style) = sections[hasBanner ? i - 1 : i];
         return _HomeRow(title: title, items: items, style: style);
       },
+    );
+  }
+}
+
+// ── Featured banner (auto-advancing carousel) ────────────────────────────────
+//
+// Android paritesi (FeaturedBanner.kt): 15 sn'de otomatik geçen 16:9 cinematik
+// kart. Üstünde gradient + tip badge (FİLM/DİZİ) + büyük başlık.
+// Tap → mevcut player route'una yönlendirir (logo card ile aynı pattern).
+
+class _FeaturedBanner extends StatefulWidget {
+  final List<ChannelModel> items;
+  const _FeaturedBanner({required this.items});
+
+  @override
+  State<_FeaturedBanner> createState() => _FeaturedBannerState();
+}
+
+class _FeaturedBannerState extends State<_FeaturedBanner> {
+  static const _autoAdvance = Duration(seconds: 15);
+
+  late final PageController _ctrl;
+  Timer? _timer;
+  int _idx = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = PageController(viewportFraction: 0.92);
+    _startAutoAdvance();
+  }
+
+  void _startAutoAdvance() {
+    _timer?.cancel();
+    if (widget.items.length <= 1) return;
+    _timer = Timer.periodic(_autoAdvance, (_) {
+      if (!mounted || !_ctrl.hasClients) return;
+      final next = (_idx + 1) % widget.items.length;
+      _ctrl.animateToPage(
+        next,
+        duration: const Duration(milliseconds: 600),
+        curve:    Curves.easeInOut,
+      );
+    });
+  }
+
+  @override
+  void didUpdateWidget(covariant _FeaturedBanner oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.items.length != widget.items.length) {
+      // Item sayısı değişti — index'i sıfırla, timer'ı yeniden başlat.
+      _idx = 0;
+      _startAutoAdvance();
+    }
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return Column(
+      children: [
+        SizedBox(
+          height: 200,
+          child: PageView.builder(
+            controller:    _ctrl,
+            itemCount:     widget.items.length,
+            onPageChanged: (i) => setState(() => _idx = i),
+            itemBuilder:   (ctx, i) => _FeaturedCard(channel: widget.items[i]),
+          ),
+        ),
+        const SizedBox(height: Spacing.sm),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            for (int i = 0; i < widget.items.length; i++)
+              AnimatedContainer(
+                duration: const Duration(milliseconds: 250),
+                margin:   const EdgeInsets.symmetric(horizontal: 3),
+                width:    i == _idx ? 16 : 6,
+                height:   6,
+                decoration: BoxDecoration(
+                  color: i == _idx
+                      ? cs.primary
+                      : cs.onSurfaceVariant.withValues(alpha: 0.4),
+                  borderRadius: BorderRadius.circular(3),
+                ),
+              ),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+class _FeaturedCard extends StatelessWidget {
+  final ChannelModel channel;
+  const _FeaturedCard({required this.channel});
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final l  = AppLocalizations.of(context);
+    // 3 tip: movie (amber), series (mor), live (kırmızı)
+    final (badge, badgeColor) = switch (channel.streamType) {
+      'movie'  => (l.badgeMovieUppercase,  Colors.amber.shade700),
+      'series' => (l.badgeSeriesUppercase, Colors.deepPurple.shade400),
+      _        => (l.playerLiveLabel,       Colors.red.shade600),
+    };
+    // Dizi için seriesName, film/canlı için kanal adı
+    final title = (channel.streamType == 'series' && channel.seriesName.isNotEmpty)
+        ? channel.seriesName
+        : channel.name;
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: Spacing.sm),
+      child: TvFocusableScale(
+        borderRadius: BorderRadius.circular(Radius.card + 4),
+        onTap: () => context.push(
+          AppRoutes.player,
+          extra: {
+            'channelId':       channel.id,
+            'channelUrl':      channel.streamUrl,
+            'title':           channel.name,
+            'initialPosition': channel.lastPosition,
+            'streamType':      channel.streamType,
+          },
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(Radius.card + 4),
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              // Background poster — yoksa solid fallback rengi.
+              if (channel.logoUrl.isNotEmpty)
+                CachedNetworkImage(
+                  imageUrl:    channel.logoUrl,
+                  fit:         BoxFit.cover,
+                  placeholder: (_, __) =>
+                      Container(color: cs.surfaceContainerHighest),
+                  errorWidget: (_, __, ___) =>
+                      Container(color: cs.surfaceContainerHighest),
+                )
+              else
+                Container(color: cs.surfaceContainerHighest),
+              // Soldan-alt köşeye dramatik gradient — başlık okunabilirliği için.
+              Container(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.bottomLeft,
+                    end:   Alignment.topRight,
+                    colors: [
+                      Colors.black.withValues(alpha: 0.85),
+                      Colors.black.withValues(alpha: 0.10),
+                    ],
+                    stops: const [0, 0.7],
+                  ),
+                ),
+              ),
+              // Sol-alt: badge + başlık
+              PositionedDirectional(
+                start:  16,
+                end:    16,
+                bottom: 16,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: badgeColor,
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: Text(
+                        badge,
+                        style: const TextStyle(
+                          fontSize:   10,
+                          fontWeight: FontWeight.bold,
+                          color:      Colors.white,
+                          letterSpacing: 1.0,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      title,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize:   18,
+                        fontWeight: FontWeight.bold,
+                        color:      Colors.white,
+                        shadows: [
+                          Shadow(blurRadius: 4, color: Colors.black54),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }
@@ -803,6 +1099,7 @@ class _RecentlyWatchedStrip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
+    final l = AppLocalizations.of(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -810,7 +1107,7 @@ class _RecentlyWatchedStrip extends StatelessWidget {
           padding: const EdgeInsets.fromLTRB(
               Dimens.channelItemHPad, Spacing.md, 0, Spacing.sm),
           child: Text(
-            'SON İZLENENLER',
+            l.homeRecentlyWatchedHeader,
             style: TextStyle(
                 fontSize:    TextSize.caption,
                 fontWeight:  FontWeight.w700,
@@ -973,6 +1270,7 @@ class _SearchResults extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final cs = Theme.of(context).colorScheme;
+    final l = AppLocalizations.of(context);
 
     if (state.isSearching) {
       return const Center(child: CircularProgressIndicator());
@@ -984,7 +1282,7 @@ class _SearchResults extends ConsumerWidget {
           children: [
             Icon(Icons.search, size: 56, color: cs.onSurfaceVariant),
             const SizedBox(height: Spacing.md),
-            Text('Aramak için yazmaya başlayın',
+            Text(l.homeSearchEmpty,
                 style: TextStyle(color: cs.onSurfaceVariant)),
           ],
         ),
@@ -992,7 +1290,7 @@ class _SearchResults extends ConsumerWidget {
     }
     if (state.searchResults.isEmpty) {
       return Center(
-          child: Text('"${state.searchQuery}" için sonuç bulunamadı',
+          child: Text(l.homeSearchNoResults(state.searchQuery),
               style: TextStyle(color: cs.onSurfaceVariant)));
     }
 
@@ -1013,6 +1311,7 @@ class _BottomBar extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final cs = Theme.of(context).colorScheme;
+    final l = AppLocalizations.of(context);
 
     return Container(
       height:  Dimens.bottomBarHeight,
@@ -1020,7 +1319,7 @@ class _BottomBar extends ConsumerWidget {
       padding: const EdgeInsets.symmetric(horizontal: Spacing.md),
       child: Row(
         children: [
-          Text('${state.channels.length} içerik',
+          Text(l.homeContentCount(state.channels.length),
               style: TextStyle(
                   fontSize: TextSize.caption,
                   color:    cs.onSurfaceVariant)),
@@ -1028,7 +1327,7 @@ class _BottomBar extends ConsumerWidget {
           // Sort (TV-friendly dialog)
           TextButton.icon(
             icon: Icon(Icons.sort, size: 18, color: cs.onSurfaceVariant),
-            label: Text(_sortLabel(state.sortOrder),
+            label: Text(_sortLabel(l, state.sortOrder),
                 style: TextStyle(
                     fontSize: TextSize.label, color: cs.onSurfaceVariant)),
             onPressed: () => _showSortDialog(context, ref, state),
@@ -1040,15 +1339,16 @@ class _BottomBar extends ConsumerWidget {
 
   Future<void> _showSortDialog(
       BuildContext context, WidgetRef ref, HomeState state) async {
-    const options = [
-      (SortOrder.defaultOrder, 'Varsayılan'),
-      (SortOrder.nameAsc,      'A → Z'),
-      (SortOrder.nameDesc,     'Z → A'),
+    final l = AppLocalizations.of(context);
+    final options = <(SortOrder, String)>[
+      (SortOrder.defaultOrder, l.sortLabelDefault),
+      (SortOrder.nameAsc,      l.sortLabelAZ),
+      (SortOrder.nameDesc,     l.sortLabelZA),
     ];
     final result = await showDialog<SortOrder>(
       context: context,
       builder: (ctx) => SimpleDialog(
-        title: const Text('Sıralama'),
+        title: Text(l.sortDialogTitle),
         children: options.map((o) {
           final selected = state.sortOrder == o.$1;
           return _TvSortOption(
@@ -1064,10 +1364,10 @@ class _BottomBar extends ConsumerWidget {
     }
   }
 
-  String _sortLabel(SortOrder o) => switch (o) {
-    SortOrder.nameAsc  => 'A→Z',
-    SortOrder.nameDesc => 'Z→A',
-    _                  => 'Sıralama',
+  String _sortLabel(AppLocalizations l, SortOrder o) => switch (o) {
+    SortOrder.nameAsc  => l.sortLabelShortAZ,
+    SortOrder.nameDesc => l.sortLabelShortZA,
+    _                  => l.sortLabelShort,
   };
 }
 
@@ -1134,6 +1434,56 @@ class _TvSortOptionState extends State<_TvSortOption> {
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+// ── Background loading bar ────────────────────────────────────────────────────
+//
+// _TopBar altında, _TabBar üstünde sadece state.isBackgroundLoading=true iken
+// gözükür. İçerik altta korunur (full-screen spinner yerine non-blocking).
+
+class _BackgroundLoadingBar extends StatelessWidget {
+  final String? message;
+  const _BackgroundLoadingBar({this.message});
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return Container(
+      color: cs.surfaceContainerLow,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          LinearProgressIndicator(
+            minHeight: 2,
+            backgroundColor: cs.surfaceContainerHighest,
+          ),
+          if (message != null && message!.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.symmetric(
+                  horizontal: Spacing.lg, vertical: 6),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.sync, size: 14, color: cs.onSurfaceVariant),
+                  const SizedBox(width: Spacing.xs),
+                  Flexible(
+                    child: Text(
+                      message!,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: TextSize.caption,
+                        color: cs.onSurfaceVariant,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+        ],
       ),
     );
   }

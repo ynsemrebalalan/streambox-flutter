@@ -7,6 +7,7 @@ import 'package:media_kit_video/media_kit_video.dart';
 import '../../core/analytics/analytics.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_tokens.dart';
+import '../../l10n/generated/app_localizations.dart';
 import '../home/home_provider.dart';
 import 'widgets/subtitle_overlay.dart';
 
@@ -172,10 +173,11 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
     if (_reconnectAttempts > _maxReconnectAttempts) {
       _isReconnecting = false;
       if (mounted) {
+        final l = AppLocalizations.of(context);
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Yayin kaynaginda surekli kesinti. Kanali degistirmeyi deneyin.'),
-            duration: Duration(seconds: 4),
+          SnackBar(
+            content: Text(l.playerStreamRepeatedError),
+            duration: const Duration(seconds: 4),
           ),
         );
       }
@@ -251,6 +253,11 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
     _positionSub?.cancel();
     _errorSub?.cancel();
     _completedSub?.cancel();
+    // Explicit stop önce — bazı backend'lerde (özellikle iOS AVPlayer +
+    // Android MediaSession aktif olduğunda) sadece dispose() background'da
+    // playback'i sustaramaz; stop() native pipeline'ı tertip eder. Future
+    // fire-and-forget — dispose sync sözleşmesini bozmaz.
+    _player.stop().catchError((_) {});
     _player.dispose();
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
     super.dispose();
@@ -370,6 +377,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context);
     return Scaffold(
       backgroundColor: Colors.black,
       body: Focus(
@@ -412,8 +420,10 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
                     const SizedBox(height: 12),
                     Text(
                       _isReconnecting
-                          ? 'Yeniden baglaniliyor${_reconnectAttempts > 1 ? " ($_reconnectAttempts)" : ""}...'
-                          : 'Yukleniyor...',
+                          ? (_reconnectAttempts > 1
+                              ? l.playerReconnectingMulti(_reconnectAttempts)
+                              : l.playerReconnecting)
+                          : l.playerLoading,
                       style: const TextStyle(color: Colors.white70, fontSize: 13),
                     ),
                   ],
@@ -476,6 +486,7 @@ class _ControlsOverlay extends StatefulWidget {
 class _ControlsOverlayState extends State<_ControlsOverlay> {
   @override
   Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context);
     return FocusTraversalGroup(
       policy: OrderedTraversalPolicy(),
       child: Container(
@@ -507,7 +518,7 @@ class _ControlsOverlayState extends State<_ControlsOverlay> {
                     order: const NumericFocusOrder(1),
                     child: _TvIconButton(
                       icon: Icons.arrow_back,
-                      tooltip: 'Geri',
+                      tooltip: l.back,
                       onTap: widget.onClose,
                     ),
                   ),
@@ -527,7 +538,7 @@ class _ControlsOverlayState extends State<_ControlsOverlay> {
                     order: const NumericFocusOrder(2),
                     child: _TvIconButton(
                       icon: Icons.refresh,
-                      tooltip: 'Yeniden baglan',
+                      tooltip: l.playerReconnectTooltip,
                       onTap: widget.onReconnect,
                     ),
                   ),
@@ -672,8 +683,8 @@ class _ControlsOverlayState extends State<_ControlsOverlay> {
                                             color:    Colors.white70,
                                             fontSize: TextSize.caption)),
                                     // Ortada kumanda ipucu
-                                    const Text('◄ 10s ►',
-                                        style: TextStyle(
+                                    Text(l.playerSeekHint,
+                                        style: const TextStyle(
                                             color: Colors.white30,
                                             fontSize: 10)),
                                     Text(_fmt(duration),
@@ -687,12 +698,12 @@ class _ControlsOverlayState extends State<_ControlsOverlay> {
                           },
                         ),
                       if (isLive)
-                        const Row(
+                        Row(
                           children: [
-                            Icon(Icons.circle, color: AppColors.live, size: 8),
-                            SizedBox(width: 6),
-                            Text('CANLI',
-                                style: TextStyle(
+                            const Icon(Icons.circle, color: AppColors.live, size: 8),
+                            const SizedBox(width: 6),
+                            Text(l.playerLiveLabel,
+                                style: const TextStyle(
                                     color:      Colors.white,
                                     fontSize:   TextSize.caption,
                                     fontWeight: FontWeight.w700,
@@ -711,8 +722,8 @@ class _ControlsOverlayState extends State<_ControlsOverlay> {
                                   ? Icons.subtitles
                                   : Icons.subtitles_off_outlined,
                               tooltip: widget.subtitleEnabled
-                                  ? 'AI Altyazi Kapat'
-                                  : 'AI Altyazi Ac',
+                                  ? l.playerSubtitleDisable
+                                  : l.playerSubtitleEnable,
                               onTap: widget.onSubtitleToggle,
                             ),
                           ),
@@ -737,7 +748,7 @@ class _ControlsOverlayState extends State<_ControlsOverlay> {
                                   icon: vol > 0
                                       ? Icons.volume_up
                                       : Icons.volume_off,
-                                  tooltip: vol > 0 ? 'Sessize al' : 'Sesi ac',
+                                  tooltip: vol > 0 ? l.playerMuteTooltip : l.playerUnmuteTooltip,
                                   onTap: () => widget.player
                                       .setVolume(vol > 0 ? 0 : 100),
                                 );
@@ -896,6 +907,7 @@ class _AudioTrackButton extends StatefulWidget {
 class _AudioTrackButtonState extends State<_AudioTrackButton> {
   @override
   Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context);
     return StreamBuilder<Tracks>(
       stream: widget.player.stream.tracks,
       builder: (ctx, tracksSnap) {
@@ -909,7 +921,7 @@ class _AudioTrackButtonState extends State<_AudioTrackButton> {
             final current = trackSnap.data;
             return _TvIconButton(
               icon: Icons.audiotrack,
-              tooltip: 'Ses parcasi',
+              tooltip: l.playerAudioTrackTooltip,
               onTap: () => _showAudioDialog(
                   context, widget.player, audioTracks, current?.audio),
             );
@@ -925,16 +937,17 @@ class _AudioTrackButtonState extends State<_AudioTrackButton> {
     List<AudioTrack> tracks,
     AudioTrack? current,
   ) async {
+    final l = AppLocalizations.of(context);
     final selected = await showDialog<AudioTrack>(
       context: context,
       builder: (ctx) => SimpleDialog(
-        title: const Text('Ses parçası'),
+        title: Text(l.playerAudioTrackDialog),
         children: tracks.map((t) {
           final label = t.title?.isNotEmpty == true
               ? t.title!
               : t.language?.isNotEmpty == true
                   ? t.language!
-                  : 'Parça ${tracks.indexOf(t) + 1}';
+                  : l.playerAudioTrackFallback(tracks.indexOf(t) + 1);
           final isSelected = current == t;
           return _TvDialogOption(
             autofocus: isSelected,
@@ -1039,10 +1052,11 @@ class _SpeedButtonState extends State<_SpeedButton> {
   static const _speeds = [0.5, 0.75, 1.0, 1.25, 1.5, 2.0];
 
   Future<void> _showSpeedDialog() async {
+    final l = AppLocalizations.of(context);
     final selected = await showDialog<double>(
       context: context,
       builder: (ctx) => SimpleDialog(
-        title: const Text('Oynatma hızı'),
+        title: Text(l.playerSpeedDialog),
         children: _speeds.map((s) {
           final isSel = s == _speed;
           return _TvDialogOption(

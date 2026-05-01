@@ -12,6 +12,7 @@ import 'core/utils/device_tier.dart';
 import 'core/utils/secure_storage.dart';
 import 'data/repositories/settings_repository.dart';
 import 'data/services/demo_seed_service.dart';
+import 'l10n/generated/app_localizations.dart';
 
 void main() {
   // Catch all uncaught Flutter framework errors
@@ -127,6 +128,11 @@ class _IPTVAIPlayerAppState extends ConsumerState<IPTVAIPlayerApp> {
         debugPrint('Theme load failed: $e');
       }
       try {
+        await ref.read(localeProvider.notifier).loadFromDb();
+      } catch (e) {
+        debugPrint('Locale load failed: $e');
+      }
+      try {
         await ref.read(activePlaylistProvider.notifier).loadFromDb();
       } catch (e) {
         debugPrint('Playlist load failed: $e');
@@ -148,14 +154,20 @@ class _IPTVAIPlayerAppState extends ConsumerState<IPTVAIPlayerApp> {
   @override
   Widget build(BuildContext context) {
     final themeMode = ref.watch(themeModeProvider);
+    final locale    = ref.watch(localeProvider);
 
     return MaterialApp.router(
-      title:                      'IPTV AI Player',
+      onGenerateTitle:            (ctx) => AppLocalizations.of(ctx).appName,
       debugShowCheckedModeBanner: false,
       themeMode:                  themeMode,
       theme:                      AppTheme.light,
       darkTheme:                  AppTheme.dark,
       routerConfig:               appRouter,
+
+      // Localization — `locale: null` means follow system.
+      locale:                     locale,
+      localizationsDelegates:     AppLocalizations.localizationsDelegates,
+      supportedLocales:           AppLocalizations.supportedLocales,
     );
   }
 }

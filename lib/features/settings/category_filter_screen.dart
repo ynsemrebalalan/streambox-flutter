@@ -7,6 +7,7 @@ import '../../core/router/app_router.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_tokens.dart';
 import '../../data/repositories/settings_repository.dart';
+import '../../l10n/generated/app_localizations.dart';
 import '../home/home_provider.dart';
 
 // ── State ────────────────────────────────────────────────────────────────────
@@ -119,20 +120,21 @@ class _CatFilterNotifier extends AsyncNotifier<_CatFilterState> {
 class CategoryFilterScreen extends ConsumerWidget {
   const CategoryFilterScreen({super.key});
 
-  static const _sections = [
-    ('live', 'Canli', Icons.live_tv),
-    ('movie', 'Film', Icons.movie),
-    ('series', 'Dizi', Icons.video_library),
-  ];
-
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final async = ref.watch(_catFilterProvider);
     final cs = Theme.of(context).colorScheme;
+    final l = AppLocalizations.of(context);
+
+    final sections = <(String, String, IconData)>[
+      ('live',   l.categoryFilterSectionLive,   Icons.live_tv),
+      ('movie',  l.categoryFilterSectionMovie,  Icons.movie),
+      ('series', l.categoryFilterSectionSeries, Icons.video_library),
+    ];
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Kategori Filtresi'),
+        title: Text(l.categoryFilterTitle),
         leading: BackButton(onPressed: () async {
           // Gizli kategori listesi değişmiş olabilir: home'u re-load et
           await ref.read(homeProvider.notifier).refreshVisibility();
@@ -142,12 +144,12 @@ class CategoryFilterScreen extends ConsumerWidget {
           TextButton(
             onPressed: () =>
                 ref.read(_catFilterProvider.notifier).showAll(),
-            child: const Text('Tumunu Goster'),
+            child: Text(l.categoryFilterShowAll),
           ),
           TextButton(
             onPressed: () =>
                 ref.read(_catFilterProvider.notifier).hideAll(),
-            child: Text('Tumunu Gizle',
+            child: Text(l.categoryFilterHideAll,
                 style: TextStyle(color: cs.error)),
           ),
         ],
@@ -155,12 +157,12 @@ class CategoryFilterScreen extends ConsumerWidget {
       body: async.when(
         loading: () =>
             const Center(child: CircularProgressIndicator()),
-        error: (e, _) => Center(child: Text('Hata: $e')),
+        error: (e, _) => Center(child: Text(l.errorWithDetails('$e'))),
         data: (state) {
           if (state.categoriesByType.isEmpty ||
-              state.categoriesByType.values.every((l) => l.isEmpty)) {
+              state.categoriesByType.values.every((cats) => cats.isEmpty)) {
             return Center(
-              child: Text('Henuz kategori yok',
+              child: Text(l.categoryFilterEmpty,
                   style: TextStyle(color: cs.onSurfaceVariant)),
             );
           }
@@ -168,7 +170,7 @@ class CategoryFilterScreen extends ConsumerWidget {
           return ListView(
             padding: const EdgeInsets.all(Spacing.lg),
             children: [
-              for (final (type, label, icon) in _sections)
+              for (final (type, label, icon) in sections)
                 if ((state.categoriesByType[type] ?? []).isNotEmpty)
                   _SectionCard(
                     label: label,
@@ -213,6 +215,7 @@ class _SectionCardState extends State<_SectionCard> {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
+    final l = AppLocalizations.of(context);
     final activeCount =
         widget.categories.where((c) => !widget.hidden.contains(c)).length;
 
@@ -231,7 +234,7 @@ class _SectionCardState extends State<_SectionCard> {
                   const SizedBox(width: Spacing.sm),
                   Expanded(
                     child: Text(
-                      '${widget.label} ($activeCount / ${widget.categories.length} aktif)',
+                      l.categoryFilterCount(widget.label, activeCount, widget.categories.length),
                       style: const TextStyle(
                           fontSize: TextSize.bodyLg,
                           fontWeight: FontWeight.w600),

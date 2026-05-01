@@ -29,6 +29,12 @@ workflows:
         XCODE_WORKSPACE: "ios/Runner.xcworkspace"
         XCODE_SCHEME: "Runner"
         BUNDLE_ID: "com.ynsemrebalalan.iptvai"
+      # AI altyazı (Whisper/Groq) — Codemagic UI'da Secret variable olarak ekle:
+      # Application → Environment variables:
+      #   GROQ_PROXY_URL    = https://iptvaiplayer.com.tr/groq-proxy.php   (Secure: ✅)
+      #   GROQ_PROXY_SECRET = <gerçek secret>                              (Secure: ✅)
+      # Build IPA scripti bu değerleri --dart-define ile gömer; APK içinde
+      # static String constant'lara dönüşür, kullanıcıya görünmez.
 
     scripts:
       - name: Flutter version (log)
@@ -92,7 +98,9 @@ workflows:
         script: |
           flutter build ipa \
             --release \
-            --build-number=$BUILD_NUMBER
+            --build-number=$BUILD_NUMBER \
+            --dart-define=GROQ_PROXY_URL=$GROQ_PROXY_URL \
+            --dart-define=GROQ_PROXY_SECRET=$GROQ_PROXY_SECRET
 
       - name: Release build dogrulama
         script: |

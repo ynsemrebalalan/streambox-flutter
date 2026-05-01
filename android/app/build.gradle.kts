@@ -30,7 +30,10 @@ android {
 
     defaultConfig {
         applicationId = "com.ynsemrebalalan.iptvai"
-        minSdk = 21
+        // Firebase BOM 33.x cluster (Analytics, Auth, Firestore) requires minSdk 24.
+        // Android 5.x/6.x usage is <1% globally; bump from 21 was already forced
+        // by transitive Firebase deps.
+        minSdk = 24
         targetSdk = 36
         versionCode = flutter.versionCode
         versionName = flutter.versionName
@@ -68,6 +71,11 @@ flutter {
 }
 
 dependencies {
-    // Required for R8 when building AAB with minification
-    implementation("com.google.android.play:core:1.10.3")
+    // Play Core eski monolith paket (1.10.3) artık modern Firebase deps'in
+    // çektiği `core-common:2.0.3` ile sınıf çakıştırıyor (Duplicate class).
+    // Eski split sağlamak için ayrılmış modüllere geçiyoruz; R8/keep
+    // ihtiyaçları release'de proguard-rules.pro üstünden karşılanır.
+    implementation("com.google.android.play:core-common:2.0.3")
+    implementation("com.google.android.play:app-update:2.1.0")
+    implementation("com.google.android.play:review:2.0.2")
 }

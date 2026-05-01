@@ -1,0 +1,258 @@
+{
+  "@@locale": "ar",
+  "appName": "IPTV AI Player",
+  "ok": "موافق",
+  "cancel": "إلغاء",
+  "save": "حفظ",
+  "delete": "حذف",
+  "yes": "نعم",
+  "no": "لا",
+  "close": "إغلاق",
+  "back": "رجوع",
+  "retry": "إعادة المحاولة",
+  "loading": "جارٍ التحميل…",
+  "error": "خطأ",
+  "errorGeneric": "حدث خطأ ما. يرجى المحاولة مرة أخرى.",
+  "language": "اللغة",
+  "languageSystem": "لغة النظام",
+  "languageTurkish": "التركية",
+  "languageEnglish": "الإنجليزية",
+  "languageGerman": "الألمانية",
+  "languageArabic": "العربية",
+
+  "errorWithDetails": "خطأ: {details}",
+  "@errorWithDetails": {
+    "placeholders": { "details": { "type": "String" } }
+  },
+
+  "commonAdd": "إضافة",
+  "commonRefresh": "تحديث",
+  "commonDeleteConfirm": "حذف",
+
+  "errorTimeoutProvider": "لم يستجب المزود. يرجى المحاولة لاحقًا.",
+  "errorNoConnection": "لا يوجد اتصال بالإنترنت أو لا يمكن الوصول إلى المزود.",
+  "errorDatabaseTemporary": "قاعدة البيانات غير متاحة مؤقتًا. يرجى المحاولة مرة أخرى.",
+  "errorGenericRetry": "حدثت مشكلة. يرجى المحاولة مرة أخرى.",
+
+  "settingsTitle": "الإعدادات",
+  "settingsSaved": "تم حفظ الإعدادات",
+  "settingsAppearanceSection": "المظهر",
+  "settingsThemeDark": "الوضع الداكن",
+  "settingsThemeLight": "الوضع الفاتح",
+  "settingsThemeSystem": "وضع النظام",
+
+  "settingsEpgSection": "دليل البرامج (EPG)",
+  "settingsEpgUrlLabel": "رابط EPG (.xml أو .xml.gz)",
+  "settingsEpgRefreshNow": "تحديث EPG الآن",
+  "settingsSelectPlaylistFirst": "اختر قائمة تشغيل أولًا",
+  "settingsEpgUpdated": "تم تحديث EPG بنجاح",
+  "settingsEpgError": "خطأ في EPG: {details}",
+  "@settingsEpgError": {
+    "placeholders": { "details": { "type": "String" } }
+  },
+
+  "settingsSubtitleSection": "الترجمة",
+  "settingsSubtitleFontSize": "حجم الخط",
+  "subtitleSizeSmall": "صغير",
+  "subtitleSizeNormal": "عادي",
+  "subtitleSizeLarge": "كبير",
+  "subtitleSizeExtraLarge": "كبير جدًا",
+  "settingsSubtitleTextColor": "لون النص",
+  "subtitleColorWhite": "أبيض",
+  "subtitleColorYellow": "أصفر",
+  "subtitleColorGreen": "أخضر",
+  "subtitleColorCyan": "سماوي",
+  "settingsSubtitleBgColor": "الخلفية",
+  "subtitleBgSemi": "شبه شفاف",
+  "subtitleBgOpaque": "أسود",
+  "subtitleBgNone": "بلا",
+
+  "settingsAboutSection": "حول",
+  "settingsAppVersion": "الإصدار {version}",
+  "@settingsAppVersion": {
+    "placeholders": { "version": { "type": "String" } }
+  },
+  "settingsPlaylistManagement": "إدارة قوائم التشغيل",
+  "settingsCategoryFilterSubtitle": "إخفاء/إظهار الفئات",
+
+  "homeAppTitle": "IPTV AI Player",
+  "homeNoPlaylistMessage": "أضف قائمة تشغيل للبدء",
+  "homeAddPlaylist": "إضافة قائمة تشغيل",
+  "homeSearchHint": "ابحث عن قنوات، أفلام، مسلسلات…",
+  "homePlaylistsTooltip": "قوائم التشغيل",
+  "homeMore": "المزيد",
+  "homeCategoryManagement": "إدارة الفئات",
+  "homeTabHome": "الرئيسية",
+  "homeTabLive": "البث المباشر",
+  "homeTabMovie": "أفلام",
+  "homeTabSeries": "مسلسلات",
+  "homeTabFavorites": "المفضلة",
+  "homeFavoritesAll": "الكل",
+  "homeFavoritesLive": "البث المباشر",
+  "homeFavoritesMovie": "أفلام",
+  "homeFavoritesSeries": "مسلسلات",
+  "homeEmptyFavorites": "لا توجد مفضلات بعد",
+  "homeEmptyFavoritesType": "لا توجد مفضلات من هذا النوع",
+  "homeEmptyCategory": "لا يوجد محتوى في هذه الفئة",
+  "homeRowContinueWatching": "تابع المشاهدة",
+  "homeRowRecentlyWatched": "شُوهد مؤخرًا",
+  "homeRowNewMovies": "أفلام جديدة",
+  "homeRowNewSeries": "مسلسلات جديدة",
+  "homeRowNewChannels": "قنوات جديدة",
+  "homeEmptyContent": "لا يوجد محتوى بعد",
+  "homeEmptyContentHint": "تصفح علامات تبويب الأفلام / المسلسلات / المباشر للبدء",
+  "homeRecentlyWatchedHeader": "شُوهد مؤخرًا",
+  "homeSearchEmpty": "ابدأ الكتابة للبحث",
+  "homeSearchNoResults": "لا توجد نتائج لـ \"{query}\"",
+  "@homeSearchNoResults": {
+    "placeholders": { "query": { "type": "String" } }
+  },
+  "homeContentCount": "{count} عنصر",
+  "@homeContentCount": {
+    "placeholders": { "count": { "type": "int" } }
+  },
+
+  "sortDialogTitle": "الترتيب",
+  "sortLabelDefault": "افتراضي",
+  "sortLabelAZ": "أ → ي",
+  "sortLabelZA": "ي → أ",
+  "sortLabelShortAZ": "أ→ي",
+  "sortLabelShortZA": "ي→أ",
+  "sortLabelShort": "ترتيب",
+
+  "playlistsTitle": "قوائم التشغيل",
+  "playlistsEmpty": "لا توجد قوائم تشغيل بعد",
+  "playlistsRefreshTooltip": "تحديث",
+  "playlistsDeleteTooltip": "حذف",
+  "playlistsRetryAction": "إعادة",
+  "playlistsUpdated": "تم تحديث قائمة التشغيل.",
+  "playlistsDeleteTitle": "حذف قائمة التشغيل",
+  "playlistsDeleteConfirm": "حذف \"{name}\"؟",
+  "@playlistsDeleteConfirm": {
+    "placeholders": { "name": { "type": "String" } }
+  },
+  "playlistsAddTitle": "إضافة قائمة تشغيل",
+  "playlistsTypeM3u": "رابط M3U",
+  "playlistsTypeXtream": "Xtream",
+  "playlistsNameLabel": "اسم قائمة التشغيل",
+  "playlistsM3uUrlLabel": "رابط M3U",
+  "playlistsM3uUrlHint": "http://… أو https://…",
+  "playlistsPasteFromClipboard": "لصق من الحافظة",
+  "playlistsClipboardEmpty": "الحافظة فارغة",
+  "playlistsServerUrlLabel": "رابط الخادم",
+  "playlistsServerUrlHint": "http://server.com:8080",
+  "playlistsUsernameLabel": "اسم المستخدم",
+  "playlistsPasswordLabel": "كلمة المرور",
+  "playlistsContentTypes": "أنواع المحتوى",
+  "playlistsContentLive": "البث المباشر",
+  "playlistsContentMovie": "أفلام",
+  "playlistsContentSeries": "مسلسلات",
+  "playlistsValidationNameUrl": "الاسم والرابط مطلوبان",
+  "playlistsValidationXtreamCreds": "Xtream يتطلب اسم مستخدم وكلمة مرور",
+  "playlistsErrorTlsHandshake": "تعذر إنشاء اتصال آمن (خطأ TLS). جرّب http:// أو تحقق من عنوان المزود.",
+  "playlistsErrorTimeout": "لم يستجب المزود (انتهت المهلة). يرجى المحاولة لاحقًا.",
+  "playlistsErrorConnection": "لا يوجد اتصال بالإنترنت أو لا يمكن الوصول إلى المزود.",
+  "playlistsErrorUpdateGeneric": "تعذر تحديث قائمة التشغيل: {details}",
+  "@playlistsErrorUpdateGeneric": {
+    "placeholders": { "details": { "type": "String" } }
+  },
+  "playlistsErrorEmptyResponse": "أرجع المزود قائمة تشغيل فارغة. تم الاحتفاظ بالبيانات السابقة.",
+
+  "playerReconnectingMulti": "إعادة الاتصال ({attempt})…",
+  "@playerReconnectingMulti": {
+    "placeholders": { "attempt": { "type": "int" } }
+  },
+  "playerReconnecting": "إعادة الاتصال…",
+  "playerLoading": "جارٍ التحميل…",
+  "playerStreamRepeatedError": "البث ينقطع باستمرار. جرّب قناة أخرى.",
+  "playerReconnectTooltip": "إعادة الاتصال",
+  "playerSubtitleEnable": "تفعيل ترجمة الذكاء الاصطناعي",
+  "playerSubtitleDisable": "إيقاف ترجمة الذكاء الاصطناعي",
+  "playerMuteTooltip": "كتم الصوت",
+  "playerUnmuteTooltip": "إلغاء كتم الصوت",
+  "playerLiveLabel": "مباشر",
+  "playerSeekHint": "◄ ١٠ث ►",
+  "playerAudioTrackTooltip": "المسار الصوتي",
+  "playerAudioTrackDialog": "المسار الصوتي",
+  "playerAudioTrackFallback": "المسار {n}",
+  "@playerAudioTrackFallback": {
+    "placeholders": { "n": { "type": "int" } }
+  },
+  "playerSpeedDialog": "سرعة التشغيل",
+
+  "disclaimerWelcome": "مرحبًا",
+  "disclaimerBodyEn": "IPTV AI Player is a media player for your own M3U playlists and Xtream Codes sources.\n\nThis app does not provide, host, or distribute any content. You must supply your own legally obtained playlist URL.",
+  "disclaimerBodyTr": "IPTV AI Player هو مشغل وسائط لقوائم تشغيل M3U الخاصة بك ومصادر Xtream Codes. التطبيق لا يقدم أو يستضيف أو يوزع أي محتوى.",
+  "disclaimerLegalNoticeButton": "إشعار قانوني",
+  "disclaimerContinue": "متابعة",
+  "disclaimerFooter": "بالمتابعة فإنك توافق على الإشعار القانوني.",
+
+  "legalNoticeTitle": "إشعار قانوني",
+  "legalSection1Title": "١. طبيعة التطبيق",
+  "legalSection1En": "IPTV AI Player is a general-purpose media player (similar to VLC or MX Player). It does NOT provide, host, distribute, or redirect to any TV broadcasts, movies, series, sports events, or other content. The app is a tool that plays M3U / M3U8 playlist URLs or Xtream Codes credentials supplied by the user.",
+  "legalSection1Tr": "IPTV AI Player هو مشغل وسائط متعدد الأغراض (مماثل لـ VLC أو MX Player). لا يقدم أو يستضيف أو يوزع أي محتوى؛ يقوم فقط بتشغيل روابط M3U/M3U8 أو بيانات اعتماد Xtream التي يوفرها المستخدم.",
+  "legalSection2Title": "٢. مسؤولية المحتوى",
+  "legalSection2En": "The user is solely responsible for all content accessed via the app. The developer has no knowledge of and bears no responsibility for content accessed through the app.",
+  "legalSection2Tr": "يتحمل المستخدم وحده المسؤولية عن جميع المحتويات التي يتم الوصول إليها عبر التطبيق. ليس لدى المطور أي علم بها ولا يتحمل أي مسؤولية عنها.",
+  "legalSection3Title": "٣. الإطار القانوني التركي",
+  "legalSection3Item1": "المادتان ٧١-٧٢ من القانون رقم ٥٨٤٦ (FSEK، تركيا): انتهاك حقوق النشر يستوجب عقوبات مدنية وجنائية.",
+  "legalSection3Item2": "المادة ١٦٣/٢ من قانون العقوبات التركي: الاستخدام غير المصرح به للبث المشفر/غير المشفر.",
+  "legalSection3Item3": "المادة الإضافية ٤ من FSEK: انتهاك حقوق النشر على الإنترنت.",
+  "legalSection3Item4": "يمكن لـ RTÜK و BTK فرض حظر الوصول بموجب القانونين رقم ٦١١٢ و ٥٦٥١.",
+  "legalSection4Title": "٤. التزامات المستخدم",
+  "legalSection4Body": "باستخدامك لهذا التطبيق فإنك تقر بأنك ستصل فقط إلى المحتوى المشترك فيه قانونيًا، ولن تصل إلى محتوى محمي بحقوق النشر دون إذن، ولن تستخدم التطبيق لعمليات البث المقرصنة أو خدمات IPTV غير المرخصة.",
+  "legalSection5Title": "٥. حماية البيانات",
+  "legalSection5Body": "يخزن التطبيق روابط قوائم التشغيل وبيانات الاعتماد محليًا فقط على جهازك. لا تتم مشاركتها مع أي طرف ثالث.",
+  "legalSection6Title": "٦. تحديد المسؤولية",
+  "legalSection6Body": "يُقدَّم التطبيق \"كما هو\". لا يتحمل المطور المسؤولية عن أي أضرار تنشأ عن استخدام التطبيق.",
+  "legalSection7Title": "٧. التعاون القانوني",
+  "legalSection7Body": "يلتزم المطور بالطلبات القانونية من السلطات المختصة (RTÜK، BTK، النيابة العامة).",
+  "legalReminder": "تذكير: استخدام هذا التطبيق للوصول إلى محتوى غير مصرح به أو محمي بحقوق النشر أمر غير قانوني. يتحمل المستخدم المسؤولية القانونية الكاملة.",
+
+  "searchHint": "ابحث عن قنوات، أفلام، مسلسلات…",
+  "searchMinChars": "أدخل حرفين على الأقل",
+  "searchNoResults": "لا توجد نتائج لـ \"{query}\"",
+  "@searchNoResults": {
+    "placeholders": { "query": { "type": "String" } }
+  },
+
+  "categoryFilterTitle": "فلتر الفئات",
+  "categoryFilterShowAll": "إظهار الكل",
+  "categoryFilterHideAll": "إخفاء الكل",
+  "categoryFilterEmpty": "لا توجد فئات بعد",
+  "categoryFilterSectionLive": "البث المباشر",
+  "categoryFilterSectionMovie": "أفلام",
+  "categoryFilterSectionSeries": "مسلسلات",
+  "categoryFilterCount": "{label} ({active} / {total} نشط)",
+  "@categoryFilterCount": {
+    "placeholders": {
+      "label": { "type": "String" },
+      "active": { "type": "int" },
+      "total": { "type": "int" }
+    }
+  },
+
+  "seriesEmptyCategory": "لا توجد مسلسلات في هذه الفئة",
+  "seriesSeasonCount": "{count} موسم",
+  "@seriesSeasonCount": {
+    "placeholders": { "count": { "type": "int" } }
+  },
+  "seriesSpecialSeason": "حلقات خاصة",
+  "seriesSeasonNumber": "الموسم {n}",
+  "@seriesSeasonNumber": {
+    "placeholders": { "n": { "type": "int" } }
+  },
+
+  "homeRowPopular": "الأكثر شعبية",
+  "homeRowWatchedMovies": "الأفلام التي شاهدتها",
+  "homeRowWatchedSeries": "المسلسلات التي شاهدتها",
+  "badgeMovieUppercase": "فيلم",
+  "badgeSeriesUppercase": "مسلسل",
+
+  "settingsEpgPresetsTitle": "مصادر جاهزة",
+
+  "menuMyPlaylists": "قوائم التشغيل الخاصة بي",
+  "menuEpgSettings": "إعدادات EPG",
+  "menuNewlyAdded": "المضافة حديثًا",
+  "menuContinueWatching": "تابع المشاهدة"
+}

@@ -1,0 +1,285 @@
+{
+  "@@locale": "tr",
+  "appName": "İPTV Ai Player",
+  "@appName": {
+    "description": "Application display name shown in title bars."
+  },
+  "ok": "Tamam",
+  "cancel": "İptal",
+  "save": "Kaydet",
+  "delete": "Sil",
+  "yes": "Evet",
+  "no": "Hayır",
+  "close": "Kapat",
+  "back": "Geri",
+  "retry": "Yeniden Dene",
+  "loading": "Yükleniyor…",
+  "error": "Hata",
+  "errorGeneric": "Bir hata oluştu. Lütfen tekrar deneyin.",
+  "language": "Dil",
+  "languageSystem": "Sistem dili",
+  "languageTurkish": "Türkçe",
+  "languageEnglish": "İngilizce",
+  "languageGerman": "Almanca",
+  "languageArabic": "Arapça",
+
+  "errorWithDetails": "Hata: {details}",
+  "@errorWithDetails": {
+    "description": "Error display with extra details (typically exception toString)",
+    "placeholders": {
+      "details": { "type": "String" }
+    }
+  },
+
+  "commonAdd": "Ekle",
+  "commonRefresh": "Yenile",
+  "commonDeleteConfirm": "Sil",
+
+  "errorTimeoutProvider": "Sağlayıcı cevap veremedi. Birazdan tekrar deneyin.",
+  "errorNoConnection": "İnternet bağlantısı yok veya sağlayıcıya ulaşılamıyor.",
+  "errorDatabaseTemporary": "Veri tabanı geçici olarak yanıt vermedi. Lütfen tekrar deneyin.",
+  "errorGenericRetry": "Bir sorun oluştu. Lütfen tekrar deneyin.",
+
+  "settingsTitle": "Ayarlar",
+  "settingsSaved": "Ayarlar kaydedildi",
+  "settingsAppearanceSection": "Görünüm",
+  "settingsThemeDark": "Koyu Tema",
+  "settingsThemeLight": "Açık Tema",
+  "settingsThemeSystem": "Sistem Teması",
+
+  "settingsEpgSection": "EPG",
+  "settingsEpgUrlLabel": "EPG URL (.xml veya .xml.gz)",
+  "settingsEpgRefreshNow": "EPG'yi Şimdi Güncelle",
+  "settingsSelectPlaylistFirst": "Önce bir playlist seçin",
+  "settingsEpgUpdated": "EPG başarıyla güncellendi",
+  "settingsEpgError": "EPG hatası: {details}",
+  "@settingsEpgError": {
+    "placeholders": {
+      "details": { "type": "String" }
+    }
+  },
+
+  "settingsSubtitleSection": "Altyazı",
+  "settingsSubtitleFontSize": "Yazı Boyutu",
+  "subtitleSizeSmall": "Küçük",
+  "subtitleSizeNormal": "Normal",
+  "subtitleSizeLarge": "Büyük",
+  "subtitleSizeExtraLarge": "Çok Büyük",
+  "settingsSubtitleTextColor": "Yazı Rengi",
+  "subtitleColorWhite": "Beyaz",
+  "subtitleColorYellow": "Sarı",
+  "subtitleColorGreen": "Yeşil",
+  "subtitleColorCyan": "Camgöbeği",
+  "settingsSubtitleBgColor": "Arka Plan",
+  "subtitleBgSemi": "Yarı Saydam",
+  "subtitleBgOpaque": "Siyah",
+  "subtitleBgNone": "Yok",
+
+  "settingsAboutSection": "Hakkında",
+  "settingsAppVersion": "Sürüm {version}",
+  "@settingsAppVersion": {
+    "placeholders": {
+      "version": { "type": "String" }
+    }
+  },
+  "settingsPlaylistManagement": "Playlist Yönetimi",
+  "settingsCategoryFilterSubtitle": "Kategorileri gizle/göster",
+
+  "homeAppTitle": "IPTV AI Player",
+  "homeNoPlaylistMessage": "Başlamak için bir playlist ekleyin",
+  "homeAddPlaylist": "Playlist Ekle",
+  "homeSearchHint": "Kanal, film, dizi ara...",
+  "homePlaylistsTooltip": "Playlist'ler",
+  "homeMore": "Daha Fazla",
+  "homeCategoryManagement": "Kategori Yönetimi",
+  "homeTabHome": "Ana Sayfa",
+  "homeTabLive": "Canlı",
+  "homeTabMovie": "Film",
+  "homeTabSeries": "Dizi",
+  "homeTabFavorites": "Favoriler",
+  "homeFavoritesAll": "Tümü",
+  "homeFavoritesLive": "Canlı",
+  "homeFavoritesMovie": "Filmler",
+  "homeFavoritesSeries": "Diziler",
+  "homeEmptyFavorites": "Favori eklenmemiş",
+  "homeEmptyFavoritesType": "Bu tipte favori yok",
+  "homeEmptyCategory": "Bu kategoride içerik yok",
+  "homeRowContinueWatching": "Devam Et",
+  "homeRowRecentlyWatched": "Son İzlenenler",
+  "homeRowNewMovies": "Yeni Filmler",
+  "homeRowNewSeries": "Yeni Diziler",
+  "homeRowNewChannels": "Yeni Kanallar",
+  "homeEmptyContent": "Henüz içerik yok",
+  "homeEmptyContentHint": "Film / Dizi / Canlı sekmelerinden göz atmaya başlayın",
+  "homeRecentlyWatchedHeader": "SON İZLENENLER",
+  "homeSearchEmpty": "Aramak için yazmaya başlayın",
+  "homeSearchNoResults": "\"{query}\" için sonuç bulunamadı",
+  "@homeSearchNoResults": {
+    "placeholders": {
+      "query": { "type": "String" }
+    }
+  },
+  "homeContentCount": "{count} içerik",
+  "@homeContentCount": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "sortDialogTitle": "Sıralama",
+  "sortLabelDefault": "Varsayılan",
+  "sortLabelAZ": "A → Z",
+  "sortLabelZA": "Z → A",
+  "sortLabelShortAZ": "A→Z",
+  "sortLabelShortZA": "Z→A",
+  "sortLabelShort": "Sıralama",
+
+  "playlistsTitle": "Playlist'ler",
+  "playlistsEmpty": "Henüz playlist yok",
+  "playlistsRefreshTooltip": "Yenile",
+  "playlistsDeleteTooltip": "Sil",
+  "playlistsRetryAction": "TEKRAR",
+  "playlistsUpdated": "Playlist güncellendi.",
+  "playlistsDeleteTitle": "Playlist Sil",
+  "playlistsDeleteConfirm": "\"{name}\" silinsin mi?",
+  "@playlistsDeleteConfirm": {
+    "placeholders": {
+      "name": { "type": "String" }
+    }
+  },
+  "playlistsAddTitle": "Playlist Ekle",
+  "playlistsTypeM3u": "M3U URL",
+  "playlistsTypeXtream": "Xtream",
+  "playlistsNameLabel": "Playlist Adı",
+  "playlistsM3uUrlLabel": "M3U URL",
+  "playlistsM3uUrlHint": "http://... veya https://...",
+  "playlistsPasteFromClipboard": "Panodan Yapıştır",
+  "playlistsClipboardEmpty": "Pano boş",
+  "playlistsServerUrlLabel": "Sunucu URL",
+  "playlistsServerUrlHint": "http://server.com:8080",
+  "playlistsUsernameLabel": "Kullanıcı Adı",
+  "playlistsPasswordLabel": "Şifre",
+  "playlistsContentTypes": "İçerik Tipleri",
+  "playlistsContentLive": "Canlı",
+  "playlistsContentMovie": "Film",
+  "playlistsContentSeries": "Dizi",
+  "playlistsValidationNameUrl": "Ad ve URL zorunlu",
+  "playlistsValidationXtreamCreds": "Xtream için kullanıcı adı ve şifre gerekli",
+  "playlistsErrorTlsHandshake": "Güvenli bağlantı kurulamadı (TLS hatası). URL'yi http:// ile deneyin veya sağlayıcı adresini kontrol edin.",
+  "playlistsErrorTimeout": "Sağlayıcı cevap veremedi (timeout). Birazdan tekrar deneyin.",
+  "playlistsErrorConnection": "İnternet bağlantısı yok veya sağlayıcıya ulaşılamıyor.",
+  "playlistsErrorUpdateGeneric": "Playlist güncellenemedi: {details}",
+  "@playlistsErrorUpdateGeneric": {
+    "placeholders": {
+      "details": { "type": "String" }
+    }
+  },
+  "playlistsErrorEmptyResponse": "Sağlayıcı boş playlist döndü. Eski veri korundu.",
+
+  "playerReconnectingMulti": "Yeniden bağlanılıyor ({attempt})...",
+  "@playerReconnectingMulti": {
+    "placeholders": {
+      "attempt": { "type": "int" }
+    }
+  },
+  "playerReconnecting": "Yeniden bağlanılıyor...",
+  "playerLoading": "Yükleniyor...",
+  "playerStreamRepeatedError": "Yayın kaynağında sürekli kesinti. Kanalı değiştirmeyi deneyin.",
+  "playerReconnectTooltip": "Yeniden bağlan",
+  "playerSubtitleEnable": "AI Altyazı Aç",
+  "playerSubtitleDisable": "AI Altyazı Kapat",
+  "playerMuteTooltip": "Sessize al",
+  "playerUnmuteTooltip": "Sesi aç",
+  "playerLiveLabel": "CANLI",
+  "playerSeekHint": "◄ 10s ►",
+  "playerAudioTrackTooltip": "Ses parçası",
+  "playerAudioTrackDialog": "Ses parçası",
+  "playerAudioTrackFallback": "Parça {n}",
+  "@playerAudioTrackFallback": {
+    "placeholders": {
+      "n": { "type": "int" }
+    }
+  },
+  "playerSpeedDialog": "Oynatma hızı",
+
+  "disclaimerWelcome": "Welcome",
+  "disclaimerBodyEn": "IPTV AI Player is a media player for your own M3U playlists and Xtream Codes sources.\n\nThis app does not provide, host, or distribute any content. You must supply your own legally obtained playlist URL.",
+  "disclaimerBodyTr": "IPTV AI Player, kendi M3U veya Xtream Codes oynatma listeleriniz için bir medya oynatıcıdır. İçerik sunmaz, barındırmaz.",
+  "disclaimerLegalNoticeButton": "Legal Notice / Yasal Bildirim",
+  "disclaimerContinue": "Continue",
+  "disclaimerFooter": "By continuing you agree to the Legal Notice.",
+
+  "legalNoticeTitle": "Legal Notice / Yasal Bildirim",
+  "legalSection1Title": "1. Nature of the App / Uygulamanın Niteliği",
+  "legalSection1En": "IPTV AI Player is a general-purpose media player (similar to VLC or MX Player). It does NOT provide, host, distribute, or redirect to any TV broadcasts, movies, series, sports events, or other content. The app is a tool that plays M3U / M3U8 playlist URLs or Xtream Codes credentials supplied by the user.",
+  "legalSection1Tr": "IPTV AI Player, genel amaçlı bir medya oynatıcıdır (VLC, MX Player benzeri). Herhangi bir televizyon yayını, film, dizi veya içerik SAĞLAMAZ, BARINDIRMAZ, DAĞITMAZ. Uygulama, kullanıcının kendi temin ettiği oynatma listesi URL'lerini veya Xtream Codes kimlik bilgilerini oynatır.",
+  "legalSection2Title": "2. Content Responsibility / İçerik Sorumluluğu",
+  "legalSection2En": "The user is solely responsible for all content accessed via the app. The developer has no knowledge of and bears no responsibility for content accessed through the app.",
+  "legalSection2Tr": "Uygulama üzerinden erişilen TÜM içeriklerden yalnızca KULLANICI sorumludur. Geliştirici, kullanıcıların uygulamayı kullanarak eriştikleri içerikler hakkında hiçbir bilgiye sahip değildir.",
+  "legalSection3Title": "3. Türkiye Yasal Çerçevesi",
+  "legalSection3Item1": "5846 sayılı FSEK madde 71-72: Telif hakkı ihlali hukuki ve cezai yaptırım.",
+  "legalSection3Item2": "TCK madde 163/2: Şifreli/şifresiz yayınların izinsiz kullanımı.",
+  "legalSection3Item3": "FSEK Ek Madde 4: İnternet ortamında telif ihlali.",
+  "legalSection3Item4": "RTÜK ve BTK, 6112 ve 5651 sayılı Kanunlar kapsamında erişim engellemesi uygulayabilir.",
+  "legalSection4Title": "4. User Obligations / Kullanıcı Yükümlülükleri",
+  "legalSection4Body": "By using this app you acknowledge that you will only access content you are legally subscribed to, you will not access copyrighted content without permission, and you will not use the app for pirated broadcasts or unlicensed IPTV services.",
+  "legalSection5Title": "5. Data Protection / KVKK",
+  "legalSection5Body": "The app stores your playlist URLs and credentials only locally on your device. They are not shared with third parties. / Uygulama, girdiğiniz oynatma listesi URL ve kimlik bilgilerini yalnızca cihazınızda yerel olarak saklar.",
+  "legalSection6Title": "6. Limitation of Liability / Sorumluluk Sınırlaması",
+  "legalSection6Body": "The app is provided \"AS IS\". The developer is not liable for any damages arising from the use of the app. / Uygulama \"OLDUĞU GİBİ\" sunulmaktadır. Geliştirici, uygulamanın kullanımından kaynaklanan hiçbir zarardan sorumlu değildir.",
+  "legalSection7Title": "7. Legal Cooperation / Yasal İşbirliği",
+  "legalSection7Body": "The developer complies with lawful requests from competent authorities (RTÜK, BTK, prosecutors). / Geliştirici, yetkili makamların (RTÜK, BTK, Savcılıklar) yasal taleplerine uyum sağlar.",
+  "legalReminder": "Reminder: Using this app to access unauthorized / copyrighted content is illegal. The user bears full legal responsibility.",
+
+  "searchHint": "Kanal, film, dizi ara...",
+  "searchMinChars": "En az 2 karakter girin",
+  "searchNoResults": "\"{query}\" için sonuç bulunamadı",
+  "@searchNoResults": {
+    "placeholders": {
+      "query": { "type": "String" }
+    }
+  },
+
+  "categoryFilterTitle": "Kategori Filtresi",
+  "categoryFilterShowAll": "Tümünü Göster",
+  "categoryFilterHideAll": "Tümünü Gizle",
+  "categoryFilterEmpty": "Henüz kategori yok",
+  "categoryFilterSectionLive": "Canlı",
+  "categoryFilterSectionMovie": "Film",
+  "categoryFilterSectionSeries": "Dizi",
+  "categoryFilterCount": "{label} ({active} / {total} aktif)",
+  "@categoryFilterCount": {
+    "placeholders": {
+      "label": { "type": "String" },
+      "active": { "type": "int" },
+      "total": { "type": "int" }
+    }
+  },
+
+  "seriesEmptyCategory": "Bu kategoride dizi yok",
+  "seriesSeasonCount": "{count} sezon",
+  "@seriesSeasonCount": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "seriesSpecialSeason": "Özel",
+  "seriesSeasonNumber": "Sezon {n}",
+  "@seriesSeasonNumber": {
+    "placeholders": {
+      "n": { "type": "int" }
+    }
+  },
+
+  "homeRowPopular": "Popüler",
+  "homeRowWatchedMovies": "İzlediğin Filmler",
+  "homeRowWatchedSeries": "İzlediğin Diziler",
+  "badgeMovieUppercase": "FİLM",
+  "badgeSeriesUppercase": "DİZİ",
+
+  "settingsEpgPresetsTitle": "Hazır Kaynaklar",
+
+  "menuMyPlaylists": "Oynatma Listelerim",
+  "menuEpgSettings": "EPG Ayarları",
+  "menuNewlyAdded": "Yeni Eklenenler",
+  "menuContinueWatching": "Nerede Kaldım"
+}

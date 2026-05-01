@@ -26,48 +26,70 @@ class HomeNotifier extends AsyncNotifier<HomeState> {
     );
 
     if (id.isNotEmpty) {
-      // İlk açılışta Ana Sayfa sekmesi default: recentlyWatched + continueWatching
-      // + yeni eklenen film/dizi/canlı row'larını paralel yükle.
-      final repo = ref.read(channelRepoProvider);
-      final results = await Future.wait<dynamic>([
-        repo.getRecentlyWatched(id),
-        repo.getContinueWatching(id),
-        repo.getLatestByType(id, 'movie',  limit: 20),
-        repo.getLatestByType(id, 'series', limit: 20),
-        repo.getLatestByType(id, 'live',   limit: 20),
-      ]);
-      state = state.copyWith(
-        recentlyWatched:  results[0] as List<ChannelModel>,
-        continueWatching: results[1] as List<ChannelModel>,
-        newlyAddedMovies: results[2] as List<ChannelModel>,
-        newlyAddedSeries: results[3] as List<ChannelModel>,
-        latestLive:       results[4] as List<ChannelModel>,
-        isLoading:        false,
-        clearError:       true,
-      );
+      state = await _loadHomeRows(state);
+      state = state.copyWith(isLoading: false, clearError: true);
     }
 
     return state;
   }
 
-  /// Ana Sayfa row'larını yeniden yükler (örn. yeni içerik eklenince).
+  /// Ana Sayfa row'larını yeniden yükler — `build()` ve `selectTab('home')` /
+  /// `refreshVisibility()` tek noktadan beslenir, copy-paste edilmiş fetch
+  /// listesi yok. 7 paralel sorgu + Popüler dilim hesaplaması burada.
   Future<HomeState> _loadHomeRows(HomeState s) async {
     if (s.activePlaylistId.isEmpty) return s;
     final repo = ref.read(channelRepoProvider);
     final results = await Future.wait<dynamic>([
-      repo.getRecentlyWatched(s.activePlaylistId),
-      repo.getContinueWatching(s.activePlaylistId),
-      repo.getLatestByType(s.activePlaylistId, 'movie',  limit: 20),
-      repo.getLatestByType(s.activePlaylistId, 'series', limit: 20),
-      repo.getLatestByType(s.activePlaylistId, 'live',   limit: 20),
+      repo.getRecentlyWatched(s.activePlaylistId),                         // 0
+      repo.getContinueWatching(s.activePlaylistId),                         // 1
+      repo.getLatestByType(s.activePlaylistId, 'movie',  limit: 20),        // 2
+      repo.getLatestByType(s.activePlaylistId, 'series', limit: 20),        // 3
+      repo.getLatestByType(s.activePlaylistId, 'live',   limit: 20),        // 4
+      repo.getWatchedMovies(s.activePlaylistId),                            // 5
+      repo.getWatchedSeriesEpisodes(s.activePlaylistId),                    // 6
     ]);
+    final newMovies = results[2] as List<ChannelModel>;
+    final newSeries = results[3] as List<ChannelModel>;
+    final newLive   = results[4] as List<ChannelModel>;
+    final deduped = _dedupNew(newMovies, newSeries, newLive);
     return s.copyWith(
-      recentlyWatched:  results[0] as List<ChannelModel>,
-      continueWatching: results[1] as List<ChannelModel>,
-      newlyAddedMovies: results[2] as List<ChannelModel>,
-      newlyAddedSeries: results[3] as List<ChannelModel>,
-      latestLive:       results[4] as List<ChannelModel>,
+      recentlyWatched:        results[0] as List<ChannelModel>,
+      continueWatching:       results[1] as List<ChannelModel>,
+      newlyAddedMovies:       newMovies,
+      newlyAddedSeries:       newSeries,
+      latestLive:             newLive,
+      watchedMovies:          results[5] as List<ChannelModel>,
+      watchedSeriesEpisodes:  results[6] as List<ChannelModel>,
+      featuredVodItems:       deduped.take(10).toList(),
+      popularVodItems:        deduped.length > 10
+          ? deduped.skip(10).take(10).toList()
+          : const [],
     );
+  }
+
+  /// Yeni eklenen film + dizi + canlı karışımını dedup'lar.
+  ///   - Dizi:   `seriesName` doluysa `S:{name}`
+  ///   - Film:   `streamUrl` doluysa `U:{url}`
+  ///   - Canlı:  `streamUrl` doluysa `U:{url}`
+  ///   - Diğer:  `id` fallback
+  /// Featured banner ilk 10'u alır, Popüler satırı sonraki 10'u.
+  static List<ChannelModel> _dedupNew(
+    List<ChannelModel> newMovies,
+    List<ChannelModel> newSeries,
+    List<ChannelModel> newLive,
+  ) {
+    final combined = <ChannelModel>[...newMovies, ...newSeries, ...newLive];
+    final seen = <String>{};
+    final deduped = <ChannelModel>[];
+    for (final ch in combined) {
+      final key = ch.streamType == 'series' && ch.seriesName.isNotEmpty
+          ? 'S:${ch.seriesName}'
+          : ch.streamUrl.isNotEmpty
+              ? 'U:${ch.streamUrl}'
+              : 'I:${ch.id}';
+      if (seen.add(key)) deduped.add(ch);
+    }
+    return deduped;
   }
 
   // ── Public actions ──────────────────────────────────────────────────────────
@@ -75,21 +97,25 @@ class HomeNotifier extends AsyncNotifier<HomeState> {
   Future<void> selectTab(String tab) async {
     final current = state.value;
     if (current == null) return;
-    // isLoading:true → _ChannelList loader gösterir, "içerik yok" flash engellenir
+    // 'home' sekmesinde full-screen spinner agresif görünüyor — içerik kalır,
+    // üstte ince background bar yeterli (Android paritesi). Diğer tab'larda
+    // mevcut isLoading:true akışı: _ChannelList loader gösterir, flash engellenir.
+    final useBgBar = tab == 'home';
     var next = current.copyWith(
       activeTab:           tab,
       selectedCategory:    '',
       favoritesTypeFilter: '',
-      channels:            [],
-      isLoading:           true,
+      channels:            useBgBar ? current.channels : [],
+      isLoading:           !useBgBar,
+      isBackgroundLoading: useBgBar,
     );
     state = AsyncData(next);
     if (tab == 'home') {
-      // Ana Sayfa: kategori/channels yerine row'ları güncelle
       next = await _loadHomeRows(next);
       next = next.copyWith(
         categories: const [],
         isLoading: false,
+        isBackgroundLoading: false,
         clearError: true,
       );
     } else {
@@ -153,13 +179,13 @@ class HomeNotifier extends AsyncNotifier<HomeState> {
   Future<void> markWatched(String channelId, {int position = 0, int duration = 0}) async {
     await ref.read(channelRepoProvider)
         .updateWatched(channelId, position: position, duration: duration);
-    // Refresh recently watched list
     final current = state.value;
     if (current == null || current.activePlaylistId.isEmpty) return;
-    final recent = await ref
-        .read(channelRepoProvider)
-        .getRecentlyWatched(current.activePlaylistId);
-    state = AsyncData(current.copyWith(recentlyWatched: recent));
+    // Recently/Watched/Continue rows'larını paralel re-fetch et — kullanıcı bir
+    // bölümü bitirdikten sonra Home'a dönünce satırlar güncel olur.
+    state = AsyncData(current.copyWith(isBackgroundLoading: true));
+    final refreshed = await _loadHomeRows(current);
+    state = AsyncData(refreshed.copyWith(isBackgroundLoading: false));
   }
 
   Future<void> toggleFavorite(ChannelModel channel) async {

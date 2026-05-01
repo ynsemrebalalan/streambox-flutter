@@ -128,6 +128,35 @@ class ChannelRepository {
     return rows.map(ChannelModel.fromMap).toList();
   }
 
+  /// Sadece film tipi izleme geçmişi (Ana Sayfa "İzlediğin Filmler" satırı için).
+  /// Android paritesi: `getWatchedMovies()` Flow karşılığı.
+  Future<List<ChannelModel>> getWatchedMovies(String playlistId, {int limit = 20}) async {
+    final db   = await AppDatabase.instance;
+    final rows = await db.query(
+      _table,
+      where:     'playlistId = ? AND streamType = ? AND lastWatched > 0',
+      whereArgs: [playlistId, 'movie'],
+      orderBy:   'lastWatched DESC',
+      limit:     limit,
+    );
+    return rows.map(ChannelModel.fromMap).toList();
+  }
+
+  /// Sadece dizi bölümü tipi izleme geçmişi (Ana Sayfa "İzlediğin Diziler" satırı için).
+  /// `getContinueWatching` ile fark: burada isWatched filtresi yok — tamamlanmış ve
+  /// devam eden tüm dizi bölümlerinin son aktivite sırası.
+  Future<List<ChannelModel>> getWatchedSeriesEpisodes(String playlistId, {int limit = 20}) async {
+    final db   = await AppDatabase.instance;
+    final rows = await db.query(
+      _table,
+      where:     'playlistId = ? AND streamType = ? AND lastWatched > 0',
+      whereArgs: [playlistId, 'series'],
+      orderBy:   'lastWatched DESC',
+      limit:     limit,
+    );
+    return rows.map(ChannelModel.fromMap).toList();
+  }
+
   Future<List<ChannelModel>> search(String playlistId, String query) async {
     final db = await AppDatabase.instance;
     // FTS4 varsa hizli match, yoksa LIKE fallback.

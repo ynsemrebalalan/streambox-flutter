@@ -1,0 +1,258 @@
+{
+  "@@locale": "en",
+  "appName": "IPTV AI Player",
+  "ok": "OK",
+  "cancel": "Cancel",
+  "save": "Save",
+  "delete": "Delete",
+  "yes": "Yes",
+  "no": "No",
+  "close": "Close",
+  "back": "Back",
+  "retry": "Retry",
+  "loading": "Loading…",
+  "error": "Error",
+  "errorGeneric": "Something went wrong. Please try again.",
+  "language": "Language",
+  "languageSystem": "System language",
+  "languageTurkish": "Turkish",
+  "languageEnglish": "English",
+  "languageGerman": "German",
+  "languageArabic": "Arabic",
+
+  "errorWithDetails": "Error: {details}",
+  "@errorWithDetails": {
+    "placeholders": { "details": { "type": "String" } }
+  },
+
+  "commonAdd": "Add",
+  "commonRefresh": "Refresh",
+  "commonDeleteConfirm": "Delete",
+
+  "errorTimeoutProvider": "Provider didn't respond. Please try again later.",
+  "errorNoConnection": "No internet connection or provider unreachable.",
+  "errorDatabaseTemporary": "The database is temporarily unavailable. Please try again.",
+  "errorGenericRetry": "Something went wrong. Please try again.",
+
+  "settingsTitle": "Settings",
+  "settingsSaved": "Settings saved",
+  "settingsAppearanceSection": "Appearance",
+  "settingsThemeDark": "Dark Theme",
+  "settingsThemeLight": "Light Theme",
+  "settingsThemeSystem": "System Theme",
+
+  "settingsEpgSection": "EPG",
+  "settingsEpgUrlLabel": "EPG URL (.xml or .xml.gz)",
+  "settingsEpgRefreshNow": "Refresh EPG Now",
+  "settingsSelectPlaylistFirst": "Select a playlist first",
+  "settingsEpgUpdated": "EPG updated successfully",
+  "settingsEpgError": "EPG error: {details}",
+  "@settingsEpgError": {
+    "placeholders": { "details": { "type": "String" } }
+  },
+
+  "settingsSubtitleSection": "Subtitles",
+  "settingsSubtitleFontSize": "Font Size",
+  "subtitleSizeSmall": "Small",
+  "subtitleSizeNormal": "Normal",
+  "subtitleSizeLarge": "Large",
+  "subtitleSizeExtraLarge": "Extra Large",
+  "settingsSubtitleTextColor": "Text Color",
+  "subtitleColorWhite": "White",
+  "subtitleColorYellow": "Yellow",
+  "subtitleColorGreen": "Green",
+  "subtitleColorCyan": "Cyan",
+  "settingsSubtitleBgColor": "Background",
+  "subtitleBgSemi": "Semi-transparent",
+  "subtitleBgOpaque": "Black",
+  "subtitleBgNone": "None",
+
+  "settingsAboutSection": "About",
+  "settingsAppVersion": "Version {version}",
+  "@settingsAppVersion": {
+    "placeholders": { "version": { "type": "String" } }
+  },
+  "settingsPlaylistManagement": "Playlist Management",
+  "settingsCategoryFilterSubtitle": "Hide/show categories",
+
+  "homeAppTitle": "IPTV AI Player",
+  "homeNoPlaylistMessage": "Add a playlist to get started",
+  "homeAddPlaylist": "Add Playlist",
+  "homeSearchHint": "Search channels, movies, series…",
+  "homePlaylistsTooltip": "Playlists",
+  "homeMore": "More",
+  "homeCategoryManagement": "Category Management",
+  "homeTabHome": "Home",
+  "homeTabLive": "Live",
+  "homeTabMovie": "Movies",
+  "homeTabSeries": "Series",
+  "homeTabFavorites": "Favorites",
+  "homeFavoritesAll": "All",
+  "homeFavoritesLive": "Live",
+  "homeFavoritesMovie": "Movies",
+  "homeFavoritesSeries": "Series",
+  "homeEmptyFavorites": "No favorites yet",
+  "homeEmptyFavoritesType": "No favorites of this type",
+  "homeEmptyCategory": "No content in this category",
+  "homeRowContinueWatching": "Continue Watching",
+  "homeRowRecentlyWatched": "Recently Watched",
+  "homeRowNewMovies": "New Movies",
+  "homeRowNewSeries": "New Series",
+  "homeRowNewChannels": "New Channels",
+  "homeEmptyContent": "No content yet",
+  "homeEmptyContentHint": "Browse the Movies / Series / Live tabs to get started",
+  "homeRecentlyWatchedHeader": "RECENTLY WATCHED",
+  "homeSearchEmpty": "Start typing to search",
+  "homeSearchNoResults": "No results for \"{query}\"",
+  "@homeSearchNoResults": {
+    "placeholders": { "query": { "type": "String" } }
+  },
+  "homeContentCount": "{count} item(s)",
+  "@homeContentCount": {
+    "placeholders": { "count": { "type": "int" } }
+  },
+
+  "sortDialogTitle": "Sort",
+  "sortLabelDefault": "Default",
+  "sortLabelAZ": "A → Z",
+  "sortLabelZA": "Z → A",
+  "sortLabelShortAZ": "A→Z",
+  "sortLabelShortZA": "Z→A",
+  "sortLabelShort": "Sort",
+
+  "playlistsTitle": "Playlists",
+  "playlistsEmpty": "No playlists yet",
+  "playlistsRefreshTooltip": "Refresh",
+  "playlistsDeleteTooltip": "Delete",
+  "playlistsRetryAction": "RETRY",
+  "playlistsUpdated": "Playlist updated.",
+  "playlistsDeleteTitle": "Delete Playlist",
+  "playlistsDeleteConfirm": "Delete \"{name}\"?",
+  "@playlistsDeleteConfirm": {
+    "placeholders": { "name": { "type": "String" } }
+  },
+  "playlistsAddTitle": "Add Playlist",
+  "playlistsTypeM3u": "M3U URL",
+  "playlistsTypeXtream": "Xtream",
+  "playlistsNameLabel": "Playlist Name",
+  "playlistsM3uUrlLabel": "M3U URL",
+  "playlistsM3uUrlHint": "http://… or https://…",
+  "playlistsPasteFromClipboard": "Paste from Clipboard",
+  "playlistsClipboardEmpty": "Clipboard is empty",
+  "playlistsServerUrlLabel": "Server URL",
+  "playlistsServerUrlHint": "http://server.com:8080",
+  "playlistsUsernameLabel": "Username",
+  "playlistsPasswordLabel": "Password",
+  "playlistsContentTypes": "Content Types",
+  "playlistsContentLive": "Live",
+  "playlistsContentMovie": "Movies",
+  "playlistsContentSeries": "Series",
+  "playlistsValidationNameUrl": "Name and URL are required",
+  "playlistsValidationXtreamCreds": "Xtream requires username and password",
+  "playlistsErrorTlsHandshake": "Could not establish a secure connection (TLS error). Try http:// or verify the provider address.",
+  "playlistsErrorTimeout": "Provider didn't respond (timeout). Please try again later.",
+  "playlistsErrorConnection": "No internet connection or provider unreachable.",
+  "playlistsErrorUpdateGeneric": "Could not update playlist: {details}",
+  "@playlistsErrorUpdateGeneric": {
+    "placeholders": { "details": { "type": "String" } }
+  },
+  "playlistsErrorEmptyResponse": "Provider returned an empty playlist. Previous data kept.",
+
+  "playerReconnectingMulti": "Reconnecting ({attempt})…",
+  "@playerReconnectingMulti": {
+    "placeholders": { "attempt": { "type": "int" } }
+  },
+  "playerReconnecting": "Reconnecting…",
+  "playerLoading": "Loading…",
+  "playerStreamRepeatedError": "The stream keeps disconnecting. Try a different channel.",
+  "playerReconnectTooltip": "Reconnect",
+  "playerSubtitleEnable": "Enable AI Subtitles",
+  "playerSubtitleDisable": "Disable AI Subtitles",
+  "playerMuteTooltip": "Mute",
+  "playerUnmuteTooltip": "Unmute",
+  "playerLiveLabel": "LIVE",
+  "playerSeekHint": "◄ 10s ►",
+  "playerAudioTrackTooltip": "Audio track",
+  "playerAudioTrackDialog": "Audio track",
+  "playerAudioTrackFallback": "Track {n}",
+  "@playerAudioTrackFallback": {
+    "placeholders": { "n": { "type": "int" } }
+  },
+  "playerSpeedDialog": "Playback speed",
+
+  "disclaimerWelcome": "Welcome",
+  "disclaimerBodyEn": "IPTV AI Player is a media player for your own M3U playlists and Xtream Codes sources.\n\nThis app does not provide, host, or distribute any content. You must supply your own legally obtained playlist URL.",
+  "disclaimerBodyTr": "IPTV AI Player is a media player for your own M3U playlists and Xtream Codes sources. The app does not host or distribute any content.",
+  "disclaimerLegalNoticeButton": "Legal Notice",
+  "disclaimerContinue": "Continue",
+  "disclaimerFooter": "By continuing you agree to the Legal Notice.",
+
+  "legalNoticeTitle": "Legal Notice",
+  "legalSection1Title": "1. Nature of the App",
+  "legalSection1En": "IPTV AI Player is a general-purpose media player (similar to VLC or MX Player). It does NOT provide, host, distribute, or redirect to any TV broadcasts, movies, series, sports events, or other content. The app is a tool that plays M3U / M3U8 playlist URLs or Xtream Codes credentials supplied by the user.",
+  "legalSection1Tr": "IPTV AI Player is a general-purpose media player. It does not provide, host, or distribute any content; it only plays the playlist URLs or Xtream credentials supplied by the user.",
+  "legalSection2Title": "2. Content Responsibility",
+  "legalSection2En": "The user is solely responsible for all content accessed via the app. The developer has no knowledge of and bears no responsibility for content accessed through the app.",
+  "legalSection2Tr": "The user is solely responsible for any content accessed via the app. The developer has no visibility into, and assumes no responsibility for, that content.",
+  "legalSection3Title": "3. Turkish Legal Framework",
+  "legalSection3Item1": "Articles 71-72 of Law No. 5846 (FSEK, Turkey): copyright infringement carries civil and criminal penalties.",
+  "legalSection3Item2": "Article 163/2 of the Turkish Penal Code: unauthorized use of encrypted/unencrypted broadcasts.",
+  "legalSection3Item3": "Additional Article 4 of the FSEK: copyright infringement on the internet.",
+  "legalSection3Item4": "RTÜK and BTK may impose access bans under Laws No. 6112 and 5651.",
+  "legalSection4Title": "4. User Obligations",
+  "legalSection4Body": "By using this app you acknowledge that you will only access content you are legally subscribed to, you will not access copyrighted content without permission, and you will not use the app for pirated broadcasts or unlicensed IPTV services.",
+  "legalSection5Title": "5. Data Protection",
+  "legalSection5Body": "The app stores your playlist URLs and credentials only locally on your device. They are not shared with any third party.",
+  "legalSection6Title": "6. Limitation of Liability",
+  "legalSection6Body": "The app is provided \"AS IS\". The developer is not liable for any damages arising from the use of the app.",
+  "legalSection7Title": "7. Legal Cooperation",
+  "legalSection7Body": "The developer complies with lawful requests from competent authorities (RTÜK, BTK, prosecutors).",
+  "legalReminder": "Reminder: using this app to access unauthorized or copyrighted content is illegal. The user bears full legal responsibility.",
+
+  "searchHint": "Search channels, movies, series…",
+  "searchMinChars": "Enter at least 2 characters",
+  "searchNoResults": "No results for \"{query}\"",
+  "@searchNoResults": {
+    "placeholders": { "query": { "type": "String" } }
+  },
+
+  "categoryFilterTitle": "Category Filter",
+  "categoryFilterShowAll": "Show All",
+  "categoryFilterHideAll": "Hide All",
+  "categoryFilterEmpty": "No categories yet",
+  "categoryFilterSectionLive": "Live",
+  "categoryFilterSectionMovie": "Movies",
+  "categoryFilterSectionSeries": "Series",
+  "categoryFilterCount": "{label} ({active} / {total} active)",
+  "@categoryFilterCount": {
+    "placeholders": {
+      "label": { "type": "String" },
+      "active": { "type": "int" },
+      "total": { "type": "int" }
+    }
+  },
+
+  "seriesEmptyCategory": "No series in this category",
+  "seriesSeasonCount": "{count} season(s)",
+  "@seriesSeasonCount": {
+    "placeholders": { "count": { "type": "int" } }
+  },
+  "seriesSpecialSeason": "Specials",
+  "seriesSeasonNumber": "Season {n}",
+  "@seriesSeasonNumber": {
+    "placeholders": { "n": { "type": "int" } }
+  },
+
+  "homeRowPopular": "Popular",
+  "homeRowWatchedMovies": "Movies You've Watched",
+  "homeRowWatchedSeries": "Series You've Watched",
+  "badgeMovieUppercase": "MOVIE",
+  "badgeSeriesUppercase": "SERIES",
+
+  "settingsEpgPresetsTitle": "Presets",
+
+  "menuMyPlaylists": "My Playlists",
+  "menuEpgSettings": "EPG Settings",
+  "menuNewlyAdded": "Newly Added",
+  "menuContinueWatching": "Continue Watching"
+}

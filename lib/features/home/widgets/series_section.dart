@@ -6,6 +6,7 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_tokens.dart';
 import '../../../core/utils/tv_focus.dart';
 import '../../../data/models/channel_model.dart';
+import '../../../l10n/generated/app_localizations.dart';
 
 /// Groups series episodes by seriesName → season → episodes.
 class SeriesSection extends StatelessWidget {
@@ -17,9 +18,10 @@ class SeriesSection extends StatelessWidget {
   Widget build(BuildContext context) {
     final groups = _group(channels);
     if (groups.isEmpty) {
+      final l = AppLocalizations.of(context);
       return Center(
         child: Text(
-          'Bu kategoride dizi yok',
+          l.seriesEmptyCategory,
           style: TextStyle(
               color: Theme.of(context).colorScheme.onSurfaceVariant),
         ),
@@ -91,6 +93,7 @@ class _SeriesCardState extends State<_SeriesCard> {
   @override
   Widget build(BuildContext context) {
     final cs      = Theme.of(context).colorScheme;
+    final l       = AppLocalizations.of(context);
     final seasons = widget.seasons.keys.toList()..sort();
     final episodes= _selectedSeason != null
         ? (widget.seasons[_selectedSeason] ?? [])
@@ -146,7 +149,7 @@ class _SeriesCardState extends State<_SeriesCard> {
                       ),
                     ),
                     Text(
-                      '${seasons.length} sezon',
+                      l.seriesSeasonCount(seasons.length),
                       style: TextStyle(
                           fontSize: TextSize.caption,
                           color:    cs.onSurfaceVariant),
@@ -195,7 +198,7 @@ class _SeriesCardState extends State<_SeriesCard> {
                             borderRadius: BorderRadius.circular(12),
                           ),
                           child: Text(
-                            s == 0 ? 'Özel' : 'Sezon $s',
+                            s == 0 ? l.seriesSpecialSeason : l.seriesSeasonNumber(s),
                             style: TextStyle(
                                 fontSize: TextSize.label,
                                 fontWeight: active

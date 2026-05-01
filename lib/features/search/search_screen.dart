@@ -6,6 +6,7 @@ import '../../core/router/app_router.dart';
 import '../../core/theme/app_tokens.dart';
 import '../../core/utils/responsive.dart';
 import '../../data/models/channel_model.dart';
+import '../../l10n/generated/app_localizations.dart';
 import '../home/widgets/channel_list_item.dart';
 
 // Provider keyed by (playlistId, query)
@@ -30,6 +31,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
+    final l = AppLocalizations.of(context);
 
     return Scaffold(
       appBar: AppBar(
@@ -38,7 +40,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
           controller: _ctrl,
           autofocus:  true,
           decoration: InputDecoration(
-            hintText:  'Kanal, film, dizi ara...',
+            hintText:  l.searchHint,
             border:    InputBorder.none,
             hintStyle: TextStyle(color: cs.onSurfaceVariant),
           ),
@@ -138,13 +140,14 @@ class _EmptyState extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
+    final l = AppLocalizations.of(context);
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Icon(Icons.search, size: 64, color: cs.onSurfaceVariant),
           const SizedBox(height: Spacing.lg),
-          Text('En az 2 karakter girin',
+          Text(l.searchMinChars,
               style: TextStyle(color: cs.onSurfaceVariant)),
         ],
       ),
@@ -164,14 +167,15 @@ class _Results extends ConsumerWidget {
     final async = ref.watch(
         _searchProvider((playlistId: playlistId, query: query)));
     final cs = Theme.of(context).colorScheme;
+    final l = AppLocalizations.of(context);
 
     return async.when(
       loading: () => const Center(child: CircularProgressIndicator()),
-      error:   (e, _) => Center(child: Text('Hata: $e')),
+      error:   (e, _) => Center(child: Text(l.errorWithDetails('$e'))),
       data: (list) {
         if (list.isEmpty) {
           return Center(
-            child: Text('"$query" için sonuç bulunamadı',
+            child: Text(l.searchNoResults(query),
                 style: TextStyle(color: cs.onSurfaceVariant)),
           );
         }

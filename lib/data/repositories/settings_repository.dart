@@ -52,4 +52,5 @@ abstract final class SettingsKeys {
   static const String subtitleFontSize   = 'subtitle_font_size';
   static const String refreshIntervalH   = 'refresh_interval_hours'; // 0=off, -1=on_open
   static const String secureStorageMigrated = 'secure_storage_migrated';
+  static const String language = 'language'; // 'system' | 'tr' | 'en' | 'de' | 'ar'
 }

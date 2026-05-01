@@ -4,6 +4,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:sqflite/sqflite.dart';
 import '../../core/database/app_database.dart';
+import '../../core/utils/build_config.dart';
 import '../../core/utils/secure_storage.dart';
 import '../models/subtitle_cue.dart';
 import 'vtt_parser.dart';
@@ -44,8 +45,17 @@ class WhisperService {
     List<SubtitleCue>? cues;
     String provider = 'groq';
 
-    final proxyUrl = await SecureStorage.getProxyUrl();
-    final proxySecret = await SecureStorage.getProxySecret();
+    // Önce kullanıcı override (SecureStorage), yoksa build-time constant.
+    // Üretim build'lerinde --dart-define ile gömülü değerler gelir, kullanıcı
+    // hiçbir API field'i girmek zorunda değildir.
+    final overrideUrl    = await SecureStorage.getProxyUrl();
+    final overrideSecret = await SecureStorage.getProxySecret();
+    final proxyUrl    = overrideUrl.isNotEmpty
+        ? overrideUrl
+        : BuildConfig.groqProxyUrl;
+    final proxySecret = overrideSecret.isNotEmpty
+        ? overrideSecret
+        : BuildConfig.groqProxySecret;
 
     if (proxyUrl.isNotEmpty && proxySecret.isNotEmpty) {
       cues = await _transcribeViaProxy(

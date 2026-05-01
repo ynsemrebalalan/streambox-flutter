@@ -74,3 +74,36 @@ class ActivePlaylistNotifier extends Notifier<String> {
 final activePlaylistProvider = NotifierProvider<ActivePlaylistNotifier, String>(
   ActivePlaylistNotifier.new,
 );
+
+// ── Locale ────────────────────────────────────────────────────────────────────
+//
+// `null` state means "follow system locale". Setting a non-null value persists
+// the user's manual override. `loadFromDb()` is called once at startup.
+
+class LocaleNotifier extends Notifier<Locale?> {
+  @override
+  Locale? build() => null;
+
+  void setLocale(Locale? locale) {
+    state = locale;
+    ref.read(settingsRepoProvider).set(
+      SettingsKeys.language,
+      locale?.languageCode ?? 'system',
+    );
+  }
+
+  Future<void> loadFromDb() async {
+    final raw = await ref.read(settingsRepoProvider).get(SettingsKeys.language);
+    state = switch (raw) {
+      'tr' => const Locale('tr'),
+      'en' => const Locale('en'),
+      'de' => const Locale('de'),
+      'ar' => const Locale('ar'),
+      _    => null, // 'system' or unset → follow device
+    };
+  }
+}
+
+final localeProvider = NotifierProvider<LocaleNotifier, Locale?>(
+  LocaleNotifier.new,
+);

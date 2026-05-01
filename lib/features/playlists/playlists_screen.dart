@@ -13,6 +13,7 @@ import '../../core/utils/http_client.dart';
 import '../../data/models/playlist_model.dart';
 import '../../data/services/m3u_parser.dart';
 import '../../data/services/xtream_service.dart';
+import '../../l10n/generated/app_localizations.dart';
 import '../home/home_provider.dart';
 
 // ── provider ─────────────────────────────────────────────────────────────────
@@ -56,7 +57,7 @@ class PlaylistsNotifier extends AsyncNotifier<List<PlaylistModel>> {
   }
 
   /// Returns: null on success, user-facing error message on failure.
-  Future<String?> sync(PlaylistModel p) async {
+  Future<String?> sync(PlaylistModel p, AppLocalizations l) async {
     if (_syncing.contains(p.id)) return null;
     _syncing.add(p.id);
     _lastError.remove(p.id);
@@ -66,7 +67,7 @@ class PlaylistsNotifier extends AsyncNotifier<List<PlaylistModel>> {
     try {
       await _doSync(p);
     } catch (e) {
-      errorMessage = _errorToUserMessage(e, p);
+      errorMessage = _errorToUserMessage(e, p, l);
       _lastError[p.id] = errorMessage;
     } finally {
       _syncing.remove(p.id);
@@ -75,7 +76,10 @@ class PlaylistsNotifier extends AsyncNotifier<List<PlaylistModel>> {
     return errorMessage;
   }
 
-  String _errorToUserMessage(Object e, PlaylistModel p) {
+  String _errorToUserMessage(Object e, PlaylistModel p, AppLocalizations l) {
+    if (e is _EmptyPlaylistException) {
+      return l.playlistsErrorEmptyResponse;
+    }
     if (e is HttpStatusException) {
       return e.userMessage;
     }
@@ -84,18 +88,17 @@ class PlaylistsNotifier extends AsyncNotifier<List<PlaylistModel>> {
         msg.contains('tls') ||
         msg.contains('certificate') ||
         msg.contains('ssl')) {
-      return 'Guvenli baglanti kurulamadi (TLS hatasi). '
-          'URL\'yi http:// ile deneyin veya saglayici adresini kontrol edin.';
+      return l.playlistsErrorTlsHandshake;
     }
     if (msg.contains('timeout') || msg.contains('timedout')) {
-      return 'Saglayici cevap veremedi (timeout). Birazdan tekrar deneyin.';
+      return l.playlistsErrorTimeout;
     }
     if (msg.contains('socket') ||
         msg.contains('failed host lookup') ||
         msg.contains('connection')) {
-      return 'Internet baglantisi yok veya saglayiciya ulasilamiyor.';
+      return l.playlistsErrorConnection;
     }
-    return 'Playlist guncellenemedi: $e';
+    return l.playlistsErrorUpdateGeneric('$e');
   }
 
   Future<void> delete(String id) async {
@@ -118,8 +121,9 @@ class PlaylistsNotifier extends AsyncNotifier<List<PlaylistModel>> {
         : await M3uParser.fetchAndParse(p);
 
     // Bos cevap geldiyse (provider kismi hata) eski veriyi koruma.
+    // Bu mesaj _errorToUserMessage'a dusup playlistsErrorUpdateGeneric'e cevrilir.
     if (channels.isEmpty) {
-      throw Exception('Saglayici bos playlist dondu. Eski veri korundu.');
+      throw const _EmptyPlaylistException();
     }
 
     // Fetch basarili → atomik olarak eski kanallari sil + yenilerini yaz.
@@ -127,6 +131,10 @@ class PlaylistsNotifier extends AsyncNotifier<List<PlaylistModel>> {
     final repo = ref.read(channelRepoProvider);
     await repo.replaceAllForPlaylist(p.id, channels);
   }
+}
+
+class _EmptyPlaylistException implements Exception {
+  const _EmptyPlaylistException();
 }
 
 // ── screen ────────────────────────────────────────────────────────────────────
@@ -139,10 +147,11 @@ class PlaylistsScreen extends ConsumerWidget {
     final playlists = ref.watch(playlistsProvider);
     final active    = ref.watch(activePlaylistProvider);
     final cs        = Theme.of(context).colorScheme;
+    final l         = AppLocalizations.of(context);
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Playlist\'ler'),
+        title: Text(l.playlistsTitle),
         leading: BackButton(onPressed: () => context.go(AppRoutes.home)),
         actions: [
           IconButton(
@@ -154,7 +163,7 @@ class PlaylistsScreen extends ConsumerWidget {
       ),
       body: playlists.when(
         loading: () => const Center(child: CircularProgressIndicator()),
-        error:   (e, _) => Center(child: Text('Hata: $e')),
+        error:   (e, _) => Center(child: Text(l.errorWithDetails('$e'))),
         data: (list) {
           if (list.isEmpty) {
             return Center(
@@ -163,12 +172,12 @@ class PlaylistsScreen extends ConsumerWidget {
                 children: [
                   Icon(Icons.playlist_add, size: 64, color: cs.onSurfaceVariant),
                   const SizedBox(height: Spacing.lg),
-                  Text('Henüz playlist yok',
+                  Text(l.playlistsEmpty,
                       style: TextStyle(color: cs.onSurfaceVariant)),
                   const SizedBox(height: Spacing.md),
                   FilledButton.icon(
                     icon: const Icon(Icons.add),
-                    label: const Text('Playlist Ekle'),
+                    label: Text(l.homeAddPlaylist),
                     onPressed: () => _showAddDialog(context, ref),
                   ),
                 ],
@@ -225,11 +234,11 @@ class PlaylistsScreen extends ConsumerWidget {
                             : IconButton(
                                 iconSize: 28,
                                 icon: const Icon(Icons.sync),
-                                tooltip: 'Yenile',
+                                tooltip: l.playlistsRefreshTooltip,
                                 onPressed: () async {
                                   final err = await ref
                                       .read(playlistsProvider.notifier)
-                                      .sync(p);
+                                      .sync(p, l);
                                   if (!context.mounted) return;
                                   if (err != null) {
                                     ScaffoldMessenger.of(context).showSnackBar(
@@ -238,19 +247,19 @@ class PlaylistsScreen extends ConsumerWidget {
                                         backgroundColor: cs.error,
                                         duration: const Duration(seconds: 4),
                                         action: SnackBarAction(
-                                          label: 'TEKRAR',
+                                          label: l.playlistsRetryAction,
                                           textColor: Colors.white,
                                           onPressed: () => ref
                                               .read(playlistsProvider.notifier)
-                                              .sync(p),
+                                              .sync(p, l),
                                         ),
                                       ),
                                     );
                                   } else {
                                     ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(
-                                        content: Text('Playlist guncellendi.'),
-                                        duration: Duration(seconds: 2),
+                                      SnackBar(
+                                        content: Text(l.playlistsUpdated),
+                                        duration: const Duration(seconds: 2),
                                       ),
                                     );
                                   }
@@ -260,7 +269,7 @@ class PlaylistsScreen extends ConsumerWidget {
                       IconButton(
                         iconSize: 28,
                         icon: Icon(Icons.delete_outline, color: cs.error),
-                        tooltip: 'Sil',
+                        tooltip: l.delete,
                         onPressed: () => _confirmDelete(context, ref, p),
                       ),
                     ],
@@ -294,16 +303,17 @@ class PlaylistsScreen extends ConsumerWidget {
   }
 
   void _confirmDelete(BuildContext context, WidgetRef ref, PlaylistModel p) {
+    final l = AppLocalizations.of(context);
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Playlist Sil'),
-        content: Text('"${p.name}" silinsin mi?'),
+        title: Text(l.playlistsDeleteTitle),
+        content: Text(l.playlistsDeleteConfirm(p.name)),
         actions: [
           TextButton(
             autofocus: true,
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('İptal'),
+            child: Text(l.cancel),
           ),
           FilledButton(
             style: FilledButton.styleFrom(
@@ -312,7 +322,7 @@ class PlaylistsScreen extends ConsumerWidget {
               Navigator.pop(ctx);
               ref.read(playlistsProvider.notifier).delete(p.id);
             },
-            child: const Text('Sil'),
+            child: Text(l.delete),
           ),
         ],
       ),
@@ -356,9 +366,10 @@ class _AddPlaylistDialogState extends State<_AddPlaylistDialog> {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
+    final l = AppLocalizations.of(context);
 
     return AlertDialog(
-      title: const Text('Playlist Ekle'),
+      title: Text(l.playlistsAddTitle),
       content: SizedBox(
         width: 420,
         child: SingleChildScrollView(
@@ -367,9 +378,9 @@ class _AddPlaylistDialogState extends State<_AddPlaylistDialog> {
             children: [
               // Type selector
               SegmentedButton<String>(
-                segments: const [
-                  ButtonSegment(value: 'm3u',    label: Text('M3U URL')),
-                  ButtonSegment(value: 'xtream', label: Text('Xtream')),
+                segments: [
+                  ButtonSegment(value: 'm3u',    label: Text(l.playlistsTypeM3u)),
+                  ButtonSegment(value: 'xtream', label: Text(l.playlistsTypeXtream)),
                 ],
                 selected:  {_type},
                 onSelectionChanged: (s) => setState(() => _type = s.first),
@@ -378,9 +389,9 @@ class _AddPlaylistDialogState extends State<_AddPlaylistDialog> {
 
               TextField(
                 controller: _nameCtrl,
-                decoration: const InputDecoration(
-                  labelText: 'Playlist Adı',
-                  border: OutlineInputBorder(),
+                decoration: InputDecoration(
+                  labelText: l.playlistsNameLabel,
+                  border: const OutlineInputBorder(),
                 ),
               ),
               const SizedBox(height: Spacing.md),
@@ -388,10 +399,10 @@ class _AddPlaylistDialogState extends State<_AddPlaylistDialog> {
               if (_type == 'm3u') ...[
                 TextField(
                   controller: _urlCtrl,
-                  decoration: const InputDecoration(
-                    labelText: 'M3U URL',
-                    hintText:  'http://... veya https://...',
-                    border:    OutlineInputBorder(),
+                  decoration: InputDecoration(
+                    labelText: l.playlistsM3uUrlLabel,
+                    hintText:  l.playlistsM3uUrlHint,
+                    border:    const OutlineInputBorder(),
                   ),
                   keyboardType: TextInputType.url,
                   autocorrect: false,
@@ -404,14 +415,14 @@ class _AddPlaylistDialogState extends State<_AddPlaylistDialog> {
                   alignment: Alignment.centerRight,
                   child: TextButton.icon(
                     icon: const Icon(Icons.content_paste, size: 16),
-                    label: const Text('Panodan Yapıştır',
-                        style: TextStyle(fontSize: TextSize.label)),
+                    label: Text(l.playlistsPasteFromClipboard,
+                        style: const TextStyle(fontSize: TextSize.label)),
                     onPressed: () async {
                       final data = await Clipboard.getData('text/plain');
                       final text = data?.text?.trim() ?? '';
                       if (!mounted) return;
                       if (text.isEmpty) {
-                        setState(() => _error = 'Pano boş');
+                        setState(() => _error = l.playlistsClipboardEmpty);
                         return;
                       }
                       setState(() {
@@ -424,42 +435,42 @@ class _AddPlaylistDialogState extends State<_AddPlaylistDialog> {
               ] else ...[
                 TextField(
                   controller: _urlCtrl,
-                  decoration: const InputDecoration(
-                    labelText: 'Sunucu URL',
-                    hintText:  'http://server.com:8080',
-                    border:    OutlineInputBorder(),
+                  decoration: InputDecoration(
+                    labelText: l.playlistsServerUrlLabel,
+                    hintText:  l.playlistsServerUrlHint,
+                    border:    const OutlineInputBorder(),
                   ),
                   keyboardType: TextInputType.url,
                 ),
                 const SizedBox(height: Spacing.md),
                 TextField(
                   controller: _userCtrl,
-                  decoration: const InputDecoration(
-                    labelText: 'Kullanıcı Adı',
-                    border:    OutlineInputBorder(),
+                  decoration: InputDecoration(
+                    labelText: l.playlistsUsernameLabel,
+                    border:    const OutlineInputBorder(),
                   ),
                 ),
                 const SizedBox(height: Spacing.md),
                 TextField(
                   controller: _passCtrl,
                   obscureText: true,
-                  decoration: const InputDecoration(
-                    labelText: 'Şifre',
-                    border:    OutlineInputBorder(),
+                  decoration: InputDecoration(
+                    labelText: l.playlistsPasswordLabel,
+                    border:    const OutlineInputBorder(),
                   ),
                 ),
                 const SizedBox(height: Spacing.md),
-                const Align(
+                Align(
                   alignment: Alignment.centerLeft,
-                  child: Text('İçerik Tipleri',
-                      style: TextStyle(fontSize: TextSize.label,
+                  child: Text(l.playlistsContentTypes,
+                      style: const TextStyle(fontSize: TextSize.label,
                           fontWeight: FontWeight.w600)),
                 ),
                 Row(
                   children: [
                     Expanded(
                       child: CheckboxListTile(
-                        title:   const Text('Canlı', style: TextStyle(fontSize: TextSize.label)),
+                        title:   Text(l.playlistsContentLive, style: const TextStyle(fontSize: TextSize.label)),
                         value:   _allowLive,
                         dense:   true,
                         contentPadding: EdgeInsets.zero,
@@ -468,7 +479,7 @@ class _AddPlaylistDialogState extends State<_AddPlaylistDialog> {
                     ),
                     Expanded(
                       child: CheckboxListTile(
-                        title:   const Text('Film', style: TextStyle(fontSize: TextSize.label)),
+                        title:   Text(l.playlistsContentMovie, style: const TextStyle(fontSize: TextSize.label)),
                         value:   _allowMovie,
                         dense:   true,
                         contentPadding: EdgeInsets.zero,
@@ -477,7 +488,7 @@ class _AddPlaylistDialogState extends State<_AddPlaylistDialog> {
                     ),
                     Expanded(
                       child: CheckboxListTile(
-                        title:   const Text('Dizi', style: TextStyle(fontSize: TextSize.label)),
+                        title:   Text(l.playlistsContentSeries, style: const TextStyle(fontSize: TextSize.label)),
                         value:   _allowSeries,
                         dense:   true,
                         contentPadding: EdgeInsets.zero,
@@ -502,30 +513,30 @@ class _AddPlaylistDialogState extends State<_AddPlaylistDialog> {
       actions: [
         TextButton(
           onPressed: _loading ? null : () => Navigator.pop(context),
-          child: const Text('İptal'),
+          child: Text(l.cancel),
         ),
         FilledButton(
-          onPressed: _loading ? null : _submit,
+          onPressed: _loading ? null : () => _submit(l),
           child: _loading
               ? const SizedBox(
                   width: 18, height: 18,
                   child: CircularProgressIndicator(strokeWidth: 2))
-              : const Text('Ekle'),
+              : Text(l.commonAdd),
         ),
       ],
     );
   }
 
-  Future<void> _submit() async {
+  Future<void> _submit(AppLocalizations l) async {
     final name = _nameCtrl.text.trim();
     final url  = _urlCtrl.text.trim();
     if (name.isEmpty || url.isEmpty) {
-      setState(() => _error = 'Ad ve URL zorunlu');
+      setState(() => _error = l.playlistsValidationNameUrl);
       return;
     }
     if (_type == 'xtream' &&
         (_userCtrl.text.trim().isEmpty || _passCtrl.text.trim().isEmpty)) {
-      setState(() => _error = 'Xtream için kullanıcı adı ve şifre gerekli');
+      setState(() => _error = l.playlistsValidationXtreamCreds);
       return;
     }
     setState(() { _loading = true; _error = null; });
@@ -543,7 +554,7 @@ class _AddPlaylistDialogState extends State<_AddPlaylistDialog> {
       Analytics.playlistAdded(type: _type, channelCount: 0);
       if (mounted) Navigator.pop(context);
     } catch (e) {
-      setState(() { _loading = false; _error = 'Hata: $e'; });
+      setState(() { _loading = false; _error = l.errorWithDetails('$e'); });
     }
   }
 

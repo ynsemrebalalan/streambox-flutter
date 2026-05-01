@@ -1,0 +1,615 @@
+// ignore: unused_import
+import 'package:intl/intl.dart' as intl;
+import 'app_localizations.dart';
+
+// ignore_for_file: type=lint
+
+/// The translations for English (`en`).
+class AppLocalizationsEn extends AppLocalizations {
+  AppLocalizationsEn([String locale = 'en']) : super(locale);
+
+  @override
+  String get appName => 'IPTV AI Player';
+
+  @override
+  String get ok => 'OK';
+
+  @override
+  String get cancel => 'Cancel';
+
+  @override
+  String get save => 'Save';
+
+  @override
+  String get delete => 'Delete';
+
+  @override
+  String get yes => 'Yes';
+
+  @override
+  String get no => 'No';
+
+  @override
+  String get close => 'Close';
+
+  @override
+  String get back => 'Back';
+
+  @override
+  String get retry => 'Retry';
+
+  @override
+  String get loading => 'Loading…';
+
+  @override
+  String get error => 'Error';
+
+  @override
+  String get errorGeneric => 'Something went wrong. Please try again.';
+
+  @override
+  String get language => 'Language';
+
+  @override
+  String get languageSystem => 'System language';
+
+  @override
+  String get languageTurkish => 'Turkish';
+
+  @override
+  String get languageEnglish => 'English';
+
+  @override
+  String get languageGerman => 'German';
+
+  @override
+  String get languageArabic => 'Arabic';
+
+  @override
+  String errorWithDetails(String details) {
+    return 'Error: $details';
+  }
+
+  @override
+  String get commonAdd => 'Add';
+
+  @override
+  String get commonRefresh => 'Refresh';
+
+  @override
+  String get commonDeleteConfirm => 'Delete';
+
+  @override
+  String get errorTimeoutProvider => 'Provider didn\'t respond. Please try again later.';
+
+  @override
+  String get errorNoConnection => 'No internet connection or provider unreachable.';
+
+  @override
+  String get errorDatabaseTemporary => 'The database is temporarily unavailable. Please try again.';
+
+  @override
+  String get errorGenericRetry => 'Something went wrong. Please try again.';
+
+  @override
+  String get settingsTitle => 'Settings';
+
+  @override
+  String get settingsSaved => 'Settings saved';
+
+  @override
+  String get settingsAppearanceSection => 'Appearance';
+
+  @override
+  String get settingsThemeDark => 'Dark Theme';
+
+  @override
+  String get settingsThemeLight => 'Light Theme';
+
+  @override
+  String get settingsThemeSystem => 'System Theme';
+
+  @override
+  String get settingsEpgSection => 'EPG';
+
+  @override
+  String get settingsEpgUrlLabel => 'EPG URL (.xml or .xml.gz)';
+
+  @override
+  String get settingsEpgRefreshNow => 'Refresh EPG Now';
+
+  @override
+  String get settingsSelectPlaylistFirst => 'Select a playlist first';
+
+  @override
+  String get settingsEpgUpdated => 'EPG updated successfully';
+
+  @override
+  String settingsEpgError(String details) {
+    return 'EPG error: $details';
+  }
+
+  @override
+  String get settingsSubtitleSection => 'Subtitles';
+
+  @override
+  String get settingsSubtitleFontSize => 'Font Size';
+
+  @override
+  String get subtitleSizeSmall => 'Small';
+
+  @override
+  String get subtitleSizeNormal => 'Normal';
+
+  @override
+  String get subtitleSizeLarge => 'Large';
+
+  @override
+  String get subtitleSizeExtraLarge => 'Extra Large';
+
+  @override
+  String get settingsSubtitleTextColor => 'Text Color';
+
+  @override
+  String get subtitleColorWhite => 'White';
+
+  @override
+  String get subtitleColorYellow => 'Yellow';
+
+  @override
+  String get subtitleColorGreen => 'Green';
+
+  @override
+  String get subtitleColorCyan => 'Cyan';
+
+  @override
+  String get settingsSubtitleBgColor => 'Background';
+
+  @override
+  String get subtitleBgSemi => 'Semi-transparent';
+
+  @override
+  String get subtitleBgOpaque => 'Black';
+
+  @override
+  String get subtitleBgNone => 'None';
+
+  @override
+  String get settingsAboutSection => 'About';
+
+  @override
+  String settingsAppVersion(String version) {
+    return 'Version $version';
+  }
+
+  @override
+  String get settingsPlaylistManagement => 'Playlist Management';
+
+  @override
+  String get settingsCategoryFilterSubtitle => 'Hide/show categories';
+
+  @override
+  String get homeAppTitle => 'IPTV AI Player';
+
+  @override
+  String get homeNoPlaylistMessage => 'Add a playlist to get started';
+
+  @override
+  String get homeAddPlaylist => 'Add Playlist';
+
+  @override
+  String get homeSearchHint => 'Search channels, movies, series…';
+
+  @override
+  String get homePlaylistsTooltip => 'Playlists';
+
+  @override
+  String get homeMore => 'More';
+
+  @override
+  String get homeCategoryManagement => 'Category Management';
+
+  @override
+  String get homeTabHome => 'Home';
+
+  @override
+  String get homeTabLive => 'Live';
+
+  @override
+  String get homeTabMovie => 'Movies';
+
+  @override
+  String get homeTabSeries => 'Series';
+
+  @override
+  String get homeTabFavorites => 'Favorites';
+
+  @override
+  String get homeFavoritesAll => 'All';
+
+  @override
+  String get homeFavoritesLive => 'Live';
+
+  @override
+  String get homeFavoritesMovie => 'Movies';
+
+  @override
+  String get homeFavoritesSeries => 'Series';
+
+  @override
+  String get homeEmptyFavorites => 'No favorites yet';
+
+  @override
+  String get homeEmptyFavoritesType => 'No favorites of this type';
+
+  @override
+  String get homeEmptyCategory => 'No content in this category';
+
+  @override
+  String get homeRowContinueWatching => 'Continue Watching';
+
+  @override
+  String get homeRowRecentlyWatched => 'Recently Watched';
+
+  @override
+  String get homeRowNewMovies => 'New Movies';
+
+  @override
+  String get homeRowNewSeries => 'New Series';
+
+  @override
+  String get homeRowNewChannels => 'New Channels';
+
+  @override
+  String get homeEmptyContent => 'No content yet';
+
+  @override
+  String get homeEmptyContentHint => 'Browse the Movies / Series / Live tabs to get started';
+
+  @override
+  String get homeRecentlyWatchedHeader => 'RECENTLY WATCHED';
+
+  @override
+  String get homeSearchEmpty => 'Start typing to search';
+
+  @override
+  String homeSearchNoResults(String query) {
+    return 'No results for \"$query\"';
+  }
+
+  @override
+  String homeContentCount(int count) {
+    return '$count item(s)';
+  }
+
+  @override
+  String get sortDialogTitle => 'Sort';
+
+  @override
+  String get sortLabelDefault => 'Default';
+
+  @override
+  String get sortLabelAZ => 'A → Z';
+
+  @override
+  String get sortLabelZA => 'Z → A';
+
+  @override
+  String get sortLabelShortAZ => 'A→Z';
+
+  @override
+  String get sortLabelShortZA => 'Z→A';
+
+  @override
+  String get sortLabelShort => 'Sort';
+
+  @override
+  String get playlistsTitle => 'Playlists';
+
+  @override
+  String get playlistsEmpty => 'No playlists yet';
+
+  @override
+  String get playlistsRefreshTooltip => 'Refresh';
+
+  @override
+  String get playlistsDeleteTooltip => 'Delete';
+
+  @override
+  String get playlistsRetryAction => 'RETRY';
+
+  @override
+  String get playlistsUpdated => 'Playlist updated.';
+
+  @override
+  String get playlistsDeleteTitle => 'Delete Playlist';
+
+  @override
+  String playlistsDeleteConfirm(String name) {
+    return 'Delete \"$name\"?';
+  }
+
+  @override
+  String get playlistsAddTitle => 'Add Playlist';
+
+  @override
+  String get playlistsTypeM3u => 'M3U URL';
+
+  @override
+  String get playlistsTypeXtream => 'Xtream';
+
+  @override
+  String get playlistsNameLabel => 'Playlist Name';
+
+  @override
+  String get playlistsM3uUrlLabel => 'M3U URL';
+
+  @override
+  String get playlistsM3uUrlHint => 'http://… or https://…';
+
+  @override
+  String get playlistsPasteFromClipboard => 'Paste from Clipboard';
+
+  @override
+  String get playlistsClipboardEmpty => 'Clipboard is empty';
+
+  @override
+  String get playlistsServerUrlLabel => 'Server URL';
+
+  @override
+  String get playlistsServerUrlHint => 'http://server.com:8080';
+
+  @override
+  String get playlistsUsernameLabel => 'Username';
+
+  @override
+  String get playlistsPasswordLabel => 'Password';
+
+  @override
+  String get playlistsContentTypes => 'Content Types';
+
+  @override
+  String get playlistsContentLive => 'Live';
+
+  @override
+  String get playlistsContentMovie => 'Movies';
+
+  @override
+  String get playlistsContentSeries => 'Series';
+
+  @override
+  String get playlistsValidationNameUrl => 'Name and URL are required';
+
+  @override
+  String get playlistsValidationXtreamCreds => 'Xtream requires username and password';
+
+  @override
+  String get playlistsErrorTlsHandshake => 'Could not establish a secure connection (TLS error). Try http:// or verify the provider address.';
+
+  @override
+  String get playlistsErrorTimeout => 'Provider didn\'t respond (timeout). Please try again later.';
+
+  @override
+  String get playlistsErrorConnection => 'No internet connection or provider unreachable.';
+
+  @override
+  String playlistsErrorUpdateGeneric(String details) {
+    return 'Could not update playlist: $details';
+  }
+
+  @override
+  String get playlistsErrorEmptyResponse => 'Provider returned an empty playlist. Previous data kept.';
+
+  @override
+  String playerReconnectingMulti(int attempt) {
+    return 'Reconnecting ($attempt)…';
+  }
+
+  @override
+  String get playerReconnecting => 'Reconnecting…';
+
+  @override
+  String get playerLoading => 'Loading…';
+
+  @override
+  String get playerStreamRepeatedError => 'The stream keeps disconnecting. Try a different channel.';
+
+  @override
+  String get playerReconnectTooltip => 'Reconnect';
+
+  @override
+  String get playerSubtitleEnable => 'Enable AI Subtitles';
+
+  @override
+  String get playerSubtitleDisable => 'Disable AI Subtitles';
+
+  @override
+  String get playerMuteTooltip => 'Mute';
+
+  @override
+  String get playerUnmuteTooltip => 'Unmute';
+
+  @override
+  String get playerLiveLabel => 'LIVE';
+
+  @override
+  String get playerSeekHint => '◄ 10s ►';
+
+  @override
+  String get playerAudioTrackTooltip => 'Audio track';
+
+  @override
+  String get playerAudioTrackDialog => 'Audio track';
+
+  @override
+  String playerAudioTrackFallback(int n) {
+    return 'Track $n';
+  }
+
+  @override
+  String get playerSpeedDialog => 'Playback speed';
+
+  @override
+  String get disclaimerWelcome => 'Welcome';
+
+  @override
+  String get disclaimerBodyEn => 'IPTV AI Player is a media player for your own M3U playlists and Xtream Codes sources.\n\nThis app does not provide, host, or distribute any content. You must supply your own legally obtained playlist URL.';
+
+  @override
+  String get disclaimerBodyTr => 'IPTV AI Player is a media player for your own M3U playlists and Xtream Codes sources. The app does not host or distribute any content.';
+
+  @override
+  String get disclaimerLegalNoticeButton => 'Legal Notice';
+
+  @override
+  String get disclaimerContinue => 'Continue';
+
+  @override
+  String get disclaimerFooter => 'By continuing you agree to the Legal Notice.';
+
+  @override
+  String get legalNoticeTitle => 'Legal Notice';
+
+  @override
+  String get legalSection1Title => '1. Nature of the App';
+
+  @override
+  String get legalSection1En => 'IPTV AI Player is a general-purpose media player (similar to VLC or MX Player). It does NOT provide, host, distribute, or redirect to any TV broadcasts, movies, series, sports events, or other content. The app is a tool that plays M3U / M3U8 playlist URLs or Xtream Codes credentials supplied by the user.';
+
+  @override
+  String get legalSection1Tr => 'IPTV AI Player is a general-purpose media player. It does not provide, host, or distribute any content; it only plays the playlist URLs or Xtream credentials supplied by the user.';
+
+  @override
+  String get legalSection2Title => '2. Content Responsibility';
+
+  @override
+  String get legalSection2En => 'The user is solely responsible for all content accessed via the app. The developer has no knowledge of and bears no responsibility for content accessed through the app.';
+
+  @override
+  String get legalSection2Tr => 'The user is solely responsible for any content accessed via the app. The developer has no visibility into, and assumes no responsibility for, that content.';
+
+  @override
+  String get legalSection3Title => '3. Turkish Legal Framework';
+
+  @override
+  String get legalSection3Item1 => 'Articles 71-72 of Law No. 5846 (FSEK, Turkey): copyright infringement carries civil and criminal penalties.';
+
+  @override
+  String get legalSection3Item2 => 'Article 163/2 of the Turkish Penal Code: unauthorized use of encrypted/unencrypted broadcasts.';
+
+  @override
+  String get legalSection3Item3 => 'Additional Article 4 of the FSEK: copyright infringement on the internet.';
+
+  @override
+  String get legalSection3Item4 => 'RTÜK and BTK may impose access bans under Laws No. 6112 and 5651.';
+
+  @override
+  String get legalSection4Title => '4. User Obligations';
+
+  @override
+  String get legalSection4Body => 'By using this app you acknowledge that you will only access content you are legally subscribed to, you will not access copyrighted content without permission, and you will not use the app for pirated broadcasts or unlicensed IPTV services.';
+
+  @override
+  String get legalSection5Title => '5. Data Protection';
+
+  @override
+  String get legalSection5Body => 'The app stores your playlist URLs and credentials only locally on your device. They are not shared with any third party.';
+
+  @override
+  String get legalSection6Title => '6. Limitation of Liability';
+
+  @override
+  String get legalSection6Body => 'The app is provided \"AS IS\". The developer is not liable for any damages arising from the use of the app.';
+
+  @override
+  String get legalSection7Title => '7. Legal Cooperation';
+
+  @override
+  String get legalSection7Body => 'The developer complies with lawful requests from competent authorities (RTÜK, BTK, prosecutors).';
+
+  @override
+  String get legalReminder => 'Reminder: using this app to access unauthorized or copyrighted content is illegal. The user bears full legal responsibility.';
+
+  @override
+  String get searchHint => 'Search channels, movies, series…';
+
+  @override
+  String get searchMinChars => 'Enter at least 2 characters';
+
+  @override
+  String searchNoResults(String query) {
+    return 'No results for \"$query\"';
+  }
+
+  @override
+  String get categoryFilterTitle => 'Category Filter';
+
+  @override
+  String get categoryFilterShowAll => 'Show All';
+
+  @override
+  String get categoryFilterHideAll => 'Hide All';
+
+  @override
+  String get categoryFilterEmpty => 'No categories yet';
+
+  @override
+  String get categoryFilterSectionLive => 'Live';
+
+  @override
+  String get categoryFilterSectionMovie => 'Movies';
+
+  @override
+  String get categoryFilterSectionSeries => 'Series';
+
+  @override
+  String categoryFilterCount(String label, int active, int total) {
+    return '$label ($active / $total active)';
+  }
+
+  @override
+  String get seriesEmptyCategory => 'No series in this category';
+
+  @override
+  String seriesSeasonCount(int count) {
+    return '$count season(s)';
+  }
+
+  @override
+  String get seriesSpecialSeason => 'Specials';
+
+  @override
+  String seriesSeasonNumber(int n) {
+    return 'Season $n';
+  }
+
+  @override
+  String get homeRowPopular => 'Popular';
+
+  @override
+  String get homeRowWatchedMovies => 'Movies You\'ve Watched';
+
+  @override
+  String get homeRowWatchedSeries => 'Series You\'ve Watched';
+
+  @override
+  String get badgeMovieUppercase => 'MOVIE';
+
+  @override
+  String get badgeSeriesUppercase => 'SERIES';
+
+  @override
+  String get settingsEpgPresetsTitle => 'Presets';
+
+  @override
+  String get menuMyPlaylists => 'My Playlists';
+
+  @override
+  String get menuEpgSettings => 'EPG Settings';
+
+  @override
+  String get menuNewlyAdded => 'Newly Added';
+
+  @override
+  String get menuContinueWatching => 'Continue Watching';
+}

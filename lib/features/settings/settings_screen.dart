@@ -6,8 +6,9 @@ import '../../core/router/app_router.dart';
 import '../../core/theme/app_tokens.dart';
 import '../../core/utils/responsive.dart';
 import '../../data/repositories/settings_repository.dart';
+import '../../data/services/epg_presets.dart';
 import '../../data/services/epg_service.dart';
-import '../../data/services/firebase_sync_service.dart';
+import '../../l10n/generated/app_localizations.dart';
 
 // ── State ─────────────────────────────────────────────────────────────────────
 
@@ -138,12 +139,13 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   @override
   Widget build(BuildContext context) {
     final async = ref.watch(settingsScreenProvider);
+    final l = AppLocalizations.of(context);
 
     return async.when(
       loading: () => const Scaffold(
           body: Center(child: CircularProgressIndicator())),
       error:   (e, _) => Scaffold(
-          body: Center(child: Text('Hata: $e'))),
+          body: Center(child: Text(l.errorWithDetails('$e')))),
       data: (state) {
         if (!_initialized) {
           _epgCtrl.text          = state.epgUrl;
@@ -161,10 +163,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   Widget _buildScaffold(BuildContext context, SettingsState state) {
     final cs = Theme.of(context).colorScheme;
     final themeMode = ref.watch(themeModeProvider);
+    final l = AppLocalizations.of(context);
 
     return Scaffold(
       appBar: AppBar(
-        title:   const Text('Ayarlar'),
+        title:   Text(l.settingsTitle),
         leading: BackButton(onPressed: () => context.go(AppRoutes.home)),
         actions: [
           if (state.isSaving)
@@ -177,12 +180,12 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           else
             IconButton(
               icon:    const Icon(Icons.save_outlined),
-              tooltip: 'Kaydet',
+              tooltip: l.save,
               onPressed: () async {
                 await ref.read(settingsScreenProvider.notifier).save();
                 if (context.mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Ayarlar kaydedildi')),
+                    SnackBar(content: Text(l.settingsSaved)),
                   );
                 }
               },
@@ -195,26 +198,26 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         padding: const EdgeInsets.all(Spacing.lg),
         children: [
           // ── Appearance ───────────────────────────────────────────────────
-          _SectionHeader(title: 'Görünüm'),
+          _SectionHeader(title: l.settingsAppearanceSection),
           Card(
             child: Column(
               children: [
                 RadioListTile<ThemeMode>(
-                  title:   const Text('Koyu Tema'),
+                  title:   Text(l.settingsThemeDark),
                   value:   ThemeMode.dark,
                   groupValue: themeMode,
                   onChanged: (v) =>
                       ref.read(themeModeProvider.notifier).setMode(v!),
                 ),
                 RadioListTile<ThemeMode>(
-                  title:   const Text('Açık Tema'),
+                  title:   Text(l.settingsThemeLight),
                   value:   ThemeMode.light,
                   groupValue: themeMode,
                   onChanged: (v) =>
                       ref.read(themeModeProvider.notifier).setMode(v!),
                 ),
                 RadioListTile<ThemeMode>(
-                  title:   const Text('Sistem Teması'),
+                  title:   Text(l.settingsThemeSystem),
                   value:   ThemeMode.system,
                   groupValue: themeMode,
                   onChanged: (v) =>
@@ -226,8 +229,25 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
           const SizedBox(height: Spacing.xl),
 
+          // ── Dil / Language ───────────────────────────────────────────────
+          // Önceki sürümde Görünüm Card'ı içinde Theme radio'larından sonra
+          // Divider altında yer alıyordu → kullanıcı geri bildirimi: "yok
+          // gibi görünüyor". Kendi başlıklı Card olarak ayrı bölüm yapıldı.
+          _SectionHeader(title: l.language),
+          Card(
+            child: ListTile(
+              leading:  const Icon(Icons.language),
+              title:    Text(l.language),
+              subtitle: Text(_localeLabel(l, ref.watch(localeProvider))),
+              trailing: const Icon(Icons.arrow_drop_down),
+              onTap:    () => _showLanguagePicker(context, ref, l),
+            ),
+          ),
+
+          const SizedBox(height: Spacing.xl),
+
           // ── EPG ──────────────────────────────────────────────────────────
-          _SectionHeader(title: 'EPG'),
+          _SectionHeader(title: l.settingsEpgSection),
           Card(
             child: Padding(
               padding: const EdgeInsets.all(Spacing.lg),
@@ -235,21 +255,51 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 children: [
                   TextField(
                     controller: _epgCtrl,
-                    decoration: const InputDecoration(
-                      labelText: 'EPG URL (.xml veya .xml.gz)',
+                    decoration: InputDecoration(
+                      labelText: l.settingsEpgUrlLabel,
                       hintText:  'https://epg.example.com/epg.xml.gz',
-                      border:    OutlineInputBorder(),
-                      prefixIcon: Icon(Icons.rss_feed),
+                      border:    const OutlineInputBorder(),
+                      prefixIcon: const Icon(Icons.rss_feed),
                     ),
                     onChanged: (v) =>
                         ref.read(settingsScreenProvider.notifier).setEpgUrl(v),
+                  ),
+                  const SizedBox(height: Spacing.md),
+                  // Hazır kaynaklar — Türkiye XMLTV listesi tek tıkla doldurulur
+                  Align(
+                    alignment: AlignmentDirectional.centerStart,
+                    child: Text(
+                      '${l.settingsEpgPresetsTitle}:',
+                      style: TextStyle(
+                        color: cs.onSurfaceVariant,
+                        fontSize: TextSize.caption,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: Spacing.sm),
+                  Wrap(
+                    spacing:    Spacing.sm,
+                    runSpacing: Spacing.sm,
+                    children: [
+                      for (final p in kTurkishEpgPresets)
+                        _EpgPresetChip(
+                          label:    p.label,
+                          selected: state.epgUrl == p.url,
+                          onTap: () {
+                            _epgCtrl.text = p.url;
+                            ref
+                                .read(settingsScreenProvider.notifier)
+                                .setEpgUrl(p.url);
+                          },
+                        ),
+                    ],
                   ),
                   const SizedBox(height: Spacing.md),
                   SizedBox(
                     width: double.infinity,
                     child: OutlinedButton.icon(
                       icon:  const Icon(Icons.sync),
-                      label: const Text('EPG\'yi Şimdi Güncelle'),
+                      label: Text(l.settingsEpgRefreshNow),
                       onPressed: () async {
                         // Save first
                         await ref
@@ -259,8 +309,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                         if (activeId.isEmpty) {
                           if (context.mounted) {
                             ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                  content: Text('Önce bir playlist seçin')),
+                              SnackBar(
+                                  content: Text(l.settingsSelectPlaylistFirst)),
                             );
                           }
                           return;
@@ -271,14 +321,14 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                               .syncEpg(activeId);
                           if (context.mounted) {
                             ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                  content: Text('EPG başarıyla güncellendi')),
+                              SnackBar(
+                                  content: Text(l.settingsEpgUpdated)),
                             );
                           }
                         } catch (e) {
                           if (context.mounted) {
                             ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(content: Text('EPG hatası: $e')),
+                              SnackBar(content: Text(l.settingsEpgError('$e'))),
                             );
                           }
                         }
@@ -292,87 +342,27 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
           const SizedBox(height: Spacing.xl),
 
-          // ── AI ───────────────────────────────────────────────────────────
-          _SectionHeader(title: 'Yapay Zeka'),
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(Spacing.lg),
-              child: Column(
-                children: [
-                  TextField(
-                    controller: _openAiKeyCtrl,
-                    obscureText: true,
-                    decoration: const InputDecoration(
-                      labelText: 'OpenAI API Key',
-                      hintText:  'sk-...',
-                      border:    OutlineInputBorder(),
-                      prefixIcon: Icon(Icons.vpn_key_outlined),
-                    ),
-                    onChanged: (v) =>
-                        ref.read(settingsScreenProvider.notifier)
-                            .setOpenAiApiKey(v),
-                  ),
-                  const SizedBox(height: Spacing.md),
-                  TextField(
-                    controller: _openAiLangCtrl,
-                    decoration: const InputDecoration(
-                      labelText: 'Dil (opsiyonel)',
-                      hintText:  'tr, en, de… — boş bırakılırsa otomatik',
-                      border:    OutlineInputBorder(),
-                      prefixIcon: Icon(Icons.language),
-                    ),
-                    onChanged: (v) =>
-                        ref.read(settingsScreenProvider.notifier)
-                            .setOpenAiLanguage(v),
-                  ),
-                  const SizedBox(height: Spacing.xl),
-                  TextField(
-                    controller: _groqProxyUrlCtrl,
-                    decoration: const InputDecoration(
-                      labelText: 'Groq Proxy URL',
-                      border:    OutlineInputBorder(),
-                      prefixIcon: Icon(Icons.cloud_outlined),
-                    ),
-                    onChanged: (v) =>
-                        ref.read(settingsScreenProvider.notifier)
-                            .setGroqProxyUrl(v),
-                  ),
-                  const SizedBox(height: Spacing.md),
-                  TextField(
-                    controller: _groqSecretCtrl,
-                    obscureText: true,
-                    decoration: const InputDecoration(
-                      labelText: 'Groq Proxy Secret',
-                      border:    OutlineInputBorder(),
-                      prefixIcon: Icon(Icons.lock_outline),
-                    ),
-                    onChanged: (v) =>
-                        ref.read(settingsScreenProvider.notifier)
-                            .setGroqProxySecret(v),
-                  ),
-                ],
-              ),
-            ),
-          ),
-
-          const SizedBox(height: Spacing.xl),
+          // AI altyazı (Whisper) ayarları artık görünür değil — Groq proxy
+          // URL/Secret build-time gömülü (lib/core/utils/build_config.dart).
+          // SettingsState alanları geriye dönük uyum için duruyor; geliştirici
+          // SecureStorage'a manuel yazarak override edebilir.
 
           // ── Subtitle Styling ────────────────────────────────────────────
-          _SectionHeader(title: 'Altyazi'),
+          _SectionHeader(title: l.settingsSubtitleSection),
           Card(
             child: Column(
               children: [
                 ListTile(
                   leading: const Icon(Icons.format_size),
-                  title: const Text('Yazi Boyutu'),
+                  title: Text(l.settingsSubtitleFontSize),
                   trailing: DropdownButton<String>(
                     value: state.subtitleFontSize,
                     underline: const SizedBox.shrink(),
-                    items: const [
-                      DropdownMenuItem(value: '14', child: Text('Kucuk')),
-                      DropdownMenuItem(value: '16', child: Text('Normal')),
-                      DropdownMenuItem(value: '20', child: Text('Buyuk')),
-                      DropdownMenuItem(value: '24', child: Text('Cok Buyuk')),
+                    items: [
+                      DropdownMenuItem(value: '14', child: Text(l.subtitleSizeSmall)),
+                      DropdownMenuItem(value: '16', child: Text(l.subtitleSizeNormal)),
+                      DropdownMenuItem(value: '20', child: Text(l.subtitleSizeLarge)),
+                      DropdownMenuItem(value: '24', child: Text(l.subtitleSizeExtraLarge)),
                     ],
                     onChanged: (v) {
                       if (v != null) {
@@ -384,15 +374,15 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 ),
                 ListTile(
                   leading: const Icon(Icons.color_lens),
-                  title: const Text('Yazi Rengi'),
+                  title: Text(l.settingsSubtitleTextColor),
                   trailing: DropdownButton<String>(
                     value: state.subtitleTextColor,
                     underline: const SizedBox.shrink(),
-                    items: const [
-                      DropdownMenuItem(value: 'white', child: Text('Beyaz')),
-                      DropdownMenuItem(value: 'yellow', child: Text('Sari')),
-                      DropdownMenuItem(value: 'green', child: Text('Yesil')),
-                      DropdownMenuItem(value: 'cyan', child: Text('Cyan')),
+                    items: [
+                      DropdownMenuItem(value: 'white', child: Text(l.subtitleColorWhite)),
+                      DropdownMenuItem(value: 'yellow', child: Text(l.subtitleColorYellow)),
+                      DropdownMenuItem(value: 'green', child: Text(l.subtitleColorGreen)),
+                      DropdownMenuItem(value: 'cyan', child: Text(l.subtitleColorCyan)),
                     ],
                     onChanged: (v) {
                       if (v != null) {
@@ -404,14 +394,14 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 ),
                 ListTile(
                   leading: const Icon(Icons.format_color_fill),
-                  title: const Text('Arka Plan'),
+                  title: Text(l.settingsSubtitleBgColor),
                   trailing: DropdownButton<String>(
                     value: state.subtitleBgColor,
                     underline: const SizedBox.shrink(),
-                    items: const [
-                      DropdownMenuItem(value: 'semi', child: Text('Yari Saydam')),
-                      DropdownMenuItem(value: 'opaque', child: Text('Siyah')),
-                      DropdownMenuItem(value: 'none', child: Text('Yok')),
+                    items: [
+                      DropdownMenuItem(value: 'semi', child: Text(l.subtitleBgSemi)),
+                      DropdownMenuItem(value: 'opaque', child: Text(l.subtitleBgOpaque)),
+                      DropdownMenuItem(value: 'none', child: Text(l.subtitleBgNone)),
                     ],
                     onChanged: (v) {
                       if (v != null) {
@@ -427,99 +417,26 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
           const SizedBox(height: Spacing.xl),
 
-          // ── Cloud Sync ──────────────────────────────────────────────────
-          _SectionHeader(title: 'Bulut Yedekleme'),
-          Card(
-            child: Column(
-              children: [
-                ListTile(
-                  leading: const Icon(Icons.cloud_upload_outlined),
-                  title:   const Text('Yedekle'),
-                  subtitle: const Text('Playlist\'leri buluta yedekle'),
-                  onTap: () async {
-                    final playlists = await ref
-                        .read(playlistRepoProvider)
-                        .getAll();
-                    try {
-                      await FirebaseSyncService.uploadPlaylists(playlists);
-                      if (context.mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Yedekleme tamamlandi')),
-                        );
-                      }
-                    } catch (e) {
-                      if (context.mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text('Yedekleme hatasi: $e')),
-                        );
-                      }
-                    }
-                  },
-                ),
-                ListTile(
-                  leading: const Icon(Icons.cloud_download_outlined),
-                  title:   const Text('Geri Yukle'),
-                  subtitle: const Text('Buluttan playlist\'leri indir'),
-                  onTap: () async {
-                    try {
-                      final playlists =
-                          await FirebaseSyncService.downloadPlaylists();
-                      if (playlists.isEmpty) {
-                        if (context.mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                                content: Text('Bulutta yedek bulunamadi')),
-                          );
-                        }
-                        return;
-                      }
-                      for (final p in playlists) {
-                        await ref
-                            .read(playlistRepoProvider)
-                            .insert(p);
-                      }
-                      if (context.mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                              content: Text(
-                                  '${playlists.length} playlist geri yuklendi')),
-                        );
-                      }
-                    } catch (e) {
-                      if (context.mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text('Geri yukleme hatasi: $e')),
-                        );
-                      }
-                    }
-                  },
-                ),
-              ],
-            ),
-          ),
-
-          const SizedBox(height: Spacing.xl),
-
           // ── About ────────────────────────────────────────────────────────
-          _SectionHeader(title: 'Hakkında'),
+          _SectionHeader(title: l.settingsAboutSection),
           Card(
             child: Column(
               children: [
                 ListTile(
                   leading: const Icon(Icons.info_outline),
-                  title:   const Text('IPTV AI Player'),
-                  subtitle: Text('Sürüm 1.0.0',
+                  title:   Text(l.homeAppTitle),
+                  subtitle: Text(l.settingsAppVersion('1.0.0'),
                       style: TextStyle(color: cs.onSurfaceVariant)),
                 ),
                 ListTile(
                   leading: const Icon(Icons.playlist_add),
-                  title:   const Text('Playlist Yönetimi'),
+                  title:   Text(l.settingsPlaylistManagement),
                   onTap:   () => context.push(AppRoutes.playlists),
                 ),
                 ListTile(
                   leading: const Icon(Icons.filter_list),
-                  title:   const Text('Kategori Filtresi'),
-                  subtitle: const Text('Kategorileri gizle/göster'),
+                  title:   Text(l.categoryFilterTitle),
+                  subtitle: Text(l.settingsCategoryFilterSubtitle),
                   onTap:   () => context.push(AppRoutes.categoryFilter),
                 ),
               ],
@@ -561,4 +478,100 @@ class _SectionHeader extends StatelessWidget {
               color: Theme.of(context).colorScheme.onSurfaceVariant),
         ),
       );
+}
+
+// ── EPG preset chip ──────────────────────────────────────────────────────────
+
+class _EpgPresetChip extends StatelessWidget {
+  final String label;
+  final bool   selected;
+  final VoidCallback onTap;
+
+  const _EpgPresetChip({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return Material(
+      color: selected ? cs.primaryContainer : cs.surfaceContainerHighest,
+      borderRadius: BorderRadius.circular(8),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(8),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (selected) ...[
+                Icon(Icons.check_circle, size: 16, color: cs.primary),
+                const SizedBox(width: 6),
+              ],
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize:   TextSize.caption,
+                  fontWeight: selected ? FontWeight.bold : FontWeight.normal,
+                  color: selected
+                      ? cs.onPrimaryContainer
+                      : cs.onSurfaceVariant,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ── Language picker helpers ──────────────────────────────────────────────────
+
+String _localeLabel(AppLocalizations l, Locale? locale) {
+  switch (locale?.languageCode) {
+    case 'tr': return l.languageTurkish;
+    case 'en': return l.languageEnglish;
+    case 'de': return l.languageGerman;
+    case 'ar': return l.languageArabic;
+    default:   return l.languageSystem;
+  }
+}
+
+Future<void> _showLanguagePicker(
+  BuildContext context,
+  WidgetRef ref,
+  AppLocalizations l,
+) async {
+  final current = ref.read(localeProvider);
+  // null = system; non-null = explicit override
+  final entries = <(Locale?, String)>[
+    (null,                 l.languageSystem),
+    (const Locale('tr'),   l.languageTurkish),
+    (const Locale('en'),   l.languageEnglish),
+    (const Locale('de'),   l.languageGerman),
+    (const Locale('ar'),   l.languageArabic),
+  ];
+
+  await showDialog<void>(
+    context: context,
+    builder: (ctx) => SimpleDialog(
+      title: Text(l.language),
+      children: [
+        for (final (loc, label) in entries)
+          RadioListTile<String?>(
+            title:      Text(label),
+            value:      loc?.languageCode,
+            groupValue: current?.languageCode,
+            onChanged: (_) {
+              ref.read(localeProvider.notifier).setLocale(loc);
+              Navigator.of(ctx).pop();
+            },
+          ),
+      ],
+    ),
+  );
 }
