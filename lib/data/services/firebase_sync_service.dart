@@ -7,8 +7,11 @@ import '../models/playlist_model.dart';
 /// Firestore playlist backup/restore + proxy secret fetch.
 /// Android native ile ayni collection yapisi.
 class FirebaseSyncService {
-  static final _firestore = FirebaseFirestore.instance;
-  static final _auth = FirebaseAuth.instance;
+  // Lazy — Firebase init'ten önce class'a erişilirse `[core/no-app]` patlamasın.
+  // Dart `static final` lazy değerlendirilir, ilk method call'da resolve olur;
+  // method'ları `firebaseReadyProvider` ile gate edilen path'lerden çağırın.
+  static FirebaseFirestore get _firestore => FirebaseFirestore.instance;
+  static FirebaseAuth get _auth => FirebaseAuth.instance;
 
   /// Anonim login (Firestore rules auth gerektirir).
   static Future<bool> _ensureAuth() async {

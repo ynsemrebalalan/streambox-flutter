@@ -22,11 +22,17 @@ class AuthRepository {
   AuthRepository({
     FirebaseAuth? auth,
     GoogleSignIn? googleSignIn,
-  })  : _auth = auth ?? FirebaseAuth.instance,
-        _google = googleSignIn ?? GoogleSignIn();
+  })  : _authOverride = auth,
+        _googleOverride = googleSignIn;
 
-  final FirebaseAuth _auth;
-  final GoogleSignIn _google;
+  // Lazy — constructor çağrıldığında FirebaseAuth.instance erişilmesin.
+  // Update senaryosunda Firebase init'ten ÖNCE provider instantiate olunca
+  // `[core/no-app] No Firebase App` patlıyordu. Lazy late + firebaseReady
+  // provider birlikte race'i çözer.
+  final FirebaseAuth? _authOverride;
+  final GoogleSignIn? _googleOverride;
+  late final FirebaseAuth _auth = _authOverride ?? FirebaseAuth.instance;
+  late final GoogleSignIn _google = _googleOverride ?? GoogleSignIn();
 
   // ── Stream ─────────────────────────────────────────────────────────────────
 

@@ -1,6 +1,7 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/providers/firebase_ready_provider.dart';
 import '../data/auth_repository.dart';
 import '../data/auth_state.dart';
 
@@ -10,9 +11,22 @@ final authRepositoryProvider = Provider<AuthRepository>((ref) {
 });
 
 /// Reactive auth state — tüm UI bunu izler.
-/// İlk emit `AuthLoading`, sonrası user'a göre.
-final authStateProvider = StreamProvider<AuthState>((ref) {
-  return ref.read(authRepositoryProvider).authStateStream();
+/// İlk emit `AuthLoading`, Firebase init bitince user'a göre.
+///
+/// Update senaryosu race fix: `firebaseReadyProvider` await edilir,
+/// `FirebaseAuth.instance` erişimi init tamamlanmadan yapılmaz.
+final authStateProvider = StreamProvider<AuthState>((ref) async* {
+  yield const AuthLoading();
+  try {
+    await ref.watch(firebaseReadyProvider.future);
+  } catch (e) {
+    yield AuthError(
+      code: 'firebase-init-timeout',
+      message: 'Firebase init timeout: $e',
+    );
+    return;
+  }
+  yield* ref.read(authRepositoryProvider).authStateStream();
 });
 
 /// Convenience: aktif User (anon veya kalıcı). Null = unauthenticated.

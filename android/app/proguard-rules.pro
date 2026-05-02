@@ -22,3 +22,9 @@
 -keepclasseswithmembernames class * {
     native <methods>;
 }
+
+# Flutter Play Core (deferred components — Firebase split ile uyumsuz)
+# Flutter SDK eski monolith referans yapar; Firebase 33.x core-common+app-update+review
+# split kullanir, Task/SplitInstallManager class'lari runtime'da yok.
+-dontwarn com.google.android.play.core.**
+-keep class com.google.android.play.core.** { *; }
