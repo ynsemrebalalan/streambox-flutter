@@ -8,6 +8,7 @@ import 'package:flutter/foundation.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 
+import '../../../data/services/firebase_sync_service.dart';
 import 'auth_state.dart';
 
 /// Pure data-layer auth wrapper. UI bu sınıfı doğrudan KULLANMAZ — Riverpod
@@ -201,16 +202,27 @@ class AuthRepository {
     if (anon == null || !anon.isAnonymous) {
       return _auth.signInWithCredential(credential);
     }
+    final anonUid = anon.uid;
 
     try {
+      // Happy path: UID korunur, Firestore data zaten dogru path'te.
       return await anon.linkWithCredential(credential);
     } on FirebaseAuthException catch (e) {
-      if (e.code == 'credential-already-in-use' ||
-          e.code == 'email-already-in-use') {
-        // Mevcut user'a switch — anon UID DEĞİŞİR, çağıran migration başlatmalı.
-        return _auth.signInWithCredential(credential);
+      if (e.code != 'credential-already-in-use' &&
+          e.code != 'email-already-in-use') {
+        rethrow;
       }
-      rethrow;
+      // Sad path: bu credential baska cihazda zaten kalici user.
+      // Once o user'a switch et (UID DEGISIR), sonra anon-time data'yi merge et.
+      final result = await _auth.signInWithCredential(credential);
+      final newUid = result.user?.uid;
+      if (newUid != null && newUid != anonUid) {
+        await FirebaseSyncService.migrateAnonDataToUser(
+          fromAnonUid: anonUid,
+          toUserUid: newUid,
+        );
+      }
+      return result;
     }
   }
 

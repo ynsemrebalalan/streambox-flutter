@@ -28,6 +28,58 @@ class FirebaseSyncService {
     return uuid.replaceAll(RegExp(r'[^a-zA-Z0-9_]'), '_');
   }
 
+  // ── Anon → User migration (Adim 22 Phase E) ────────────────────────────────
+
+  /// Anonim user kaliciya gectiginde Firestore device-based playlist
+  /// koleksiyonunu user-based path'e kopyala. Idempotent (SetOptions.merge).
+  ///
+  /// Happy path (linkWithCredential basariliysa) UID degismez ve bu metod
+  /// CAGRILMAZ. Sadece sad path 'credential-already-in-use' icin gerekli.
+  ///
+  /// Kaynak:  streambox_devices/{deviceId}/playlists/*
+  /// Hedef:   users/{toUserUid}/devices/{deviceId}/playlists/*
+  ///
+  /// Anon device dokumani SILINMEZ — multi-device anon kullanici hala
+  /// oradan okuyor olabilir, TTL (cleanExpired) 7 gunde temizler.
+  static Future<void> migrateAnonDataToUser({
+    required String fromAnonUid,
+    required String toUserUid,
+  }) async {
+    if (fromAnonUid == toUserUid) return; // No-op
+    try {
+      final deviceId = await _deviceId();
+      final src = _firestore
+          .collection('streambox_devices')
+          .doc(deviceId)
+          .collection('playlists');
+      final dst = _firestore
+          .collection('users')
+          .doc(toUserUid)
+          .collection('devices')
+          .doc(deviceId)
+          .collection('playlists');
+
+      final snap = await src.get();
+      if (snap.docs.isEmpty) return;
+
+      // Firestore batch limit 500 — playlist sayisi az olur ama yine de safe.
+      final batch = _firestore.batch();
+      for (final doc in snap.docs) {
+        batch.set(dst.doc(doc.id), doc.data(), SetOptions(merge: true));
+      }
+      // User device dokumani da var ki query'ler bulsun.
+      batch.set(
+          _firestore.collection('users').doc(toUserUid).collection('devices').doc(deviceId),
+          {'lastSeen': FieldValue.serverTimestamp(), 'migratedFromAnon': fromAnonUid},
+          SetOptions(merge: true));
+      await batch.commit();
+    } catch (e) {
+      debugPrint('[Sync] migrateAnonDataToUser failed: $e');
+      // Migration fail olsa bile kullanici login akisini kesme — playlist
+      // local SQLite'te zaten var, downloadPlaylists ile yine erisilebilir.
+    }
+  }
+
   // ── Proxy Secret ───────────────────────────────────────────────────────────
 
   /// Global config'den proxy secret cek ve SecureStorage'a kaydet.
