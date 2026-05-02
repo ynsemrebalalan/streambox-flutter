@@ -981,4 +981,41 @@ class AppLocalizationsTr extends AppLocalizations {
   String cloudSyncLastAt(String when) {
     return 'Son senkron: $when';
   }
+
+  @override
+  String get epgGuideTitle => 'TV Rehberi';
+
+  @override
+  String get epgToday => 'Bugün';
+
+  @override
+  String get epgYesterday => 'Dün';
+
+  @override
+  String get epgTomorrow => 'Yarın';
+
+  @override
+  String get epgRowEmpty => 'Bu kanal için program yok';
+
+  @override
+  String get epgNoData => 'EPG verisi yok';
+
+  @override
+  String get epgNoDataHint => 'Ayarlar → EPG bölümünden bir URL girip \'Şimdi Yenile\'ye dokunun.';
+
+  @override
+  String epgError(String msg) {
+    return 'EPG hatası: $msg';
+  }
+
+  @override
+  String get epgAutoRefreshTitle => 'Otomatik Yenile';
+
+  @override
+  String get epgAutoRefreshOff => 'Kapalı';
+
+  @override
+  String epgAutoRefreshEvery(int h) {
+    return 'Her $h saatte bir';
+  }
 }

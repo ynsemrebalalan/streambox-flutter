@@ -413,5 +413,19 @@
   "@cloudSyncDaysAgo": { "placeholders": { "n": { "type": "int" } } },
   "cloudSyncDaysAgo": "{n} gün önce",
   "@cloudSyncLastAt": { "placeholders": { "when": { "type": "String" } } },
-  "cloudSyncLastAt": "Son senkron: {when}"
+  "cloudSyncLastAt": "Son senkron: {when}",
+
+  "epgGuideTitle": "TV Rehberi",
+  "epgToday":     "Bugün",
+  "epgYesterday": "Dün",
+  "epgTomorrow":  "Yarın",
+  "epgRowEmpty":  "Bu kanal için program yok",
+  "epgNoData":    "EPG verisi yok",
+  "epgNoDataHint": "Ayarlar → EPG bölümünden bir URL girip 'Şimdi Yenile'ye dokunun.",
+  "@epgError": { "placeholders": { "msg": { "type": "String" } } },
+  "epgError": "EPG hatası: {msg}",
+  "epgAutoRefreshTitle": "Otomatik Yenile",
+  "epgAutoRefreshOff":   "Kapalı",
+  "@epgAutoRefreshEvery": { "placeholders": { "h": { "type": "int" } } },
+  "epgAutoRefreshEvery": "Her {h} saatte bir"
 }

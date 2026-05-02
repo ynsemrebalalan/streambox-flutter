@@ -13,6 +13,7 @@ import '../auth/data/auth_state.dart';
 import '../auth/providers/auth_providers.dart';
 import '../billing/providers/purchases_providers.dart';
 import '../cloud_sync/widgets/cloud_sync_tile.dart';
+import '../epg/widgets/epg_auto_refresh_tile.dart';
 
 // ── State ─────────────────────────────────────────────────────────────────────
 
@@ -341,6 +342,21 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   ),
                 ],
               ),
+            ),
+          ),
+
+          // EPG Pro extras: Guide + Auto-refresh
+          Card(
+            child: Column(
+              children: [
+                ListTile(
+                  leading: const Icon(Icons.live_tv),
+                  title:   Text(l.epgGuideTitle),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap:   () => context.push(AppRoutes.epgGuide),
+                ),
+                const EpgAutoRefreshTile(),
+              ],
             ),
           ),
 

@@ -386,5 +386,19 @@
   "@cloudSyncDaysAgo": { "placeholders": { "n": { "type": "int" } } },
   "cloudSyncDaysAgo": "{n}d ago",
   "@cloudSyncLastAt": { "placeholders": { "when": { "type": "String" } } },
-  "cloudSyncLastAt": "Last sync: {when}"
+  "cloudSyncLastAt": "Last sync: {when}",
+
+  "epgGuideTitle": "TV Guide",
+  "epgToday":     "Today",
+  "epgYesterday": "Yesterday",
+  "epgTomorrow":  "Tomorrow",
+  "epgRowEmpty":  "No programmes for this channel",
+  "epgNoData":    "No EPG data",
+  "epgNoDataHint": "Go to Settings → EPG, set a URL, then tap 'Refresh Now'.",
+  "@epgError": { "placeholders": { "msg": { "type": "String" } } },
+  "epgError": "EPG error: {msg}",
+  "epgAutoRefreshTitle": "Auto Refresh",
+  "epgAutoRefreshOff":   "Off",
+  "@epgAutoRefreshEvery": { "placeholders": { "h": { "type": "int" } } },
+  "epgAutoRefreshEvery": "Every {h}h"
 }

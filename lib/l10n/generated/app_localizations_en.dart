@@ -981,4 +981,41 @@ class AppLocalizationsEn extends AppLocalizations {
   String cloudSyncLastAt(String when) {
     return 'Last sync: $when';
   }
+
+  @override
+  String get epgGuideTitle => 'TV Guide';
+
+  @override
+  String get epgToday => 'Today';
+
+  @override
+  String get epgYesterday => 'Yesterday';
+
+  @override
+  String get epgTomorrow => 'Tomorrow';
+
+  @override
+  String get epgRowEmpty => 'No programmes for this channel';
+
+  @override
+  String get epgNoData => 'No EPG data';
+
+  @override
+  String get epgNoDataHint => 'Go to Settings → EPG, set a URL, then tap \'Refresh Now\'.';
+
+  @override
+  String epgError(String msg) {
+    return 'EPG error: $msg';
+  }
+
+  @override
+  String get epgAutoRefreshTitle => 'Auto Refresh';
+
+  @override
+  String get epgAutoRefreshOff => 'Off';
+
+  @override
+  String epgAutoRefreshEvery(int h) {
+    return 'Every ${h}h';
+  }
 }

@@ -386,5 +386,19 @@
   "@cloudSyncDaysAgo": { "placeholders": { "n": { "type": "int" } } },
   "cloudSyncDaysAgo": "قبل {n} يوم",
   "@cloudSyncLastAt": { "placeholders": { "when": { "type": "String" } } },
-  "cloudSyncLastAt": "آخر مزامنة: {when}"
+  "cloudSyncLastAt": "آخر مزامنة: {when}",
+
+  "epgGuideTitle": "دليل البرامج",
+  "epgToday":     "اليوم",
+  "epgYesterday": "أمس",
+  "epgTomorrow":  "غدًا",
+  "epgRowEmpty":  "لا برامج لهذه القناة",
+  "epgNoData":    "لا توجد بيانات EPG",
+  "epgNoDataHint": "انتقل إلى الإعدادات → EPG، أدخل عنوان URL ثم اضغط 'تحديث الآن'.",
+  "@epgError": { "placeholders": { "msg": { "type": "String" } } },
+  "epgError": "خطأ EPG: {msg}",
+  "epgAutoRefreshTitle": "تحديث تلقائي",
+  "epgAutoRefreshOff":   "إيقاف",
+  "@epgAutoRefreshEvery": { "placeholders": { "h": { "type": "int" } } },
+  "epgAutoRefreshEvery": "كل {h} ساعة"
 }

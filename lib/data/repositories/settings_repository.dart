@@ -47,6 +47,8 @@ abstract final class SettingsKeys {
   static const String parentalLockEnabled      = 'parental_lock_enabled';      // 'true'|'false'
   static const String parentalLockedCategories = 'parental_locked_categories'; // JSON List<String>
   static const String themeVariant             = 'theme_variant';              // 'default'|'crimson'|'royal'|'forest'|'ocean'
+  static const String epgAutoRefreshHours      = 'epg_auto_refresh_hours';     // '0'|'6'|'12'|'24' (0=off, Pro)
+  static const String epgLastAutoFetchMs       = 'epg_last_auto_fetch_ms';     // unix ms
   static const String watchlistAddedKeys       = 'watchlist_added_keys';       // (cache; gerçek kayıt watchlist tablosunda)
   static const String lastCategory       = 'last_category';
   static const String disclaimerAccepted = 'disclaimer_accepted';

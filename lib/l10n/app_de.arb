@@ -386,5 +386,19 @@
   "@cloudSyncDaysAgo": { "placeholders": { "n": { "type": "int" } } },
   "cloudSyncDaysAgo": "vor {n} Tagen",
   "@cloudSyncLastAt": { "placeholders": { "when": { "type": "String" } } },
-  "cloudSyncLastAt": "Letzte Sync: {when}"
+  "cloudSyncLastAt": "Letzte Sync: {when}",
+
+  "epgGuideTitle": "TV-Programm",
+  "epgToday":     "Heute",
+  "epgYesterday": "Gestern",
+  "epgTomorrow":  "Morgen",
+  "epgRowEmpty":  "Keine Sendungen für diesen Kanal",
+  "epgNoData":    "Keine EPG-Daten",
+  "epgNoDataHint": "Gehe zu Einstellungen → EPG, URL eintragen, dann 'Jetzt aktualisieren'.",
+  "@epgError": { "placeholders": { "msg": { "type": "String" } } },
+  "epgError": "EPG-Fehler: {msg}",
+  "epgAutoRefreshTitle": "Auto-Update",
+  "epgAutoRefreshOff":   "Aus",
+  "@epgAutoRefreshEvery": { "placeholders": { "h": { "type": "int" } } },
+  "epgAutoRefreshEvery": "Alle {h}h"
 }

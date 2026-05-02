@@ -16,6 +16,7 @@ import 'features/auth/data/auth_state.dart';
 import 'features/auth/providers/auth_providers.dart';
 import 'features/billing/data/purchases_service.dart';
 import 'features/cloud_sync/cloud_sync_controller.dart';
+import 'features/epg/epg_auto_refresh_controller.dart';
 import 'l10n/generated/app_localizations.dart';
 
 void main() {
@@ -170,6 +171,11 @@ class _IPTVAIPlayerAppState extends ConsumerState<IPTVAIPlayerApp>
         debugPrint('Theme variant load failed: $e');
       }
       try {
+        await ref.read(epgAutoRefreshProvider.notifier).loadFromDb();
+      } catch (e) {
+        debugPrint('EPG auto-refresh load failed: $e');
+      }
+      try {
         await ref.read(activePlaylistProvider.notifier).loadFromDb();
       } catch (e) {
         debugPrint('Playlist load failed: $e');
@@ -201,11 +207,13 @@ class _IPTVAIPlayerAppState extends ConsumerState<IPTVAIPlayerApp>
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    // App foreground'a döndüğünde cloud pull tetikle (Pro + auth ise).
-    // _eligible() kontrolü controller içinde, no-op döner aksi halde.
+    // App foreground'a döndüğünde cloud pull + EPG auto-refresh tetikle.
+    // Pro değilse iki controller da no-op döner.
     if (state == AppLifecycleState.resumed) {
       // ignore: unawaited_futures
       ref.read(cloudSyncControllerProvider.notifier).syncNow();
+      // ignore: unawaited_futures
+      ref.read(epgAutoRefreshProvider.notifier).maybeRefresh();
     }
   }
 

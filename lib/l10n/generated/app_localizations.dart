@@ -1970,6 +1970,72 @@ abstract class AppLocalizations {
   /// In tr, this message translates to:
   /// **'Son senkron: {when}'**
   String cloudSyncLastAt(String when);
+
+  /// No description provided for @epgGuideTitle.
+  ///
+  /// In tr, this message translates to:
+  /// **'TV Rehberi'**
+  String get epgGuideTitle;
+
+  /// No description provided for @epgToday.
+  ///
+  /// In tr, this message translates to:
+  /// **'Bugün'**
+  String get epgToday;
+
+  /// No description provided for @epgYesterday.
+  ///
+  /// In tr, this message translates to:
+  /// **'Dün'**
+  String get epgYesterday;
+
+  /// No description provided for @epgTomorrow.
+  ///
+  /// In tr, this message translates to:
+  /// **'Yarın'**
+  String get epgTomorrow;
+
+  /// No description provided for @epgRowEmpty.
+  ///
+  /// In tr, this message translates to:
+  /// **'Bu kanal için program yok'**
+  String get epgRowEmpty;
+
+  /// No description provided for @epgNoData.
+  ///
+  /// In tr, this message translates to:
+  /// **'EPG verisi yok'**
+  String get epgNoData;
+
+  /// No description provided for @epgNoDataHint.
+  ///
+  /// In tr, this message translates to:
+  /// **'Ayarlar → EPG bölümünden bir URL girip \'Şimdi Yenile\'ye dokunun.'**
+  String get epgNoDataHint;
+
+  /// No description provided for @epgError.
+  ///
+  /// In tr, this message translates to:
+  /// **'EPG hatası: {msg}'**
+  String epgError(String msg);
+
+  /// No description provided for @epgAutoRefreshTitle.
+  ///
+  /// In tr, this message translates to:
+  /// **'Otomatik Yenile'**
+  String get epgAutoRefreshTitle;
+
+  /// No description provided for @epgAutoRefreshOff.
+  ///
+  /// In tr, this message translates to:
+  /// **'Kapalı'**
+  String get epgAutoRefreshOff;
+
+  /// No description provided for @epgAutoRefreshEvery.
+  ///
+  /// In tr, this message translates to:
+  /// **'Her {h} saatte bir'**
+  String epgAutoRefreshEvery(int h);
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

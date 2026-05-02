@@ -96,4 +96,36 @@ class EpgRepository {
         'DELETE FROM $_prTable WHERE channelId IN ($ids)');
     await deleteChannelsByPlaylist(playlistId);
   }
+
+  /// Birden fazla tvgId için belirli zaman aralığındaki programları toplu
+  /// çeker. EPG Guide grid'i için optimize: tek sorgu N×M gösterimi.
+  Future<Map<String, List<EpgProgrammeModel>>> getProgrammesForChannelsInWindow({
+    required List<String> tvgIds,
+    required int startMs,
+    required int endMs,
+  }) async {
+    if (tvgIds.isEmpty) return {};
+    final db = await AppDatabase.instance;
+    // SQLite IN limit ~500 — playlist'lerde live kanal sayısı genelde
+    // 1000-3000, batchle.
+    final result = <String, List<EpgProgrammeModel>>{};
+    const batchSize = 400;
+    for (var i = 0; i < tvgIds.length; i += batchSize) {
+      final batch = tvgIds.sublist(
+          i, (i + batchSize).clamp(0, tvgIds.length));
+      final placeholders = List.filled(batch.length, '?').join(',');
+      final rows = await db.rawQuery(
+        'SELECT * FROM $_prTable '
+        'WHERE channelId IN ($placeholders) '
+        'AND stopTime > ? AND startTime < ? '
+        'ORDER BY channelId, startTime ASC',
+        [...batch, startMs, endMs],
+      );
+      for (final r in rows) {
+        final p = EpgProgrammeModel.fromMap(r);
+        result.putIfAbsent(p.channelId, () => []).add(p);
+      }
+    }
+    return result;
+  }
 }
