@@ -12,6 +12,9 @@ import 'core/utils/device_tier.dart';
 import 'core/utils/secure_storage.dart';
 import 'data/repositories/settings_repository.dart';
 import 'data/services/demo_seed_service.dart';
+import 'features/auth/data/auth_state.dart';
+import 'features/auth/providers/auth_providers.dart';
+import 'features/billing/data/purchases_service.dart';
 import 'l10n/generated/app_localizations.dart';
 
 void main() {
@@ -74,7 +77,25 @@ Future<void> _bootstrapInBackground() async {
 
   await _migrateSecrets();
 
+  // RevenueCat — Firebase init'inden SONRA olmali cunku appUserID Firebase
+  // anon/authenticated user'in UID'sini kullaniyor. Fail olsa devam (paywall
+  // sonradan friendly hata gosterir).
+  unawaited(_initRevenueCat());
+
   unawaited(DemoSeedService.seedIfNeeded());
+}
+
+/// RevenueCat configure — boş API key ise atlanır (BuildConfig kontrol).
+/// Init fail etse uygulama açılmaya devam eder; paywall'a basıldığında
+/// "Satın alma yapılandırılmadı" friendly mesaj gösterilir.
+Future<void> _initRevenueCat() async {
+  try {
+    await PurchasesService.instance
+        .configure()
+        .timeout(const Duration(seconds: 5));
+  } catch (e) {
+    debugPrint('RevenueCat init failed or timed out: $e');
+  }
 }
 
 Future<void> _initFirebaseAndAnalytics() async {
@@ -155,6 +176,19 @@ class _IPTVAIPlayerAppState extends ConsumerState<IPTVAIPlayerApp> {
   Widget build(BuildContext context) {
     final themeMode = ref.watch(themeModeProvider);
     final locale    = ref.watch(localeProvider);
+
+    // Adim 22 Phase C: Firebase Auth state -> RevenueCat user binding.
+    // Anon UID, login UID veya null hangi olursa olsun RC'yi senkron tut.
+    // Build icindeki ref.listen Riverpod kurali (initState'te degil).
+    ref.listen(authStateProvider, (prev, next) {
+      final auth = next.valueOrNull;
+      final uid = auth?.userOrNull?.uid;
+      if (uid != null && uid.isNotEmpty) {
+        PurchasesService.instance.logIn(uid);
+      } else {
+        PurchasesService.instance.logOut();
+      }
+    });
 
     return MaterialApp.router(
       onGenerateTitle:            (ctx) => AppLocalizations.of(ctx).appName,

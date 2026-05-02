@@ -35,4 +35,14 @@ class BuildConfig {
   /// AI altyazı kullanıcı tarafından açılıp kapatılabilir mi? Şimdilik her
   /// zaman aktif (true). Default kapalıya çevirmek için false yap.
   static const bool aiSubtitlesAlwaysOn = true;
+
+  /// RevenueCat iOS public SDK key (App Store apps).
+  /// Codemagic Secret variable: `REVENUECAT_IOS_KEY`.
+  static const String revenueCatIosKey =
+      String.fromEnvironment('REVENUECAT_IOS_KEY', defaultValue: '');
+
+  /// RevenueCat Android public SDK key (Play Store apps).
+  /// Codemagic Secret variable: `REVENUECAT_ANDROID_KEY`.
+  static const String revenueCatAndroidKey =
+      String.fromEnvironment('REVENUECAT_ANDROID_KEY', defaultValue: '');
 }
