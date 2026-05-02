@@ -88,6 +88,12 @@ class HomeNotifier extends AsyncNotifier<HomeState> {
       // sınıflandırırsa banner'a sızmasın. SQL filter zaten live'ı dışarıda
       // tutuyor ama parser hatası olası — burada da kapı kapalı olsun.
       if (ch.streamType == 'live') continue;
+      // URL bazlı ek defans: Xtream `/live/` path'i veya M3U live tipik
+      // uzantıları (`.ts`, `.m3u8`) — film/dizi diye etiketlenmiş live
+      // kanallar buradan elenir. M3U VOD da `.m3u8` kullanabilir ama Xtream
+      // VOD `/movie/` / `/series/` path'i taşır, bu yüzden path-bazlı
+      // negatif filtre öncelikli.
+      if (_looksLikeLiveByUrl(ch.streamUrl)) continue;
       final key = ch.streamType == 'series' && ch.seriesName.isNotEmpty
           ? 'S:${ch.seriesName}'
           : ch.streamUrl.isNotEmpty
@@ -96,6 +102,19 @@ class HomeNotifier extends AsyncNotifier<HomeState> {
       if (seen.add(key)) deduped.add(ch);
     }
     return deduped;
+  }
+
+  static bool _looksLikeLiveByUrl(String url) {
+    if (url.isEmpty) return false;
+    final u = url.toLowerCase();
+    // Xtream live path — kesin sinyal.
+    if (u.contains('/live/')) return true;
+    // Xtream VOD/series path varsa kesinlikle live değil.
+    if (u.contains('/movie/') || u.contains('/series/')) return false;
+    // M3U/genel: `.ts` veya `.m3u8` ile bitiyor ve VOD yolları taşımıyorsa
+    // büyük ihtimal canlı yayın.
+    if (u.endsWith('.ts') || u.endsWith('.m3u8')) return true;
+    return false;
   }
 
   // ── Public actions ──────────────────────────────────────────────────────────
@@ -229,11 +248,24 @@ class HomeNotifier extends AsyncNotifier<HomeState> {
     }
     state = AsyncData(current.copyWith(
         searchQuery: query, isSearching: true));
-    final results = await ref
-        .read(channelRepoProvider)
-        .search(current.activePlaylistId, query);
-    state = AsyncData(current.copyWith(
-        searchResults: results, isSearching: false));
+    try {
+      final results = await ref
+          .read(channelRepoProvider)
+          .search(current.activePlaylistId, query);
+      // En son state.value'dan başla; kullanıcı hızlı yazınca arada başka
+      // bir search() döndüyse onun query'sini ezme. Eski snapshot'a
+      // copyWith etmek searchQuery'i '' yapıyordu (bug).
+      final latest = state.value ?? current;
+      // Yarış: bu await sırasında query değişti mi? Eski sonucu bastırma.
+      if (latest.searchQuery != query) return;
+      state = AsyncData(latest.copyWith(
+          searchResults: results, isSearching: false));
+    } catch (e) {
+      // search() başarısız olsa isSearching takılı kalmasın.
+      final latest = state.value ?? current;
+      state = AsyncData(latest.copyWith(
+          searchResults: [], isSearching: false));
+    }
   }
 
   void clearSearch() {

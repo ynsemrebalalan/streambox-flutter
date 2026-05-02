@@ -728,7 +728,9 @@ class _ControlsOverlayState extends State<_ControlsOverlay> {
 
             const Spacer(),
 
-            // Bottom seek bar + time + volume indicator
+            // Bottom seek bar + time. Sol alttaki sabit ses göstergesi
+            // kaldırıldı (kullanıcı isteği) — gesture sırasında ekran ortasında
+            // beliren overlay zaten görsel feedback sağlıyor.
             StreamBuilder<Duration>(
               stream: widget.player.stream.duration,
               builder: (ctx, durSnap) {
@@ -740,44 +742,6 @@ class _ControlsOverlayState extends State<_ControlsOverlay> {
                       Spacing.lg, 0, Spacing.lg, Spacing.xl),
                   child: Column(
                     children: [
-                      // Volume indicator (kumandayla ses ayarlandığında gorulur)
-                      StreamBuilder<double>(
-                        stream: widget.player.stream.volume,
-                        builder: (ctx, volSnap) {
-                          final vol = volSnap.data ?? 100.0;
-                          return Row(
-                            children: [
-                              Icon(
-                                vol <= 0
-                                    ? Icons.volume_off
-                                    : vol < 50
-                                        ? Icons.volume_down
-                                        : Icons.volume_up,
-                                color: Colors.white70,
-                                size: 16,
-                              ),
-                              const SizedBox(width: 6),
-                              SizedBox(
-                                width: 80,
-                                child: LinearProgressIndicator(
-                                  value: vol / 100,
-                                  backgroundColor: Colors.white12,
-                                  color: AppColors.accent,
-                                  minHeight: 3,
-                                  borderRadius: BorderRadius.circular(2),
-                                ),
-                              ),
-                              const SizedBox(width: 6),
-                              Text('${vol.round()}',
-                                  style: const TextStyle(
-                                      color: Colors.white54, fontSize: 11)),
-                              const Spacer(),
-                            ],
-                          );
-                        },
-                      ),
-                      const SizedBox(height: Spacing.sm),
-
                       if (!isLive)
                         StreamBuilder<Duration>(
                           stream: widget.player.stream.position,
