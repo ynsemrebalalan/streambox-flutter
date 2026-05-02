@@ -33,8 +33,14 @@ workflows:
       # Application → Environment variables:
       #   GROQ_PROXY_URL    = https://iptvaiplayer.com.tr/groq-proxy.php   (Secure: ✅)
       #   GROQ_PROXY_SECRET = <gerçek secret>                              (Secure: ✅)
-      # Build IPA scripti bu değerleri --dart-define ile gömer; APK içinde
-      # static String constant'lara dönüşür, kullanıcıya görünmez.
+      #
+      # RevenueCat IAP (Adim 22) — Codemagic UI'da Secret variable:
+      #   REVENUECAT_IOS_KEY     = <RC iOS public SDK key>                 (Secure: ✅)
+      #   REVENUECAT_ANDROID_KEY = <RC Android public SDK key>             (Secure: ✅)
+      # RC dashboard -> Project -> Apps -> "Public app-specific API keys".
+      #
+      # Build IPA scripti tum --dart-define'lari ipa'ya gomer; APK icinde
+      # static String constant'lara donusur, kullaniciya gorunmez.
 
     scripts:
       - name: Flutter version (log)
@@ -100,7 +106,9 @@ workflows:
             --release \
             --build-number=$BUILD_NUMBER \
             --dart-define=GROQ_PROXY_URL=$GROQ_PROXY_URL \
-            --dart-define=GROQ_PROXY_SECRET=$GROQ_PROXY_SECRET
+            --dart-define=GROQ_PROXY_SECRET=$GROQ_PROXY_SECRET \
+            --dart-define=REVENUECAT_IOS_KEY=$REVENUECAT_IOS_KEY \
+            --dart-define=REVENUECAT_ANDROID_KEY=$REVENUECAT_ANDROID_KEY
 
       - name: Release build dogrulama
         script: |
