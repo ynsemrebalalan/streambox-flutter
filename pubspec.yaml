@@ -78,6 +78,13 @@ dependencies:
   firebase_auth: ^6.4.0
   device_info_plus: ^12.4.0
 
+  # Auth providers (social sign-in)
+  google_sign_in: ^6.2.2
+  sign_in_with_apple: ^6.1.4
+
+  # In-app purchases (RevenueCat)
+  purchases_flutter: ^10.0.1
+
 # Pin packages with Kotlin 2.x compatibility issues
 dependency_overrides:
   package_info_plus: 8.3.0
