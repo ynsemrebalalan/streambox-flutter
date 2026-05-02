@@ -1688,6 +1688,54 @@ abstract class AppLocalizations {
   /// In tr, this message translates to:
   /// **'Cloud senkron için Pro gerekiyor'**
   String get paywallTriggerCloudSync;
+
+  /// No description provided for @welcomeTitle.
+  ///
+  /// In tr, this message translates to:
+  /// **'Hoş geldin'**
+  String get welcomeTitle;
+
+  /// No description provided for @welcomeSubtitle.
+  ///
+  /// In tr, this message translates to:
+  /// **'İPTV Ai Player ile sınırsız film, dizi ve canlı yayın seni bekliyor.'**
+  String get welcomeSubtitle;
+
+  /// No description provided for @welcomeFeatureUnlimited.
+  ///
+  /// In tr, this message translates to:
+  /// **'Sınırsız kanal & favoriler'**
+  String get welcomeFeatureUnlimited;
+
+  /// No description provided for @welcomeFeatureSubtitles.
+  ///
+  /// In tr, this message translates to:
+  /// **'Akıllı altyazı (100+ dil)'**
+  String get welcomeFeatureSubtitles;
+
+  /// No description provided for @welcomeFeatureSync.
+  ///
+  /// In tr, this message translates to:
+  /// **'Cihazlar arası senkron'**
+  String get welcomeFeatureSync;
+
+  /// No description provided for @welcomeStartFreeButton.
+  ///
+  /// In tr, this message translates to:
+  /// **'Hesap aç → Pro\'yu dene'**
+  String get welcomeStartFreeButton;
+
+  /// No description provided for @welcomeSkipButton.
+  ///
+  /// In tr, this message translates to:
+  /// **'Şimdi atla'**
+  String get welcomeSkipButton;
+
+  /// No description provided for @welcomeSignInLink.
+  ///
+  /// In tr, this message translates to:
+  /// **'Zaten hesabım var'**
+  String get welcomeSignInLink;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

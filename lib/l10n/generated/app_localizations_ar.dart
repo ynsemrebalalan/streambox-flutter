@@ -832,4 +832,28 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get paywallTriggerCloudSync => 'Pro مطلوب للمزامنة السحابية';
+
+  @override
+  String get welcomeTitle => 'مرحبًا';
+
+  @override
+  String get welcomeSubtitle => 'أفلام ومسلسلات وبث مباشر بلا حدود في انتظارك.';
+
+  @override
+  String get welcomeFeatureUnlimited => 'قنوات ومفضلات بلا حدود';
+
+  @override
+  String get welcomeFeatureSubtitles => 'ترجمات ذكية (أكثر من 100 لغة)';
+
+  @override
+  String get welcomeFeatureSync => 'مزامنة عبر الأجهزة';
+
+  @override
+  String get welcomeStartFreeButton => 'أنشئ حسابًا → جرّب Pro';
+
+  @override
+  String get welcomeSkipButton => 'تخطّى الآن';
+
+  @override
+  String get welcomeSignInLink => 'لدي حساب بالفعل';
 }

@@ -159,11 +159,16 @@ class _IPTVAIPlayerAppState extends ConsumerState<IPTVAIPlayerApp> {
         debugPrint('Playlist load failed: $e');
       }
       try {
-        final accepted = await ref
-            .read(settingsRepoProvider)
-            .get(SettingsKeys.disclaimerAccepted);
+        final repo = ref.read(settingsRepoProvider);
+        final accepted = await repo.get(SettingsKeys.disclaimerAccepted);
         if (accepted == 'true' && mounted) {
-          appRouter.go(AppRoutes.home);
+          // Adim 22 Phase F: welcome bir kez gosterildi mi?
+          final welcomeShown =
+              await repo.get(SettingsKeys.welcomeShown);
+          if (!mounted) return;
+          appRouter.go(welcomeShown == 'true'
+              ? AppRoutes.home
+              : AppRoutes.welcome);
         }
       } catch (e) {
         debugPrint('Settings load failed: $e');

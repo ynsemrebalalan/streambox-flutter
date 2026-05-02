@@ -330,5 +330,14 @@
   "paywallNoOfferings": "Keine Angebote verfügbar.",
   "paywallTriggerSecondPlaylist": "Pro erforderlich für eine zweite Playlist",
   "paywallTriggerAiSubtitle": "Pro erforderlich für KI-Untertitel",
-  "paywallTriggerCloudSync": "Pro erforderlich für Cloud-Synchronisierung"
+  "paywallTriggerCloudSync": "Pro erforderlich für Cloud-Synchronisierung",
+
+  "welcomeTitle": "Willkommen",
+  "welcomeSubtitle": "Unbegrenzte Filme, Serien und Live-TV warten auf dich.",
+  "welcomeFeatureUnlimited": "Unbegrenzte Kanäle & Favoriten",
+  "welcomeFeatureSubtitles": "Intelligente Untertitel (100+ Sprachen)",
+  "welcomeFeatureSync": "Geräteübergreifende Synchronisierung",
+  "welcomeStartFreeButton": "Konto erstellen → Pro testen",
+  "welcomeSkipButton": "Jetzt überspringen",
+  "welcomeSignInLink": "Ich habe bereits ein Konto"
 }

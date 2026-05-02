@@ -832,4 +832,28 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String get paywallTriggerCloudSync => 'Cloud senkron için Pro gerekiyor';
+
+  @override
+  String get welcomeTitle => 'Hoş geldin';
+
+  @override
+  String get welcomeSubtitle => 'İPTV Ai Player ile sınırsız film, dizi ve canlı yayın seni bekliyor.';
+
+  @override
+  String get welcomeFeatureUnlimited => 'Sınırsız kanal & favoriler';
+
+  @override
+  String get welcomeFeatureSubtitles => 'Akıllı altyazı (100+ dil)';
+
+  @override
+  String get welcomeFeatureSync => 'Cihazlar arası senkron';
+
+  @override
+  String get welcomeStartFreeButton => 'Hesap aç → Pro\'yu dene';
+
+  @override
+  String get welcomeSkipButton => 'Şimdi atla';
+
+  @override
+  String get welcomeSignInLink => 'Zaten hesabım var';
 }

@@ -330,5 +330,14 @@
   "paywallNoOfferings": "No offerings available.",
   "paywallTriggerSecondPlaylist": "Pro required for a second playlist",
   "paywallTriggerAiSubtitle": "Pro required for AI subtitles",
-  "paywallTriggerCloudSync": "Pro required for cloud sync"
+  "paywallTriggerCloudSync": "Pro required for cloud sync",
+
+  "welcomeTitle": "Welcome",
+  "welcomeSubtitle": "Unlimited movies, series and live TV are waiting for you.",
+  "welcomeFeatureUnlimited": "Unlimited channels & favorites",
+  "welcomeFeatureSubtitles": "Smart subtitles (100+ languages)",
+  "welcomeFeatureSync": "Cross-device sync",
+  "welcomeStartFreeButton": "Create account → Try Pro",
+  "welcomeSkipButton": "Skip for now",
+  "welcomeSignInLink": "I already have an account"
 }

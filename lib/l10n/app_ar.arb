@@ -330,5 +330,14 @@
   "paywallNoOfferings": "لا توجد عروض متاحة.",
   "paywallTriggerSecondPlaylist": "Pro مطلوب لإضافة قائمة تشغيل ثانية",
   "paywallTriggerAiSubtitle": "Pro مطلوب للترجمة بالذكاء الاصطناعي",
-  "paywallTriggerCloudSync": "Pro مطلوب للمزامنة السحابية"
+  "paywallTriggerCloudSync": "Pro مطلوب للمزامنة السحابية",
+
+  "welcomeTitle": "مرحبًا",
+  "welcomeSubtitle": "أفلام ومسلسلات وبث مباشر بلا حدود في انتظارك.",
+  "welcomeFeatureUnlimited": "قنوات ومفضلات بلا حدود",
+  "welcomeFeatureSubtitles": "ترجمات ذكية (أكثر من 100 لغة)",
+  "welcomeFeatureSync": "مزامنة عبر الأجهزة",
+  "welcomeStartFreeButton": "أنشئ حسابًا → جرّب Pro",
+  "welcomeSkipButton": "تخطّى الآن",
+  "welcomeSignInLink": "لدي حساب بالفعل"
 }

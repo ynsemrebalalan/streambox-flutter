@@ -6,6 +6,7 @@ import '../../features/auth/screens/register_screen.dart';
 import '../../features/billing/screens/paywall_screen.dart';
 import '../../features/home/home_screen.dart';
 import '../../features/onboarding/disclaimer_screen.dart';
+import '../../features/onboarding/welcome_screen.dart';
 import '../../features/player/player_screen.dart';
 import '../../features/settings/category_filter_screen.dart';
 import '../../features/settings/settings_screen.dart';
@@ -44,8 +45,14 @@ final appRouter = GoRouter(
     GoRoute(
       path: AppRoutes.disclaimer,
       builder: (ctx, state) => DisclaimerScreen(
-        onAccepted: () => ctx.go(AppRoutes.home),
+        // Adim 22 Phase F: disclaimer kabul edilince welcome ekranina goz
+        // (welcomeShown=true ise main.dart accepted check welcome'i atlar).
+        onAccepted: () => ctx.go(AppRoutes.welcome),
       ),
+    ),
+    GoRoute(
+      path: AppRoutes.welcome,
+      builder: (ctx, state) => const WelcomeScreen(),
     ),
     GoRoute(
       path:    AppRoutes.home,

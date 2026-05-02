@@ -832,4 +832,28 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get paywallTriggerCloudSync => 'Pro required for cloud sync';
+
+  @override
+  String get welcomeTitle => 'Welcome';
+
+  @override
+  String get welcomeSubtitle => 'Unlimited movies, series and live TV are waiting for you.';
+
+  @override
+  String get welcomeFeatureUnlimited => 'Unlimited channels & favorites';
+
+  @override
+  String get welcomeFeatureSubtitles => 'Smart subtitles (100+ languages)';
+
+  @override
+  String get welcomeFeatureSync => 'Cross-device sync';
+
+  @override
+  String get welcomeStartFreeButton => 'Create account → Try Pro';
+
+  @override
+  String get welcomeSkipButton => 'Skip for now';
+
+  @override
+  String get welcomeSignInLink => 'I already have an account';
 }
