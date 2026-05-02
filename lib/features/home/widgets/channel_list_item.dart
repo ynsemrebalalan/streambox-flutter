@@ -9,6 +9,7 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_tokens.dart';
 import '../../../data/models/channel_model.dart';
 import '../../../data/models/epg_model.dart';
+import '../../../data/services/cloud_sync_service.dart';
 import '../home_provider.dart';
 
 // EPG current programme provider for a given tvgId
@@ -198,6 +199,9 @@ class _WatchlistButtonState extends ConsumerState<_WatchlistButton> {
     });
     try {
       await repo.toggle(widget.channel.id, pid);
+      // Cloud sync — Pro + auth ise yedeklenir, değilse no-op.
+      // ignore: unawaited_futures
+      CloudSyncService.pushWatchlist(widget.channel, added: !prev);
     } catch (_) {
       if (mounted) setState(() => _local = prev);
     } finally {

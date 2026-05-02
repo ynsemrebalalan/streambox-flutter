@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/providers/app_providers.dart';
 import '../../data/models/channel_model.dart';
 import '../../data/repositories/settings_repository.dart';
+import '../../data/services/cloud_sync_service.dart';
 import 'home_state.dart';
 
 final homeProvider = AsyncNotifierProvider<HomeNotifier, HomeState>(
@@ -218,6 +219,13 @@ class HomeNotifier extends AsyncNotifier<HomeState> {
     if (current == null) return;
     final newFav = !channel.isFavorite;
     await ref.read(channelRepoProvider).toggleFavorite(channel.id, newFav);
+
+    // Cloud sync (Pro + authenticated): fire-and-forget; başarısız olsa
+    // local zaten güncel, kullanıcı akışı kesilmez.
+    // ignore: unawaited_futures
+    CloudSyncService.pushFavorite(
+        channel.copyWith(isFavorite: newFav),
+        added: newFav);
 
     // channels listesini guncelle
     final updated = current.channels.map((c) =>

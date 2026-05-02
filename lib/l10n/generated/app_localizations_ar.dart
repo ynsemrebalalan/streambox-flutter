@@ -943,4 +943,42 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get parentalNext => 'التالي';
+
+  @override
+  String get cloudSyncTitle => 'مزامنة سحابية';
+
+  @override
+  String get cloudSyncProRequired => 'اشتراك Pro مطلوب';
+
+  @override
+  String get cloudSyncSignInRequired => 'سجّل الدخول ثم زامن';
+
+  @override
+  String get cloudSyncNever => 'لم تتم المزامنة بعد';
+
+  @override
+  String get cloudSyncSyncNow => 'زامن الآن';
+
+  @override
+  String get cloudSyncJustNow => 'للتو';
+
+  @override
+  String cloudSyncMinutesAgo(int n) {
+    return 'قبل $n د';
+  }
+
+  @override
+  String cloudSyncHoursAgo(int n) {
+    return 'قبل $n س';
+  }
+
+  @override
+  String cloudSyncDaysAgo(int n) {
+    return 'قبل $n يوم';
+  }
+
+  @override
+  String cloudSyncLastAt(String when) {
+    return 'آخر مزامنة: $when';
+  }
 }

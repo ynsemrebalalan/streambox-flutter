@@ -943,4 +943,42 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get parentalNext => 'Next';
+
+  @override
+  String get cloudSyncTitle => 'Cloud Sync';
+
+  @override
+  String get cloudSyncProRequired => 'Pro subscription required';
+
+  @override
+  String get cloudSyncSignInRequired => 'Sign in, then sync';
+
+  @override
+  String get cloudSyncNever => 'Never synced';
+
+  @override
+  String get cloudSyncSyncNow => 'Sync Now';
+
+  @override
+  String get cloudSyncJustNow => 'just now';
+
+  @override
+  String cloudSyncMinutesAgo(int n) {
+    return '${n}m ago';
+  }
+
+  @override
+  String cloudSyncHoursAgo(int n) {
+    return '${n}h ago';
+  }
+
+  @override
+  String cloudSyncDaysAgo(int n) {
+    return '${n}d ago';
+  }
+
+  @override
+  String cloudSyncLastAt(String when) {
+    return 'Last sync: $when';
+  }
 }

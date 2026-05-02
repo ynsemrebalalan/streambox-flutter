@@ -371,5 +371,20 @@
   "parentalPinMismatch": "رموز PIN غير متطابقة",
   "parentalPinChanged": "تم تحديث PIN",
   "parentalSubmit": "موافق",
-  "parentalNext": "التالي"
+  "parentalNext": "التالي",
+
+  "cloudSyncTitle": "مزامنة سحابية",
+  "cloudSyncProRequired": "اشتراك Pro مطلوب",
+  "cloudSyncSignInRequired": "سجّل الدخول ثم زامن",
+  "cloudSyncNever": "لم تتم المزامنة بعد",
+  "cloudSyncSyncNow": "زامن الآن",
+  "cloudSyncJustNow": "للتو",
+  "@cloudSyncMinutesAgo": { "placeholders": { "n": { "type": "int" } } },
+  "cloudSyncMinutesAgo": "قبل {n} د",
+  "@cloudSyncHoursAgo": { "placeholders": { "n": { "type": "int" } } },
+  "cloudSyncHoursAgo": "قبل {n} س",
+  "@cloudSyncDaysAgo": { "placeholders": { "n": { "type": "int" } } },
+  "cloudSyncDaysAgo": "قبل {n} يوم",
+  "@cloudSyncLastAt": { "placeholders": { "when": { "type": "String" } } },
+  "cloudSyncLastAt": "آخر مزامنة: {when}"
 }

@@ -398,5 +398,20 @@
   "parentalPinMismatch": "PIN'ler eşleşmiyor",
   "parentalPinChanged": "PIN güncellendi",
   "parentalSubmit": "Tamam",
-  "parentalNext": "İleri"
+  "parentalNext": "İleri",
+
+  "cloudSyncTitle": "Bulut Senkronu",
+  "cloudSyncProRequired": "Pro abonelik gerekli",
+  "cloudSyncSignInRequired": "Giriş yap, sonra senkronla",
+  "cloudSyncNever": "Henüz senkron yok",
+  "cloudSyncSyncNow": "Şimdi Senkronla",
+  "cloudSyncJustNow": "az önce",
+  "@cloudSyncMinutesAgo": { "placeholders": { "n": { "type": "int" } } },
+  "cloudSyncMinutesAgo": "{n} dk önce",
+  "@cloudSyncHoursAgo": { "placeholders": { "n": { "type": "int" } } },
+  "cloudSyncHoursAgo": "{n} sa önce",
+  "@cloudSyncDaysAgo": { "placeholders": { "n": { "type": "int" } } },
+  "cloudSyncDaysAgo": "{n} gün önce",
+  "@cloudSyncLastAt": { "placeholders": { "when": { "type": "String" } } },
+  "cloudSyncLastAt": "Son senkron: {when}"
 }

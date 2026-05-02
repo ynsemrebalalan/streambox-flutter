@@ -1910,6 +1910,66 @@ abstract class AppLocalizations {
   /// In tr, this message translates to:
   /// **'İleri'**
   String get parentalNext;
+
+  /// No description provided for @cloudSyncTitle.
+  ///
+  /// In tr, this message translates to:
+  /// **'Bulut Senkronu'**
+  String get cloudSyncTitle;
+
+  /// No description provided for @cloudSyncProRequired.
+  ///
+  /// In tr, this message translates to:
+  /// **'Pro abonelik gerekli'**
+  String get cloudSyncProRequired;
+
+  /// No description provided for @cloudSyncSignInRequired.
+  ///
+  /// In tr, this message translates to:
+  /// **'Giriş yap, sonra senkronla'**
+  String get cloudSyncSignInRequired;
+
+  /// No description provided for @cloudSyncNever.
+  ///
+  /// In tr, this message translates to:
+  /// **'Henüz senkron yok'**
+  String get cloudSyncNever;
+
+  /// No description provided for @cloudSyncSyncNow.
+  ///
+  /// In tr, this message translates to:
+  /// **'Şimdi Senkronla'**
+  String get cloudSyncSyncNow;
+
+  /// No description provided for @cloudSyncJustNow.
+  ///
+  /// In tr, this message translates to:
+  /// **'az önce'**
+  String get cloudSyncJustNow;
+
+  /// No description provided for @cloudSyncMinutesAgo.
+  ///
+  /// In tr, this message translates to:
+  /// **'{n} dk önce'**
+  String cloudSyncMinutesAgo(int n);
+
+  /// No description provided for @cloudSyncHoursAgo.
+  ///
+  /// In tr, this message translates to:
+  /// **'{n} sa önce'**
+  String cloudSyncHoursAgo(int n);
+
+  /// No description provided for @cloudSyncDaysAgo.
+  ///
+  /// In tr, this message translates to:
+  /// **'{n} gün önce'**
+  String cloudSyncDaysAgo(int n);
+
+  /// No description provided for @cloudSyncLastAt.
+  ///
+  /// In tr, this message translates to:
+  /// **'Son senkron: {when}'**
+  String cloudSyncLastAt(String when);
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

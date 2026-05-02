@@ -371,5 +371,20 @@
   "parentalPinMismatch": "PINs don't match",
   "parentalPinChanged": "PIN updated",
   "parentalSubmit": "OK",
-  "parentalNext": "Next"
+  "parentalNext": "Next",
+
+  "cloudSyncTitle": "Cloud Sync",
+  "cloudSyncProRequired": "Pro subscription required",
+  "cloudSyncSignInRequired": "Sign in, then sync",
+  "cloudSyncNever": "Never synced",
+  "cloudSyncSyncNow": "Sync Now",
+  "cloudSyncJustNow": "just now",
+  "@cloudSyncMinutesAgo": { "placeholders": { "n": { "type": "int" } } },
+  "cloudSyncMinutesAgo": "{n}m ago",
+  "@cloudSyncHoursAgo": { "placeholders": { "n": { "type": "int" } } },
+  "cloudSyncHoursAgo": "{n}h ago",
+  "@cloudSyncDaysAgo": { "placeholders": { "n": { "type": "int" } } },
+  "cloudSyncDaysAgo": "{n}d ago",
+  "@cloudSyncLastAt": { "placeholders": { "when": { "type": "String" } } },
+  "cloudSyncLastAt": "Last sync: {when}"
 }

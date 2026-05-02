@@ -12,6 +12,7 @@ import '../../l10n/generated/app_localizations.dart';
 import '../auth/data/auth_state.dart';
 import '../auth/providers/auth_providers.dart';
 import '../billing/providers/purchases_providers.dart';
+import '../cloud_sync/widgets/cloud_sync_tile.dart';
 
 // ── State ─────────────────────────────────────────────────────────────────────
 
@@ -466,6 +467,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   title:   Text(l.parentalLockTitle),
                   onTap:   () => context.push(AppRoutes.parentalLock),
                 ),
+                // Phase 2 — Cloud Sync (Pro)
+                const CloudSyncTile(),
               ],
             ),
           ),

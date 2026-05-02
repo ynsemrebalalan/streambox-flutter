@@ -371,5 +371,20 @@
   "parentalPinMismatch": "PINs stimmen nicht überein",
   "parentalPinChanged": "PIN aktualisiert",
   "parentalSubmit": "OK",
-  "parentalNext": "Weiter"
+  "parentalNext": "Weiter",
+
+  "cloudSyncTitle": "Cloud-Sync",
+  "cloudSyncProRequired": "Pro-Abo erforderlich",
+  "cloudSyncSignInRequired": "Anmelden, dann synchronisieren",
+  "cloudSyncNever": "Noch nie synchronisiert",
+  "cloudSyncSyncNow": "Jetzt synchronisieren",
+  "cloudSyncJustNow": "gerade eben",
+  "@cloudSyncMinutesAgo": { "placeholders": { "n": { "type": "int" } } },
+  "cloudSyncMinutesAgo": "vor {n} Min.",
+  "@cloudSyncHoursAgo": { "placeholders": { "n": { "type": "int" } } },
+  "cloudSyncHoursAgo": "vor {n} Std.",
+  "@cloudSyncDaysAgo": { "placeholders": { "n": { "type": "int" } } },
+  "cloudSyncDaysAgo": "vor {n} Tagen",
+  "@cloudSyncLastAt": { "placeholders": { "when": { "type": "String" } } },
+  "cloudSyncLastAt": "Letzte Sync: {when}"
 }

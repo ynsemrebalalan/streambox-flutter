@@ -15,6 +15,7 @@ import 'data/services/demo_seed_service.dart';
 import 'features/auth/data/auth_state.dart';
 import 'features/auth/providers/auth_providers.dart';
 import 'features/billing/data/purchases_service.dart';
+import 'features/cloud_sync/cloud_sync_controller.dart';
 import 'l10n/generated/app_localizations.dart';
 
 void main() {
@@ -138,10 +139,20 @@ class IPTVAIPlayerApp extends ConsumerStatefulWidget {
   ConsumerState<IPTVAIPlayerApp> createState() => _IPTVAIPlayerAppState();
 }
 
-class _IPTVAIPlayerAppState extends ConsumerState<IPTVAIPlayerApp> {
+class _IPTVAIPlayerAppState extends ConsumerState<IPTVAIPlayerApp>
+    with WidgetsBindingObserver {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    Future.microtask(() async {
+      // Cloud sync UI için son sync timestamp'ini yükle.
+      try {
+        await ref
+            .read(cloudSyncControllerProvider.notifier)
+            .loadLastSyncedAt();
+      } catch (_) {}
+    });
     Future.microtask(() async {
       try {
         await ref.read(themeModeProvider.notifier).loadFromDb();
@@ -183,6 +194,22 @@ class _IPTVAIPlayerAppState extends ConsumerState<IPTVAIPlayerApp> {
   }
 
   @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // App foreground'a döndüğünde cloud pull tetikle (Pro + auth ise).
+    // _eligible() kontrolü controller içinde, no-op döner aksi halde.
+    if (state == AppLifecycleState.resumed) {
+      // ignore: unawaited_futures
+      ref.read(cloudSyncControllerProvider.notifier).syncNow();
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     final themeMode    = ref.watch(themeModeProvider);
     final themeVariant = ref.watch(themeVariantProvider);
@@ -198,6 +225,14 @@ class _IPTVAIPlayerAppState extends ConsumerState<IPTVAIPlayerApp> {
         PurchasesService.instance.logIn(uid);
       } else {
         PurchasesService.instance.logOut();
+      }
+      // Phase 2 Cloud Sync: login + Pro user'a geçişte otomatik pull
+      // (auth Authenticated'a transition oldu mu kontrol).
+      final wasAuth = prev?.valueOrNull is AuthAuthenticated;
+      final nowAuth = auth is AuthAuthenticated;
+      if (!wasAuth && nowAuth) {
+        // ignore: unawaited_futures
+        ref.read(cloudSyncControllerProvider.notifier).syncNow();
       }
     });
 

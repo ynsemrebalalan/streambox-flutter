@@ -943,4 +943,42 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String get parentalNext => 'İleri';
+
+  @override
+  String get cloudSyncTitle => 'Bulut Senkronu';
+
+  @override
+  String get cloudSyncProRequired => 'Pro abonelik gerekli';
+
+  @override
+  String get cloudSyncSignInRequired => 'Giriş yap, sonra senkronla';
+
+  @override
+  String get cloudSyncNever => 'Henüz senkron yok';
+
+  @override
+  String get cloudSyncSyncNow => 'Şimdi Senkronla';
+
+  @override
+  String get cloudSyncJustNow => 'az önce';
+
+  @override
+  String cloudSyncMinutesAgo(int n) {
+    return '$n dk önce';
+  }
+
+  @override
+  String cloudSyncHoursAgo(int n) {
+    return '$n sa önce';
+  }
+
+  @override
+  String cloudSyncDaysAgo(int n) {
+    return '$n gün önce';
+  }
+
+  @override
+  String cloudSyncLastAt(String when) {
+    return 'Son senkron: $when';
+  }
 }

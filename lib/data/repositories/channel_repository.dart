@@ -3,6 +3,7 @@ import 'package:sqflite/sqflite.dart';
 import '../../core/database/app_database.dart';
 import '../../core/utils/device_tier.dart';
 import '../models/channel_model.dart';
+import '../services/cloud_sync_service.dart';
 
 class ChannelRepository {
   static const _table = 'channels';
@@ -250,18 +251,40 @@ class ChannelRepository {
 
   Future<void> updateWatched(String id, {required int position, int duration = 0}) async {
     final db = await AppDatabase.instance;
+    final lw = DateTime.now().millisecondsSinceEpoch;
     final values = <String, Object?>{
-      'lastWatched':  DateTime.now().millisecondsSinceEpoch,
+      'lastWatched':  lw,
       'lastPosition': position,
     };
+    final isWatchedFlag = duration > 0 && position > duration * 0.9;
     if (duration > 0) {
       values['duration'] = duration;
-      // %90 izlendiyse "izlendi" say.
-      if (position > duration * 0.9) {
-        values['isWatched'] = 1;
-      }
+      if (isWatchedFlag) values['isWatched'] = 1;
     }
     await db.update(_table, values, where: 'id = ?', whereArgs: [id]);
+
+    // Cloud sync — playlistId için ek query gerek (current row'dan al).
+    // Fire-and-forget: history kaydı tüm cihazlara senkron olur.
+    () async {
+      try {
+        final rows = await db.query(_table,
+            columns: ['playlistId'],
+            where: 'id = ?',
+            whereArgs: [id],
+            limit: 1);
+        if (rows.isEmpty) return;
+        final pid = rows.first['playlistId'] as String? ?? '';
+        if (pid.isEmpty) return;
+        await CloudSyncService.pushHistory(
+          playlistId:   pid,
+          channelId:    id,
+          lastWatched:  lw,
+          lastPosition: position,
+          duration:     duration,
+          isWatched:    isWatchedFlag,
+        );
+      } catch (_) {}
+    }();
   }
 
   Future<void> markWatched(String id) async {
