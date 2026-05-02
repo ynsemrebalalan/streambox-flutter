@@ -1256,6 +1256,258 @@ abstract class AppLocalizations {
   /// In tr, this message translates to:
   /// **'Nerede Kaldım'**
   String get menuContinueWatching;
+
+  /// No description provided for @authSignInTitle.
+  ///
+  /// In tr, this message translates to:
+  /// **'Giriş yap'**
+  String get authSignInTitle;
+
+  /// No description provided for @authSignUpTitle.
+  ///
+  /// In tr, this message translates to:
+  /// **'Hesap aç'**
+  String get authSignUpTitle;
+
+  /// No description provided for @authAccountTitle.
+  ///
+  /// In tr, this message translates to:
+  /// **'Hesabım'**
+  String get authAccountTitle;
+
+  /// No description provided for @authEmailLabel.
+  ///
+  /// In tr, this message translates to:
+  /// **'E-posta'**
+  String get authEmailLabel;
+
+  /// No description provided for @authPasswordLabel.
+  ///
+  /// In tr, this message translates to:
+  /// **'Şifre'**
+  String get authPasswordLabel;
+
+  /// No description provided for @authConfirmPasswordLabel.
+  ///
+  /// In tr, this message translates to:
+  /// **'Şifreyi tekrarla'**
+  String get authConfirmPasswordLabel;
+
+  /// No description provided for @authSignInButton.
+  ///
+  /// In tr, this message translates to:
+  /// **'Giriş yap'**
+  String get authSignInButton;
+
+  /// No description provided for @authSignUpButton.
+  ///
+  /// In tr, this message translates to:
+  /// **'Hesap aç'**
+  String get authSignUpButton;
+
+  /// No description provided for @authSignOutButton.
+  ///
+  /// In tr, this message translates to:
+  /// **'Çıkış yap'**
+  String get authSignOutButton;
+
+  /// No description provided for @authForgotPassword.
+  ///
+  /// In tr, this message translates to:
+  /// **'Şifremi unuttum'**
+  String get authForgotPassword;
+
+  /// No description provided for @authResetPasswordTitle.
+  ///
+  /// In tr, this message translates to:
+  /// **'Şifre sıfırla'**
+  String get authResetPasswordTitle;
+
+  /// No description provided for @authResetPasswordHint.
+  ///
+  /// In tr, this message translates to:
+  /// **'E-posta adresine sıfırlama bağlantısı gönderelim.'**
+  String get authResetPasswordHint;
+
+  /// No description provided for @authResetPasswordSent.
+  ///
+  /// In tr, this message translates to:
+  /// **'Sıfırlama bağlantısı gönderildi. Gelen kutunu kontrol et.'**
+  String get authResetPasswordSent;
+
+  /// No description provided for @authNoAccountQuestion.
+  ///
+  /// In tr, this message translates to:
+  /// **'Hesabın yok mu? Kayıt ol'**
+  String get authNoAccountQuestion;
+
+  /// No description provided for @authHaveAccountQuestion.
+  ///
+  /// In tr, this message translates to:
+  /// **'Zaten hesabım var'**
+  String get authHaveAccountQuestion;
+
+  /// No description provided for @authOrDivider.
+  ///
+  /// In tr, this message translates to:
+  /// **'veya'**
+  String get authOrDivider;
+
+  /// No description provided for @authSignInWithGoogle.
+  ///
+  /// In tr, this message translates to:
+  /// **'Google ile devam et'**
+  String get authSignInWithGoogle;
+
+  /// No description provided for @authSignInWithApple.
+  ///
+  /// In tr, this message translates to:
+  /// **'Apple ile devam et'**
+  String get authSignInWithApple;
+
+  /// No description provided for @authAcceptTerms.
+  ///
+  /// In tr, this message translates to:
+  /// **'Kullanım Koşulları ve Gizlilik Politikası\'nı kabul ediyorum'**
+  String get authAcceptTerms;
+
+  /// No description provided for @authViewTerms.
+  ///
+  /// In tr, this message translates to:
+  /// **'Koşulları görüntüle'**
+  String get authViewTerms;
+
+  /// No description provided for @authErrorInvalidEmail.
+  ///
+  /// In tr, this message translates to:
+  /// **'Geçersiz e-posta adresi'**
+  String get authErrorInvalidEmail;
+
+  /// No description provided for @authErrorWeakPassword.
+  ///
+  /// In tr, this message translates to:
+  /// **'Şifre en az 6 karakter olmalı'**
+  String get authErrorWeakPassword;
+
+  /// No description provided for @authErrorPasswordMismatch.
+  ///
+  /// In tr, this message translates to:
+  /// **'Şifreler eşleşmiyor'**
+  String get authErrorPasswordMismatch;
+
+  /// No description provided for @authErrorEmailInUse.
+  ///
+  /// In tr, this message translates to:
+  /// **'Bu e-posta zaten kullanımda'**
+  String get authErrorEmailInUse;
+
+  /// No description provided for @authErrorWrongPassword.
+  ///
+  /// In tr, this message translates to:
+  /// **'E-posta veya şifre hatalı'**
+  String get authErrorWrongPassword;
+
+  /// No description provided for @authErrorTooManyRequests.
+  ///
+  /// In tr, this message translates to:
+  /// **'Çok fazla deneme. Bir süre sonra tekrar dene.'**
+  String get authErrorTooManyRequests;
+
+  /// No description provided for @authErrorNetwork.
+  ///
+  /// In tr, this message translates to:
+  /// **'Ağ hatası. İnternet bağlantını kontrol et.'**
+  String get authErrorNetwork;
+
+  /// No description provided for @authErrorGeneric.
+  ///
+  /// In tr, this message translates to:
+  /// **'Bir şeyler ters gitti: {message}'**
+  String authErrorGeneric(String message);
+
+  /// No description provided for @authVerifyEmailHint.
+  ///
+  /// In tr, this message translates to:
+  /// **'E-posta adresine doğrulama bağlantısı gönderdik.'**
+  String get authVerifyEmailHint;
+
+  /// No description provided for @authResendVerification.
+  ///
+  /// In tr, this message translates to:
+  /// **'Doğrulama tekrar gönder'**
+  String get authResendVerification;
+
+  /// No description provided for @authChangePassword.
+  ///
+  /// In tr, this message translates to:
+  /// **'Şifreyi değiştir'**
+  String get authChangePassword;
+
+  /// No description provided for @authDeleteAccount.
+  ///
+  /// In tr, this message translates to:
+  /// **'Hesabı sil'**
+  String get authDeleteAccount;
+
+  /// No description provided for @authDeleteAccountWarning.
+  ///
+  /// In tr, this message translates to:
+  /// **'Hesabını silersen tüm cloud verisin kalıcı olarak kaldırılır. Bu işlem geri alınamaz.'**
+  String get authDeleteAccountWarning;
+
+  /// No description provided for @authDeleteAccountConfirm.
+  ///
+  /// In tr, this message translates to:
+  /// **'Evet, hesabımı sil'**
+  String get authDeleteAccountConfirm;
+
+  /// No description provided for @authAccountSection.
+  ///
+  /// In tr, this message translates to:
+  /// **'Hesap'**
+  String get authAccountSection;
+
+  /// No description provided for @authNotSignedIn.
+  ///
+  /// In tr, this message translates to:
+  /// **'Giriş yapılmadı'**
+  String get authNotSignedIn;
+
+  /// No description provided for @authSignInPromptTitle.
+  ///
+  /// In tr, this message translates to:
+  /// **'Hesap aç → Pro\'yu dene'**
+  String get authSignInPromptTitle;
+
+  /// No description provided for @authSignInPromptDesc.
+  ///
+  /// In tr, this message translates to:
+  /// **'Sınırsız playlist, AI altyazı ve cihazlar arası senkron için bir hesap oluştur.'**
+  String get authSignInPromptDesc;
+
+  /// No description provided for @authProActive.
+  ///
+  /// In tr, this message translates to:
+  /// **'Pro üye'**
+  String get authProActive;
+
+  /// No description provided for @authFreeTier.
+  ///
+  /// In tr, this message translates to:
+  /// **'Ücretsiz plan'**
+  String get authFreeTier;
+
+  /// No description provided for @authUpgradeToPro.
+  ///
+  /// In tr, this message translates to:
+  /// **'Pro\'ya Geç'**
+  String get authUpgradeToPro;
+
+  /// No description provided for @authRequiresRecentLogin.
+  ///
+  /// In tr, this message translates to:
+  /// **'Bu işlem için son zamanlarda giriş yapmış olman gerekiyor. Lütfen tekrar giriş yap.'**
+  String get authRequiresRecentLogin;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

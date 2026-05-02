@@ -612,4 +612,132 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String get menuContinueWatching => 'Nerede Kaldım';
+
+  @override
+  String get authSignInTitle => 'Giriş yap';
+
+  @override
+  String get authSignUpTitle => 'Hesap aç';
+
+  @override
+  String get authAccountTitle => 'Hesabım';
+
+  @override
+  String get authEmailLabel => 'E-posta';
+
+  @override
+  String get authPasswordLabel => 'Şifre';
+
+  @override
+  String get authConfirmPasswordLabel => 'Şifreyi tekrarla';
+
+  @override
+  String get authSignInButton => 'Giriş yap';
+
+  @override
+  String get authSignUpButton => 'Hesap aç';
+
+  @override
+  String get authSignOutButton => 'Çıkış yap';
+
+  @override
+  String get authForgotPassword => 'Şifremi unuttum';
+
+  @override
+  String get authResetPasswordTitle => 'Şifre sıfırla';
+
+  @override
+  String get authResetPasswordHint => 'E-posta adresine sıfırlama bağlantısı gönderelim.';
+
+  @override
+  String get authResetPasswordSent => 'Sıfırlama bağlantısı gönderildi. Gelen kutunu kontrol et.';
+
+  @override
+  String get authNoAccountQuestion => 'Hesabın yok mu? Kayıt ol';
+
+  @override
+  String get authHaveAccountQuestion => 'Zaten hesabım var';
+
+  @override
+  String get authOrDivider => 'veya';
+
+  @override
+  String get authSignInWithGoogle => 'Google ile devam et';
+
+  @override
+  String get authSignInWithApple => 'Apple ile devam et';
+
+  @override
+  String get authAcceptTerms => 'Kullanım Koşulları ve Gizlilik Politikası\'nı kabul ediyorum';
+
+  @override
+  String get authViewTerms => 'Koşulları görüntüle';
+
+  @override
+  String get authErrorInvalidEmail => 'Geçersiz e-posta adresi';
+
+  @override
+  String get authErrorWeakPassword => 'Şifre en az 6 karakter olmalı';
+
+  @override
+  String get authErrorPasswordMismatch => 'Şifreler eşleşmiyor';
+
+  @override
+  String get authErrorEmailInUse => 'Bu e-posta zaten kullanımda';
+
+  @override
+  String get authErrorWrongPassword => 'E-posta veya şifre hatalı';
+
+  @override
+  String get authErrorTooManyRequests => 'Çok fazla deneme. Bir süre sonra tekrar dene.';
+
+  @override
+  String get authErrorNetwork => 'Ağ hatası. İnternet bağlantını kontrol et.';
+
+  @override
+  String authErrorGeneric(String message) {
+    return 'Bir şeyler ters gitti: $message';
+  }
+
+  @override
+  String get authVerifyEmailHint => 'E-posta adresine doğrulama bağlantısı gönderdik.';
+
+  @override
+  String get authResendVerification => 'Doğrulama tekrar gönder';
+
+  @override
+  String get authChangePassword => 'Şifreyi değiştir';
+
+  @override
+  String get authDeleteAccount => 'Hesabı sil';
+
+  @override
+  String get authDeleteAccountWarning => 'Hesabını silersen tüm cloud verisin kalıcı olarak kaldırılır. Bu işlem geri alınamaz.';
+
+  @override
+  String get authDeleteAccountConfirm => 'Evet, hesabımı sil';
+
+  @override
+  String get authAccountSection => 'Hesap';
+
+  @override
+  String get authNotSignedIn => 'Giriş yapılmadı';
+
+  @override
+  String get authSignInPromptTitle => 'Hesap aç → Pro\'yu dene';
+
+  @override
+  String get authSignInPromptDesc => 'Sınırsız playlist, AI altyazı ve cihazlar arası senkron için bir hesap oluştur.';
+
+  @override
+  String get authProActive => 'Pro üye';
+
+  @override
+  String get authFreeTier => 'Ücretsiz plan';
+
+  @override
+  String get authUpgradeToPro => 'Pro\'ya Geç';
+
+  @override
+  String get authRequiresRecentLogin => 'Bu işlem için son zamanlarda giriş yapmış olman gerekiyor. Lütfen tekrar giriş yap.';
 }

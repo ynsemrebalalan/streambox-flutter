@@ -612,4 +612,132 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get menuContinueWatching => 'Weiterschauen';
+
+  @override
+  String get authSignInTitle => 'Anmelden';
+
+  @override
+  String get authSignUpTitle => 'Konto erstellen';
+
+  @override
+  String get authAccountTitle => 'Mein Konto';
+
+  @override
+  String get authEmailLabel => 'E-Mail';
+
+  @override
+  String get authPasswordLabel => 'Passwort';
+
+  @override
+  String get authConfirmPasswordLabel => 'Passwort bestätigen';
+
+  @override
+  String get authSignInButton => 'Anmelden';
+
+  @override
+  String get authSignUpButton => 'Konto erstellen';
+
+  @override
+  String get authSignOutButton => 'Abmelden';
+
+  @override
+  String get authForgotPassword => 'Passwort vergessen';
+
+  @override
+  String get authResetPasswordTitle => 'Passwort zurücksetzen';
+
+  @override
+  String get authResetPasswordHint => 'Wir senden einen Zurücksetzungs-Link an deine E-Mail.';
+
+  @override
+  String get authResetPasswordSent => 'Link gesendet. Prüfe deinen Posteingang.';
+
+  @override
+  String get authNoAccountQuestion => 'Kein Konto? Registrieren';
+
+  @override
+  String get authHaveAccountQuestion => 'Ich habe bereits ein Konto';
+
+  @override
+  String get authOrDivider => 'oder';
+
+  @override
+  String get authSignInWithGoogle => 'Mit Google fortfahren';
+
+  @override
+  String get authSignInWithApple => 'Mit Apple fortfahren';
+
+  @override
+  String get authAcceptTerms => 'Ich akzeptiere die Nutzungsbedingungen und Datenschutzerklärung';
+
+  @override
+  String get authViewTerms => 'Bedingungen anzeigen';
+
+  @override
+  String get authErrorInvalidEmail => 'Ungültige E-Mail-Adresse';
+
+  @override
+  String get authErrorWeakPassword => 'Passwort muss mindestens 6 Zeichen lang sein';
+
+  @override
+  String get authErrorPasswordMismatch => 'Passwörter stimmen nicht überein';
+
+  @override
+  String get authErrorEmailInUse => 'Diese E-Mail wird bereits verwendet';
+
+  @override
+  String get authErrorWrongPassword => 'Falsche E-Mail oder Passwort';
+
+  @override
+  String get authErrorTooManyRequests => 'Zu viele Versuche. Versuche es später erneut.';
+
+  @override
+  String get authErrorNetwork => 'Netzwerkfehler. Prüfe deine Verbindung.';
+
+  @override
+  String authErrorGeneric(String message) {
+    return 'Etwas ist schiefgelaufen: $message';
+  }
+
+  @override
+  String get authVerifyEmailHint => 'Wir haben dir einen Bestätigungs-Link gesendet.';
+
+  @override
+  String get authResendVerification => 'Bestätigung erneut senden';
+
+  @override
+  String get authChangePassword => 'Passwort ändern';
+
+  @override
+  String get authDeleteAccount => 'Konto löschen';
+
+  @override
+  String get authDeleteAccountWarning => 'Beim Löschen deines Kontos werden alle Cloud-Daten dauerhaft entfernt. Diese Aktion kann nicht rückgängig gemacht werden.';
+
+  @override
+  String get authDeleteAccountConfirm => 'Ja, mein Konto löschen';
+
+  @override
+  String get authAccountSection => 'Konto';
+
+  @override
+  String get authNotSignedIn => 'Nicht angemeldet';
+
+  @override
+  String get authSignInPromptTitle => 'Konto erstellen → Pro testen';
+
+  @override
+  String get authSignInPromptDesc => 'Registriere dich für unbegrenzte Playlists, KI-Untertitel und geräteübergreifende Synchronisierung.';
+
+  @override
+  String get authProActive => 'Pro-Mitglied';
+
+  @override
+  String get authFreeTier => 'Kostenloser Plan';
+
+  @override
+  String get authUpgradeToPro => 'Auf Pro upgraden';
+
+  @override
+  String get authRequiresRecentLogin => 'Diese Aktion erfordert eine kürzliche Anmeldung. Bitte melde dich erneut an.';
 }

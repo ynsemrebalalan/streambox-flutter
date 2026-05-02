@@ -612,4 +612,132 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get menuContinueWatching => 'Continue Watching';
+
+  @override
+  String get authSignInTitle => 'Sign in';
+
+  @override
+  String get authSignUpTitle => 'Create account';
+
+  @override
+  String get authAccountTitle => 'My account';
+
+  @override
+  String get authEmailLabel => 'Email';
+
+  @override
+  String get authPasswordLabel => 'Password';
+
+  @override
+  String get authConfirmPasswordLabel => 'Confirm password';
+
+  @override
+  String get authSignInButton => 'Sign in';
+
+  @override
+  String get authSignUpButton => 'Create account';
+
+  @override
+  String get authSignOutButton => 'Sign out';
+
+  @override
+  String get authForgotPassword => 'Forgot password';
+
+  @override
+  String get authResetPasswordTitle => 'Reset password';
+
+  @override
+  String get authResetPasswordHint => 'We\'ll send a reset link to your email.';
+
+  @override
+  String get authResetPasswordSent => 'Reset link sent. Check your inbox.';
+
+  @override
+  String get authNoAccountQuestion => 'No account? Sign up';
+
+  @override
+  String get authHaveAccountQuestion => 'I already have an account';
+
+  @override
+  String get authOrDivider => 'or';
+
+  @override
+  String get authSignInWithGoogle => 'Continue with Google';
+
+  @override
+  String get authSignInWithApple => 'Continue with Apple';
+
+  @override
+  String get authAcceptTerms => 'I accept the Terms of Use and Privacy Policy';
+
+  @override
+  String get authViewTerms => 'View terms';
+
+  @override
+  String get authErrorInvalidEmail => 'Invalid email address';
+
+  @override
+  String get authErrorWeakPassword => 'Password must be at least 6 characters';
+
+  @override
+  String get authErrorPasswordMismatch => 'Passwords do not match';
+
+  @override
+  String get authErrorEmailInUse => 'This email is already in use';
+
+  @override
+  String get authErrorWrongPassword => 'Wrong email or password';
+
+  @override
+  String get authErrorTooManyRequests => 'Too many attempts. Try again later.';
+
+  @override
+  String get authErrorNetwork => 'Network error. Check your connection.';
+
+  @override
+  String authErrorGeneric(String message) {
+    return 'Something went wrong: $message';
+  }
+
+  @override
+  String get authVerifyEmailHint => 'We\'ve sent a verification link to your email.';
+
+  @override
+  String get authResendVerification => 'Resend verification';
+
+  @override
+  String get authChangePassword => 'Change password';
+
+  @override
+  String get authDeleteAccount => 'Delete account';
+
+  @override
+  String get authDeleteAccountWarning => 'Deleting your account permanently removes all your cloud data. This cannot be undone.';
+
+  @override
+  String get authDeleteAccountConfirm => 'Yes, delete my account';
+
+  @override
+  String get authAccountSection => 'Account';
+
+  @override
+  String get authNotSignedIn => 'Not signed in';
+
+  @override
+  String get authSignInPromptTitle => 'Create account → Try Pro';
+
+  @override
+  String get authSignInPromptDesc => 'Sign up to unlock unlimited playlists, AI subtitles, and cross-device sync.';
+
+  @override
+  String get authProActive => 'Pro member';
+
+  @override
+  String get authFreeTier => 'Free plan';
+
+  @override
+  String get authUpgradeToPro => 'Upgrade to Pro';
+
+  @override
+  String get authRequiresRecentLogin => 'This action requires recent sign-in. Please sign in again.';
 }

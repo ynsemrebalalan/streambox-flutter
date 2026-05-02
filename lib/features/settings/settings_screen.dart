@@ -9,6 +9,8 @@ import '../../data/repositories/settings_repository.dart';
 import '../../data/services/epg_presets.dart';
 import '../../data/services/epg_service.dart';
 import '../../l10n/generated/app_localizations.dart';
+import '../auth/data/auth_state.dart';
+import '../auth/providers/auth_providers.dart';
 
 // ── State ─────────────────────────────────────────────────────────────────────
 
@@ -417,6 +419,14 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
           const SizedBox(height: Spacing.xl),
 
+          // ── Hesap ────────────────────────────────────────────────────────
+          // Phase B'de eklendi (Adım 22). Anon ise "Giriş yap" CTA, login ise
+          // email + plan göster. Pro kullanıcı dışında "Pro'ya Geç" satırı.
+          _SectionHeader(title: l.authAccountSection),
+          _AccountCard(),
+
+          const SizedBox(height: Spacing.xl),
+
           // ── About ────────────────────────────────────────────────────────
           _SectionHeader(title: l.settingsAboutSection),
           Card(
@@ -478,6 +488,43 @@ class _SectionHeader extends StatelessWidget {
               color: Theme.of(context).colorScheme.onSurfaceVariant),
         ),
       );
+}
+
+// ── Account card (Adım 22 Phase B) ──────────────────────────────────────────
+
+class _AccountCard extends ConsumerWidget {
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l = AppLocalizations.of(context);
+    final auth = ref.watch(authStateProvider).valueOrNull;
+    final cs = Theme.of(context).colorScheme;
+
+    final isAuth = auth is AuthAuthenticated;
+    final email = isAuth ? auth.email : null;
+
+    return Card(
+      child: Column(
+        children: [
+          ListTile(
+            leading: const Icon(Icons.account_circle),
+            title: Text(email ?? l.authNotSignedIn),
+            // TODO(Phase D): Pro durumu entitlementProvider'dan gelecek.
+            subtitle: Text(l.authFreeTier,
+                style: TextStyle(color: cs.onSurfaceVariant)),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () {
+              if (isAuth) {
+                context.push(AppRoutes.account);
+              } else {
+                context.push(AppRoutes.login);
+              }
+            },
+          ),
+          // TODO(Phase D): "Pro'ya Geç" satırı entitlement.isPro=false ise gösterilecek.
+        ],
+      ),
+    );
+  }
 }
 
 // ── EPG preset chip ──────────────────────────────────────────────────────────

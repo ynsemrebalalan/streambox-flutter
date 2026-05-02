@@ -612,4 +612,132 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get menuContinueWatching => 'تابع المشاهدة';
+
+  @override
+  String get authSignInTitle => 'تسجيل الدخول';
+
+  @override
+  String get authSignUpTitle => 'إنشاء حساب';
+
+  @override
+  String get authAccountTitle => 'حسابي';
+
+  @override
+  String get authEmailLabel => 'البريد الإلكتروني';
+
+  @override
+  String get authPasswordLabel => 'كلمة المرور';
+
+  @override
+  String get authConfirmPasswordLabel => 'تأكيد كلمة المرور';
+
+  @override
+  String get authSignInButton => 'تسجيل الدخول';
+
+  @override
+  String get authSignUpButton => 'إنشاء حساب';
+
+  @override
+  String get authSignOutButton => 'تسجيل الخروج';
+
+  @override
+  String get authForgotPassword => 'نسيت كلمة المرور';
+
+  @override
+  String get authResetPasswordTitle => 'إعادة تعيين كلمة المرور';
+
+  @override
+  String get authResetPasswordHint => 'سنرسل رابط إعادة التعيين إلى بريدك الإلكتروني.';
+
+  @override
+  String get authResetPasswordSent => 'تم إرسال الرابط. تحقق من صندوق الوارد.';
+
+  @override
+  String get authNoAccountQuestion => 'ليس لديك حساب؟ سجّل';
+
+  @override
+  String get authHaveAccountQuestion => 'لدي حساب بالفعل';
+
+  @override
+  String get authOrDivider => 'أو';
+
+  @override
+  String get authSignInWithGoogle => 'المتابعة باستخدام Google';
+
+  @override
+  String get authSignInWithApple => 'المتابعة باستخدام Apple';
+
+  @override
+  String get authAcceptTerms => 'أوافق على شروط الاستخدام وسياسة الخصوصية';
+
+  @override
+  String get authViewTerms => 'عرض الشروط';
+
+  @override
+  String get authErrorInvalidEmail => 'بريد إلكتروني غير صالح';
+
+  @override
+  String get authErrorWeakPassword => 'يجب أن تكون كلمة المرور 6 أحرف على الأقل';
+
+  @override
+  String get authErrorPasswordMismatch => 'كلمتا المرور غير متطابقتين';
+
+  @override
+  String get authErrorEmailInUse => 'هذا البريد الإلكتروني قيد الاستخدام بالفعل';
+
+  @override
+  String get authErrorWrongPassword => 'بريد إلكتروني أو كلمة مرور خاطئة';
+
+  @override
+  String get authErrorTooManyRequests => 'محاولات كثيرة جدًا. حاول لاحقًا.';
+
+  @override
+  String get authErrorNetwork => 'خطأ في الشبكة. تحقق من اتصالك.';
+
+  @override
+  String authErrorGeneric(String message) {
+    return 'حدث خطأ ما: $message';
+  }
+
+  @override
+  String get authVerifyEmailHint => 'أرسلنا لك رابط تحقق إلى بريدك الإلكتروني.';
+
+  @override
+  String get authResendVerification => 'إعادة إرسال التحقق';
+
+  @override
+  String get authChangePassword => 'تغيير كلمة المرور';
+
+  @override
+  String get authDeleteAccount => 'حذف الحساب';
+
+  @override
+  String get authDeleteAccountWarning => 'حذف حسابك يزيل جميع بيانات السحابة بشكل دائم. لا يمكن التراجع عن هذا.';
+
+  @override
+  String get authDeleteAccountConfirm => 'نعم، احذف حسابي';
+
+  @override
+  String get authAccountSection => 'الحساب';
+
+  @override
+  String get authNotSignedIn => 'لم يتم تسجيل الدخول';
+
+  @override
+  String get authSignInPromptTitle => 'أنشئ حسابًا → جرّب Pro';
+
+  @override
+  String get authSignInPromptDesc => 'سجّل للحصول على قوائم تشغيل غير محدودة وترجمة الذكاء الاصطناعي والمزامنة عبر الأجهزة.';
+
+  @override
+  String get authProActive => 'عضو Pro';
+
+  @override
+  String get authFreeTier => 'الخطة المجانية';
+
+  @override
+  String get authUpgradeToPro => 'الترقية إلى Pro';
+
+  @override
+  String get authRequiresRecentLogin => 'هذا الإجراء يتطلب تسجيل دخول حديث. يرجى تسجيل الدخول مرة أخرى.';
 }
