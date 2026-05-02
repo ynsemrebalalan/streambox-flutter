@@ -339,5 +339,37 @@
   "welcomeFeatureSync": "Geräteübergreifende Synchronisierung",
   "welcomeStartFreeButton": "Konto erstellen → Pro testen",
   "welcomeSkipButton": "Jetzt überspringen",
-  "welcomeSignInLink": "Ich habe bereits ein Konto"
+  "welcomeSignInLink": "Ich habe bereits ein Konto",
+
+  "watchlistTitle": "Merkliste",
+  "watchlistEmpty": "Deine Liste ist leer",
+  "watchlistEmptyHint": "Wenn du einen Film oder eine Serie speicherst, erscheint sie hier.",
+
+  "themePickerTitle": "Design",
+  "themeDefaultDark":  "Standard Dunkel",
+  "themeDefaultLight": "Standard Hell",
+  "themeCrimson": "Karmesinrot",
+  "themeRoyal":   "Königliches Lila",
+  "themeForest":  "Tiefer Wald",
+  "themeOcean":   "Ozeanblau",
+
+  "parentalLockTitle": "Kindersicherung",
+  "parentalLockEnable": "Kindersicherung aktivieren",
+  "parentalLockEnabledHint": "PIN für gesperrte Kategorien erforderlich.",
+  "parentalLockSetupFirst": "Erstelle zunächst eine 4-stellige PIN.",
+  "parentalSetupPin": "PIN erstellen",
+  "parentalChangePin": "PIN ändern",
+  "parentalRemovePin": "Kindersicherung entfernen",
+  "parentalLockedCategoriesTitle": "Zu sperrende Kategorien",
+  "parentalNoCategories": "Noch keine Kategorien. Lade zuerst eine Wiedergabeliste.",
+  "parentalEnterPin": "PIN eingeben",
+  "parentalNewPin":   "Neue PIN",
+  "parentalCurrentPin": "Aktuelle PIN",
+  "parentalConfirmPin": "PIN bestätigen",
+  "parentalPinIncorrect": "Falsche PIN",
+  "parentalPinFourDigits": "PIN muss 4 Ziffern haben",
+  "parentalPinMismatch": "PINs stimmen nicht überein",
+  "parentalPinChanged": "PIN aktualisiert",
+  "parentalSubmit": "OK",
+  "parentalNext": "Weiter"
 }

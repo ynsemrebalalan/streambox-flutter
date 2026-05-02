@@ -856,4 +856,91 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get welcomeSignInLink => 'I already have an account';
+
+  @override
+  String get watchlistTitle => 'Watchlist';
+
+  @override
+  String get watchlistEmpty => 'Your list is empty';
+
+  @override
+  String get watchlistEmptyHint => 'When you bookmark a movie or show, it appears here.';
+
+  @override
+  String get themePickerTitle => 'Theme';
+
+  @override
+  String get themeDefaultDark => 'Default Dark';
+
+  @override
+  String get themeDefaultLight => 'Default Light';
+
+  @override
+  String get themeCrimson => 'Crimson Dawn';
+
+  @override
+  String get themeRoyal => 'Royal Purple';
+
+  @override
+  String get themeForest => 'Deep Forest';
+
+  @override
+  String get themeOcean => 'Ocean Blue';
+
+  @override
+  String get parentalLockTitle => 'Parental Lock';
+
+  @override
+  String get parentalLockEnable => 'Enable Parental Lock';
+
+  @override
+  String get parentalLockEnabledHint => 'PIN required for locked categories.';
+
+  @override
+  String get parentalLockSetupFirst => 'Create a 4-digit PIN first.';
+
+  @override
+  String get parentalSetupPin => 'Create PIN';
+
+  @override
+  String get parentalChangePin => 'Change PIN';
+
+  @override
+  String get parentalRemovePin => 'Remove Parental Lock';
+
+  @override
+  String get parentalLockedCategoriesTitle => 'Categories to Lock';
+
+  @override
+  String get parentalNoCategories => 'No categories yet. Load a playlist first.';
+
+  @override
+  String get parentalEnterPin => 'Enter PIN';
+
+  @override
+  String get parentalNewPin => 'New PIN';
+
+  @override
+  String get parentalCurrentPin => 'Current PIN';
+
+  @override
+  String get parentalConfirmPin => 'Confirm PIN';
+
+  @override
+  String get parentalPinIncorrect => 'Incorrect PIN';
+
+  @override
+  String get parentalPinFourDigits => 'PIN must be 4 digits';
+
+  @override
+  String get parentalPinMismatch => 'PINs don\'t match';
+
+  @override
+  String get parentalPinChanged => 'PIN updated';
+
+  @override
+  String get parentalSubmit => 'OK';
+
+  @override
+  String get parentalNext => 'Next';
 }

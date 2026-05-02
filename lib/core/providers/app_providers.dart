@@ -4,6 +4,8 @@ import '../../data/repositories/channel_repository.dart';
 import '../../data/repositories/epg_repository.dart';
 import '../../data/repositories/playlist_repository.dart';
 import '../../data/repositories/settings_repository.dart';
+import '../../data/repositories/watchlist_repository.dart';
+import '../theme/app_theme.dart';
 
 // ── Repositories ─────────────────────────────────────────────────────────────
 
@@ -21,6 +23,10 @@ final settingsRepoProvider = Provider<SettingsRepository>(
 
 final epgRepoProvider = Provider<EpgRepository>(
   (_) => EpgRepository(),
+);
+
+final watchlistRepoProvider = Provider<WatchlistRepository>(
+  (_) => WatchlistRepository(),
 );
 
 // ── Theme ─────────────────────────────────────────────────────────────────────
@@ -52,6 +58,31 @@ class ThemeModeNotifier extends Notifier<ThemeMode> {
 
 final themeModeProvider = NotifierProvider<ThemeModeNotifier, ThemeMode>(
   ThemeModeNotifier.new,
+);
+
+// ── Premium theme variant ────────────────────────────────────────────────────
+//
+// Kullanıcının seçtiği özel tema (default + 4 Pro). Pro değilse seçim
+// reddedilir, default'a düşer.
+
+class ThemeVariantNotifier extends Notifier<PremiumTheme> {
+  @override
+  PremiumTheme build() => PremiumTheme.defaultDark;
+
+  void setVariant(PremiumTheme variant) {
+    state = variant;
+    ref.read(settingsRepoProvider).set(SettingsKeys.themeVariant, variant.key);
+  }
+
+  Future<void> loadFromDb() async {
+    final raw = await ref.read(settingsRepoProvider).get(SettingsKeys.themeVariant);
+    state = PremiumTheme.fromKey(raw);
+  }
+}
+
+final themeVariantProvider =
+    NotifierProvider<ThemeVariantNotifier, PremiumTheme>(
+  ThemeVariantNotifier.new,
 );
 
 // ── Active playlist ───────────────────────────────────────────────────────────

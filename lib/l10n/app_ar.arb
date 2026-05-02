@@ -339,5 +339,37 @@
   "welcomeFeatureSync": "مزامنة عبر الأجهزة",
   "welcomeStartFreeButton": "أنشئ حسابًا → جرّب Pro",
   "welcomeSkipButton": "تخطّى الآن",
-  "welcomeSignInLink": "لدي حساب بالفعل"
+  "welcomeSignInLink": "لدي حساب بالفعل",
+
+  "watchlistTitle": "قائمة المشاهدة",
+  "watchlistEmpty": "قائمتك فارغة",
+  "watchlistEmptyHint": "عند حفظ فيلم أو مسلسل، سيظهر هنا.",
+
+  "themePickerTitle": "السمة",
+  "themeDefaultDark":  "الافتراضي الداكن",
+  "themeDefaultLight": "الافتراضي الفاتح",
+  "themeCrimson": "الفجر القرمزي",
+  "themeRoyal":   "البنفسجي الملكي",
+  "themeForest":  "الغابة العميقة",
+  "themeOcean":   "أزرق المحيط",
+
+  "parentalLockTitle": "قفل الأبوي",
+  "parentalLockEnable": "تفعيل قفل الأبوي",
+  "parentalLockEnabledHint": "مطلوب رمز PIN للفئات المقفلة.",
+  "parentalLockSetupFirst": "أنشئ رمز PIN مكون من 4 أرقام أولاً.",
+  "parentalSetupPin": "إنشاء PIN",
+  "parentalChangePin": "تغيير PIN",
+  "parentalRemovePin": "إزالة قفل الأبوي",
+  "parentalLockedCategoriesTitle": "الفئات المقفلة",
+  "parentalNoCategories": "لا توجد فئات بعد. حمّل قائمة تشغيل أولاً.",
+  "parentalEnterPin": "أدخل رمز PIN",
+  "parentalNewPin":   "PIN جديد",
+  "parentalCurrentPin": "PIN الحالي",
+  "parentalConfirmPin": "تأكيد PIN",
+  "parentalPinIncorrect": "PIN غير صحيح",
+  "parentalPinFourDigits": "يجب أن يكون PIN مكونًا من 4 أرقام",
+  "parentalPinMismatch": "رموز PIN غير متطابقة",
+  "parentalPinChanged": "تم تحديث PIN",
+  "parentalSubmit": "موافق",
+  "parentalNext": "التالي"
 }

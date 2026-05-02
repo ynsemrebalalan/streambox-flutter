@@ -450,6 +450,22 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   subtitle: Text(l.settingsCategoryFilterSubtitle),
                   onTap:   () => context.push(AppRoutes.categoryFilter),
                 ),
+                // Phase 1 — Pro features
+                ListTile(
+                  leading: const Icon(Icons.bookmark_outline),
+                  title:   Text(l.watchlistTitle),
+                  onTap:   () => context.push(AppRoutes.watchlist),
+                ),
+                ListTile(
+                  leading: const Icon(Icons.color_lens_outlined),
+                  title:   Text(l.themePickerTitle),
+                  onTap:   () => context.push(AppRoutes.themePicker),
+                ),
+                ListTile(
+                  leading: const Icon(Icons.lock_outline),
+                  title:   Text(l.parentalLockTitle),
+                  onTap:   () => context.push(AppRoutes.parentalLock),
+                ),
               ],
             ),
           ),

@@ -856,4 +856,91 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String get welcomeSignInLink => 'Zaten hesabım var';
+
+  @override
+  String get watchlistTitle => 'İzleme Listem';
+
+  @override
+  String get watchlistEmpty => 'Listen boş';
+
+  @override
+  String get watchlistEmptyHint => 'Bir film veya diziyi yer imine eklediğinde burada görünür.';
+
+  @override
+  String get themePickerTitle => 'Tema';
+
+  @override
+  String get themeDefaultDark => 'Varsayılan Koyu';
+
+  @override
+  String get themeDefaultLight => 'Varsayılan Açık';
+
+  @override
+  String get themeCrimson => 'Kızıl Şafak';
+
+  @override
+  String get themeRoyal => 'Kraliyet Moru';
+
+  @override
+  String get themeForest => 'Koyu Orman';
+
+  @override
+  String get themeOcean => 'Okyanus Mavisi';
+
+  @override
+  String get parentalLockTitle => 'Ebeveyn Kilidi';
+
+  @override
+  String get parentalLockEnable => 'Ebeveyn Kilidini Aç';
+
+  @override
+  String get parentalLockEnabledHint => 'Kilitli kategoriler için PIN istenir.';
+
+  @override
+  String get parentalLockSetupFirst => 'Önce 4 haneli bir PIN oluştur.';
+
+  @override
+  String get parentalSetupPin => 'PIN Oluştur';
+
+  @override
+  String get parentalChangePin => 'PIN Değiştir';
+
+  @override
+  String get parentalRemovePin => 'Ebeveyn Kilidini Kaldır';
+
+  @override
+  String get parentalLockedCategoriesTitle => 'Kilitlenecek Kategoriler';
+
+  @override
+  String get parentalNoCategories => 'Hiç kategori yok. Önce bir oynatma listesi yükle.';
+
+  @override
+  String get parentalEnterPin => 'PIN\'i Gir';
+
+  @override
+  String get parentalNewPin => 'Yeni PIN';
+
+  @override
+  String get parentalCurrentPin => 'Mevcut PIN';
+
+  @override
+  String get parentalConfirmPin => 'PIN Tekrar';
+
+  @override
+  String get parentalPinIncorrect => 'PIN hatalı';
+
+  @override
+  String get parentalPinFourDigits => 'PIN 4 haneli rakam olmalı';
+
+  @override
+  String get parentalPinMismatch => 'PIN\'ler eşleşmiyor';
+
+  @override
+  String get parentalPinChanged => 'PIN güncellendi';
+
+  @override
+  String get parentalSubmit => 'Tamam';
+
+  @override
+  String get parentalNext => 'İleri';
 }

@@ -856,4 +856,91 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get welcomeSignInLink => 'Ich habe bereits ein Konto';
+
+  @override
+  String get watchlistTitle => 'Merkliste';
+
+  @override
+  String get watchlistEmpty => 'Deine Liste ist leer';
+
+  @override
+  String get watchlistEmptyHint => 'Wenn du einen Film oder eine Serie speicherst, erscheint sie hier.';
+
+  @override
+  String get themePickerTitle => 'Design';
+
+  @override
+  String get themeDefaultDark => 'Standard Dunkel';
+
+  @override
+  String get themeDefaultLight => 'Standard Hell';
+
+  @override
+  String get themeCrimson => 'Karmesinrot';
+
+  @override
+  String get themeRoyal => 'Königliches Lila';
+
+  @override
+  String get themeForest => 'Tiefer Wald';
+
+  @override
+  String get themeOcean => 'Ozeanblau';
+
+  @override
+  String get parentalLockTitle => 'Kindersicherung';
+
+  @override
+  String get parentalLockEnable => 'Kindersicherung aktivieren';
+
+  @override
+  String get parentalLockEnabledHint => 'PIN für gesperrte Kategorien erforderlich.';
+
+  @override
+  String get parentalLockSetupFirst => 'Erstelle zunächst eine 4-stellige PIN.';
+
+  @override
+  String get parentalSetupPin => 'PIN erstellen';
+
+  @override
+  String get parentalChangePin => 'PIN ändern';
+
+  @override
+  String get parentalRemovePin => 'Kindersicherung entfernen';
+
+  @override
+  String get parentalLockedCategoriesTitle => 'Zu sperrende Kategorien';
+
+  @override
+  String get parentalNoCategories => 'Noch keine Kategorien. Lade zuerst eine Wiedergabeliste.';
+
+  @override
+  String get parentalEnterPin => 'PIN eingeben';
+
+  @override
+  String get parentalNewPin => 'Neue PIN';
+
+  @override
+  String get parentalCurrentPin => 'Aktuelle PIN';
+
+  @override
+  String get parentalConfirmPin => 'PIN bestätigen';
+
+  @override
+  String get parentalPinIncorrect => 'Falsche PIN';
+
+  @override
+  String get parentalPinFourDigits => 'PIN muss 4 Ziffern haben';
+
+  @override
+  String get parentalPinMismatch => 'PINs stimmen nicht überein';
+
+  @override
+  String get parentalPinChanged => 'PIN aktualisiert';
+
+  @override
+  String get parentalSubmit => 'OK';
+
+  @override
+  String get parentalNext => 'Weiter';
 }

@@ -339,5 +339,37 @@
   "welcomeFeatureSync": "Cross-device sync",
   "welcomeStartFreeButton": "Create account → Try Pro",
   "welcomeSkipButton": "Skip for now",
-  "welcomeSignInLink": "I already have an account"
+  "welcomeSignInLink": "I already have an account",
+
+  "watchlistTitle": "Watchlist",
+  "watchlistEmpty": "Your list is empty",
+  "watchlistEmptyHint": "When you bookmark a movie or show, it appears here.",
+
+  "themePickerTitle": "Theme",
+  "themeDefaultDark":  "Default Dark",
+  "themeDefaultLight": "Default Light",
+  "themeCrimson": "Crimson Dawn",
+  "themeRoyal":   "Royal Purple",
+  "themeForest":  "Deep Forest",
+  "themeOcean":   "Ocean Blue",
+
+  "parentalLockTitle": "Parental Lock",
+  "parentalLockEnable": "Enable Parental Lock",
+  "parentalLockEnabledHint": "PIN required for locked categories.",
+  "parentalLockSetupFirst": "Create a 4-digit PIN first.",
+  "parentalSetupPin": "Create PIN",
+  "parentalChangePin": "Change PIN",
+  "parentalRemovePin": "Remove Parental Lock",
+  "parentalLockedCategoriesTitle": "Categories to Lock",
+  "parentalNoCategories": "No categories yet. Load a playlist first.",
+  "parentalEnterPin": "Enter PIN",
+  "parentalNewPin":   "New PIN",
+  "parentalCurrentPin": "Current PIN",
+  "parentalConfirmPin": "Confirm PIN",
+  "parentalPinIncorrect": "Incorrect PIN",
+  "parentalPinFourDigits": "PIN must be 4 digits",
+  "parentalPinMismatch": "PINs don't match",
+  "parentalPinChanged": "PIN updated",
+  "parentalSubmit": "OK",
+  "parentalNext": "Next"
 }

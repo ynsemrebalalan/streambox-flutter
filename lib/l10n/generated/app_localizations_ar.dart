@@ -856,4 +856,91 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get welcomeSignInLink => 'لدي حساب بالفعل';
+
+  @override
+  String get watchlistTitle => 'قائمة المشاهدة';
+
+  @override
+  String get watchlistEmpty => 'قائمتك فارغة';
+
+  @override
+  String get watchlistEmptyHint => 'عند حفظ فيلم أو مسلسل، سيظهر هنا.';
+
+  @override
+  String get themePickerTitle => 'السمة';
+
+  @override
+  String get themeDefaultDark => 'الافتراضي الداكن';
+
+  @override
+  String get themeDefaultLight => 'الافتراضي الفاتح';
+
+  @override
+  String get themeCrimson => 'الفجر القرمزي';
+
+  @override
+  String get themeRoyal => 'البنفسجي الملكي';
+
+  @override
+  String get themeForest => 'الغابة العميقة';
+
+  @override
+  String get themeOcean => 'أزرق المحيط';
+
+  @override
+  String get parentalLockTitle => 'قفل الأبوي';
+
+  @override
+  String get parentalLockEnable => 'تفعيل قفل الأبوي';
+
+  @override
+  String get parentalLockEnabledHint => 'مطلوب رمز PIN للفئات المقفلة.';
+
+  @override
+  String get parentalLockSetupFirst => 'أنشئ رمز PIN مكون من 4 أرقام أولاً.';
+
+  @override
+  String get parentalSetupPin => 'إنشاء PIN';
+
+  @override
+  String get parentalChangePin => 'تغيير PIN';
+
+  @override
+  String get parentalRemovePin => 'إزالة قفل الأبوي';
+
+  @override
+  String get parentalLockedCategoriesTitle => 'الفئات المقفلة';
+
+  @override
+  String get parentalNoCategories => 'لا توجد فئات بعد. حمّل قائمة تشغيل أولاً.';
+
+  @override
+  String get parentalEnterPin => 'أدخل رمز PIN';
+
+  @override
+  String get parentalNewPin => 'PIN جديد';
+
+  @override
+  String get parentalCurrentPin => 'PIN الحالي';
+
+  @override
+  String get parentalConfirmPin => 'تأكيد PIN';
+
+  @override
+  String get parentalPinIncorrect => 'PIN غير صحيح';
+
+  @override
+  String get parentalPinFourDigits => 'يجب أن يكون PIN مكونًا من 4 أرقام';
+
+  @override
+  String get parentalPinMismatch => 'رموز PIN غير متطابقة';
+
+  @override
+  String get parentalPinChanged => 'تم تحديث PIN';
+
+  @override
+  String get parentalSubmit => 'موافق';
+
+  @override
+  String get parentalNext => 'التالي';
 }

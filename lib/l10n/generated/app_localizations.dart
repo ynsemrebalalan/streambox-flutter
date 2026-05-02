@@ -1736,6 +1736,180 @@ abstract class AppLocalizations {
   /// In tr, this message translates to:
   /// **'Zaten hesabım var'**
   String get welcomeSignInLink;
+
+  /// No description provided for @watchlistTitle.
+  ///
+  /// In tr, this message translates to:
+  /// **'İzleme Listem'**
+  String get watchlistTitle;
+
+  /// No description provided for @watchlistEmpty.
+  ///
+  /// In tr, this message translates to:
+  /// **'Listen boş'**
+  String get watchlistEmpty;
+
+  /// No description provided for @watchlistEmptyHint.
+  ///
+  /// In tr, this message translates to:
+  /// **'Bir film veya diziyi yer imine eklediğinde burada görünür.'**
+  String get watchlistEmptyHint;
+
+  /// No description provided for @themePickerTitle.
+  ///
+  /// In tr, this message translates to:
+  /// **'Tema'**
+  String get themePickerTitle;
+
+  /// No description provided for @themeDefaultDark.
+  ///
+  /// In tr, this message translates to:
+  /// **'Varsayılan Koyu'**
+  String get themeDefaultDark;
+
+  /// No description provided for @themeDefaultLight.
+  ///
+  /// In tr, this message translates to:
+  /// **'Varsayılan Açık'**
+  String get themeDefaultLight;
+
+  /// No description provided for @themeCrimson.
+  ///
+  /// In tr, this message translates to:
+  /// **'Kızıl Şafak'**
+  String get themeCrimson;
+
+  /// No description provided for @themeRoyal.
+  ///
+  /// In tr, this message translates to:
+  /// **'Kraliyet Moru'**
+  String get themeRoyal;
+
+  /// No description provided for @themeForest.
+  ///
+  /// In tr, this message translates to:
+  /// **'Koyu Orman'**
+  String get themeForest;
+
+  /// No description provided for @themeOcean.
+  ///
+  /// In tr, this message translates to:
+  /// **'Okyanus Mavisi'**
+  String get themeOcean;
+
+  /// No description provided for @parentalLockTitle.
+  ///
+  /// In tr, this message translates to:
+  /// **'Ebeveyn Kilidi'**
+  String get parentalLockTitle;
+
+  /// No description provided for @parentalLockEnable.
+  ///
+  /// In tr, this message translates to:
+  /// **'Ebeveyn Kilidini Aç'**
+  String get parentalLockEnable;
+
+  /// No description provided for @parentalLockEnabledHint.
+  ///
+  /// In tr, this message translates to:
+  /// **'Kilitli kategoriler için PIN istenir.'**
+  String get parentalLockEnabledHint;
+
+  /// No description provided for @parentalLockSetupFirst.
+  ///
+  /// In tr, this message translates to:
+  /// **'Önce 4 haneli bir PIN oluştur.'**
+  String get parentalLockSetupFirst;
+
+  /// No description provided for @parentalSetupPin.
+  ///
+  /// In tr, this message translates to:
+  /// **'PIN Oluştur'**
+  String get parentalSetupPin;
+
+  /// No description provided for @parentalChangePin.
+  ///
+  /// In tr, this message translates to:
+  /// **'PIN Değiştir'**
+  String get parentalChangePin;
+
+  /// No description provided for @parentalRemovePin.
+  ///
+  /// In tr, this message translates to:
+  /// **'Ebeveyn Kilidini Kaldır'**
+  String get parentalRemovePin;
+
+  /// No description provided for @parentalLockedCategoriesTitle.
+  ///
+  /// In tr, this message translates to:
+  /// **'Kilitlenecek Kategoriler'**
+  String get parentalLockedCategoriesTitle;
+
+  /// No description provided for @parentalNoCategories.
+  ///
+  /// In tr, this message translates to:
+  /// **'Hiç kategori yok. Önce bir oynatma listesi yükle.'**
+  String get parentalNoCategories;
+
+  /// No description provided for @parentalEnterPin.
+  ///
+  /// In tr, this message translates to:
+  /// **'PIN\'i Gir'**
+  String get parentalEnterPin;
+
+  /// No description provided for @parentalNewPin.
+  ///
+  /// In tr, this message translates to:
+  /// **'Yeni PIN'**
+  String get parentalNewPin;
+
+  /// No description provided for @parentalCurrentPin.
+  ///
+  /// In tr, this message translates to:
+  /// **'Mevcut PIN'**
+  String get parentalCurrentPin;
+
+  /// No description provided for @parentalConfirmPin.
+  ///
+  /// In tr, this message translates to:
+  /// **'PIN Tekrar'**
+  String get parentalConfirmPin;
+
+  /// No description provided for @parentalPinIncorrect.
+  ///
+  /// In tr, this message translates to:
+  /// **'PIN hatalı'**
+  String get parentalPinIncorrect;
+
+  /// No description provided for @parentalPinFourDigits.
+  ///
+  /// In tr, this message translates to:
+  /// **'PIN 4 haneli rakam olmalı'**
+  String get parentalPinFourDigits;
+
+  /// No description provided for @parentalPinMismatch.
+  ///
+  /// In tr, this message translates to:
+  /// **'PIN\'ler eşleşmiyor'**
+  String get parentalPinMismatch;
+
+  /// No description provided for @parentalPinChanged.
+  ///
+  /// In tr, this message translates to:
+  /// **'PIN güncellendi'**
+  String get parentalPinChanged;
+
+  /// No description provided for @parentalSubmit.
+  ///
+  /// In tr, this message translates to:
+  /// **'Tamam'**
+  String get parentalSubmit;
+
+  /// No description provided for @parentalNext.
+  ///
+  /// In tr, this message translates to:
+  /// **'İleri'**
+  String get parentalNext;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

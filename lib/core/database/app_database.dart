@@ -3,7 +3,7 @@ import 'package:sqflite/sqflite.dart';
 import '../utils/device_tier.dart';
 
 class AppDatabase {
-  static const _version = 3;
+  static const _version = 4;
   static const _name    = 'iptvai.db';
 
   static Database? _db;
@@ -181,6 +181,20 @@ class AppDatabase {
       CREATE VIRTUAL TABLE IF NOT EXISTS channel_fts
       USING fts4(name, category, content="channels", tokenize=unicode61)
     ''');
+
+    // Watchlist (Pro: "Sonra İzle" / "İzleme Listem"). Composite PK
+    // — aynı kanal listede iki kez olmaz; addedAt sıralama için.
+    await db.execute('''
+      CREATE TABLE watchlist (
+        channelId  TEXT NOT NULL,
+        playlistId TEXT NOT NULL,
+        addedAt    INTEGER NOT NULL DEFAULT 0,
+        PRIMARY KEY (channelId, playlistId)
+      )
+    ''');
+    await db.execute('''
+      CREATE INDEX idx_watchlist_added ON watchlist(playlistId, addedAt DESC)
+    ''');
   }
 
   static Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
@@ -214,6 +228,21 @@ class AppDatabase {
       await db.execute('''
         CREATE VIRTUAL TABLE IF NOT EXISTS channel_fts
         USING fts4(name, category, content="channels", tokenize=unicode61)
+      ''');
+    }
+    // v3 → v4: Watchlist tablosu (Pro feature — "Sonra İzle").
+    if (oldVersion < 4) {
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS watchlist (
+          channelId  TEXT NOT NULL,
+          playlistId TEXT NOT NULL,
+          addedAt    INTEGER NOT NULL DEFAULT 0,
+          PRIMARY KEY (channelId, playlistId)
+        )
+      ''');
+      await db.execute('''
+        CREATE INDEX IF NOT EXISTS idx_watchlist_added
+        ON watchlist(playlistId, addedAt DESC)
       ''');
     }
     // Ensure all tables exist even if upgrading from a corrupted/partial state

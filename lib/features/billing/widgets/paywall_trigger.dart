@@ -63,4 +63,12 @@ enum PaywallTrigger {
   cloudSync,
   tvApp,
   settingsCta,
+  parentalLock,    // Phase 1: ebeveyn kilidi
+  premiumTheme,    // Phase 1: özel temalar
+  watchlist,       // Phase 1: izleme listesi (free şu an, ileride Pro olabilir)
+  epg,             // Phase 3: TV rehberi otomatik fetch
+  pip,             // Phase 4: Picture-in-Picture
+  airplay,         // Phase 4: AirPlay/Cast
+  multiProfile,    // Phase 6: çoklu profil
+  noAds,           // Phase 5: reklamsız
 }

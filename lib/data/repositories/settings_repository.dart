@@ -43,7 +43,11 @@ abstract final class SettingsKeys {
   static const String defaultTab       = 'default_tab';      // 'live' | 'movie' | 'series'
   static const String displayMode      = 'display_mode';     // 'list' | 'vod'
   static const String uiMode           = 'ui_mode';
-  static const String parentalPin      = 'parental_pin';
+  static const String parentalPin              = 'parental_pin';              // SecureStorage'a taşınacak (PIN encrypted)
+  static const String parentalLockEnabled      = 'parental_lock_enabled';      // 'true'|'false'
+  static const String parentalLockedCategories = 'parental_locked_categories'; // JSON List<String>
+  static const String themeVariant             = 'theme_variant';              // 'default'|'crimson'|'royal'|'forest'|'ocean'
+  static const String watchlistAddedKeys       = 'watchlist_added_keys';       // (cache; gerçek kayıt watchlist tablosunda)
   static const String lastCategory       = 'last_category';
   static const String disclaimerAccepted = 'disclaimer_accepted';
   static const String hiddenCategories   = 'hidden_categories'; // JSON Set<String>

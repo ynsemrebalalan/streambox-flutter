@@ -122,7 +122,9 @@ class _ChannelListItemState extends ConsumerState<ChannelListItem> {
                 ],
               ),
             ),
-            // Favori yildizi + focus'taysa ipucu
+            // Watchlist (bookmark) + Favori (star) + focus'taysa ipucu.
+            // Watchlist sadece movie/series için anlamlı (live "sonra izle"
+            // pratik değil); live kanallarda gizlenir.
             Row(
               mainAxisSize: MainAxisSize.min,
               children: [
@@ -131,6 +133,8 @@ class _ChannelListItemState extends ConsumerState<ChannelListItem> {
                       style: TextStyle(
                           fontSize: 10,
                           color: cs.onSurfaceVariant.withValues(alpha: 0.5))),
+                if (channel.streamType != 'live')
+                  _WatchlistButton(channel: channel),
                 IconButton(
                   iconSize: 26,
                   icon: Icon(
@@ -148,6 +152,71 @@ class _ChannelListItemState extends ConsumerState<ChannelListItem> {
         ),
         ),
       ),
+    );
+  }
+}
+
+// ── Watchlist toggle ─────────────────────────────────────────────────────────
+//
+// Watchlist tablosundan polled state. Toggle sonrası UI hızlı feedback
+// vermesi için optimistic update yapılır, DB başarısız olursa state geri
+// alınır.
+
+class _WatchlistButton extends ConsumerStatefulWidget {
+  final ChannelModel channel;
+  const _WatchlistButton({required this.channel});
+
+  @override
+  ConsumerState<_WatchlistButton> createState() => _WatchlistButtonState();
+}
+
+class _WatchlistButtonState extends ConsumerState<_WatchlistButton> {
+  bool? _local;
+  bool _busy = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _refresh();
+  }
+
+  Future<void> _refresh() async {
+    final repo = ref.read(watchlistRepoProvider);
+    final pid  = ref.read(activePlaylistProvider);
+    final v = await repo.isInWatchlist(widget.channel.id, pid);
+    if (mounted) setState(() => _local = v);
+  }
+
+  Future<void> _toggle() async {
+    if (_busy) return;
+    final repo = ref.read(watchlistRepoProvider);
+    final pid  = ref.read(activePlaylistProvider);
+    final prev = _local ?? false;
+    setState(() {
+      _local = !prev;
+      _busy = true;
+    });
+    try {
+      await repo.toggle(widget.channel.id, pid);
+    } catch (_) {
+      if (mounted) setState(() => _local = prev);
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final inList = _local ?? false;
+    return IconButton(
+      iconSize: 24,
+      tooltip: inList ? 'Listeden Çıkar' : 'Listeme Ekle',
+      icon: Icon(
+        inList ? Icons.bookmark : Icons.bookmark_outline,
+        color: inList ? AppColors.accent : cs.onSurfaceVariant,
+      ),
+      onPressed: _toggle,
     );
   }
 }

@@ -40,6 +40,18 @@ class SecureStorage {
   static Future<String> getProxyUrl() async =>
       await _storage.read(key: _keyProxyUrl) ?? '';
 
+  // ── Parental Lock PIN (encrypted) ──────────────────────────────────────────
+  static const _keyParentalPin = 'parental_pin';
+
+  static Future<void> setParentalPin(String pin) =>
+      _storage.write(key: _keyParentalPin, value: pin);
+
+  static Future<String> getParentalPin() async =>
+      await _storage.read(key: _keyParentalPin) ?? '';
+
+  static Future<void> deleteParentalPin() =>
+      _storage.delete(key: _keyParentalPin);
+
   // ── Device UUID (encryption key derivation) ────────────────────────────────
   static const _keyDeviceUuid = 'device_uuid';
 

@@ -366,5 +366,37 @@
   "welcomeFeatureSync": "Cihazlar arası senkron",
   "welcomeStartFreeButton": "Hesap aç → Pro'yu dene",
   "welcomeSkipButton": "Şimdi atla",
-  "welcomeSignInLink": "Zaten hesabım var"
+  "welcomeSignInLink": "Zaten hesabım var",
+
+  "watchlistTitle": "İzleme Listem",
+  "watchlistEmpty": "Listen boş",
+  "watchlistEmptyHint": "Bir film veya diziyi yer imine eklediğinde burada görünür.",
+
+  "themePickerTitle": "Tema",
+  "themeDefaultDark":  "Varsayılan Koyu",
+  "themeDefaultLight": "Varsayılan Açık",
+  "themeCrimson": "Kızıl Şafak",
+  "themeRoyal":   "Kraliyet Moru",
+  "themeForest":  "Koyu Orman",
+  "themeOcean":   "Okyanus Mavisi",
+
+  "parentalLockTitle": "Ebeveyn Kilidi",
+  "parentalLockEnable": "Ebeveyn Kilidini Aç",
+  "parentalLockEnabledHint": "Kilitli kategoriler için PIN istenir.",
+  "parentalLockSetupFirst": "Önce 4 haneli bir PIN oluştur.",
+  "parentalSetupPin": "PIN Oluştur",
+  "parentalChangePin": "PIN Değiştir",
+  "parentalRemovePin": "Ebeveyn Kilidini Kaldır",
+  "parentalLockedCategoriesTitle": "Kilitlenecek Kategoriler",
+  "parentalNoCategories": "Hiç kategori yok. Önce bir oynatma listesi yükle.",
+  "parentalEnterPin": "PIN'i Gir",
+  "parentalNewPin":   "Yeni PIN",
+  "parentalCurrentPin": "Mevcut PIN",
+  "parentalConfirmPin": "PIN Tekrar",
+  "parentalPinIncorrect": "PIN hatalı",
+  "parentalPinFourDigits": "PIN 4 haneli rakam olmalı",
+  "parentalPinMismatch": "PIN'ler eşleşmiyor",
+  "parentalPinChanged": "PIN güncellendi",
+  "parentalSubmit": "Tamam",
+  "parentalNext": "İleri"
 }

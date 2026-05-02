@@ -154,6 +154,11 @@ class _IPTVAIPlayerAppState extends ConsumerState<IPTVAIPlayerApp> {
         debugPrint('Locale load failed: $e');
       }
       try {
+        await ref.read(themeVariantProvider.notifier).loadFromDb();
+      } catch (e) {
+        debugPrint('Theme variant load failed: $e');
+      }
+      try {
         await ref.read(activePlaylistProvider.notifier).loadFromDb();
       } catch (e) {
         debugPrint('Playlist load failed: $e');
@@ -179,8 +184,9 @@ class _IPTVAIPlayerAppState extends ConsumerState<IPTVAIPlayerApp> {
 
   @override
   Widget build(BuildContext context) {
-    final themeMode = ref.watch(themeModeProvider);
-    final locale    = ref.watch(localeProvider);
+    final themeMode    = ref.watch(themeModeProvider);
+    final themeVariant = ref.watch(themeVariantProvider);
+    final locale       = ref.watch(localeProvider);
 
     // Adim 22 Phase C: Firebase Auth state -> RevenueCat user binding.
     // Anon UID, login UID veya null hangi olursa olsun RC'yi senkron tut.
@@ -195,12 +201,20 @@ class _IPTVAIPlayerAppState extends ConsumerState<IPTVAIPlayerApp> {
       }
     });
 
+    // Premium theme variant: Pro kullanıcı default DIŞINDA bir varyant
+    // seçtiyse hem light hem dark slot'una aynı tema verilir, ThemeMode
+    // override'ı pratikte iptal olur (kullanıcı bir tema seçti, sistem
+    // dark/light modu o tema içinde anlamsız). Default seçimde mevcut
+    // light/dark + system mode davranışı korunur.
+    final isPremium = themeVariant != PremiumTheme.defaultDark &&
+                      themeVariant != PremiumTheme.defaultLight;
+
     return MaterialApp.router(
       onGenerateTitle:            (ctx) => AppLocalizations.of(ctx).appName,
       debugShowCheckedModeBanner: false,
-      themeMode:                  themeMode,
-      theme:                      AppTheme.light,
-      darkTheme:                  AppTheme.dark,
+      themeMode:                  isPremium ? ThemeMode.dark : themeMode,
+      theme:                      isPremium ? AppTheme.of(themeVariant) : AppTheme.light,
+      darkTheme:                  isPremium ? AppTheme.of(themeVariant) : AppTheme.dark,
       routerConfig:               appRouter,
 
       // Localization — `locale: null` means follow system.

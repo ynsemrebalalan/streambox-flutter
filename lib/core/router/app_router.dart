@@ -10,8 +10,11 @@ import '../../features/onboarding/welcome_screen.dart';
 import '../../features/player/player_screen.dart';
 import '../../features/settings/category_filter_screen.dart';
 import '../../features/settings/settings_screen.dart';
+import '../../features/parental/parental_lock_screen.dart';
 import '../../features/playlists/playlists_screen.dart';
 import '../../features/search/search_screen.dart';
+import '../../features/settings/theme_picker_screen.dart';
+import '../../features/watchlist/watchlist_screen.dart';
 
 abstract final class AppRoutes {
   static const disclaimer = '/disclaimer';
@@ -26,6 +29,10 @@ abstract final class AppRoutes {
   static const register = '/register';
   static const account  = '/account';
   static const paywall  = '/paywall';     // Phase D'de eklenecek
+  // Phase 1 (Pro features):
+  static const watchlist     = '/watchlist';
+  static const parentalLock  = '/parental-lock';
+  static const themePicker   = '/theme-picker';
 }
 
 final appRouter = GoRouter(
@@ -140,6 +147,19 @@ final appRouter = GoRouter(
             : 'unknown';
         return PaywallScreen(trigger: trigger);
       },
+    ),
+    // Phase 1 — Pro feature ekranları
+    GoRoute(
+      path:    AppRoutes.watchlist,
+      builder: (ctx, state) => const WatchlistScreen(),
+    ),
+    GoRoute(
+      path:    AppRoutes.parentalLock,
+      builder: (ctx, state) => const ParentalLockScreen(),
+    ),
+    GoRoute(
+      path:    AppRoutes.themePicker,
+      builder: (ctx, state) => const ThemePickerScreen(),
     ),
   ],
 );
