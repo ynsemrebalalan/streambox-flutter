@@ -740,4 +740,96 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get authRequiresRecentLogin => 'Diese Aktion erfordert eine kürzliche Anmeldung. Bitte melde dich erneut an.';
+
+  @override
+  String get paywallTitle => 'Pro werden, Grenzen entfernen';
+
+  @override
+  String get paywallSubtitle => 'KI-Untertitel, unbegrenzte Playlists, geräteübergreifende Synchronisierung — alles in einem Kauf.';
+
+  @override
+  String get paywallBenefitUnlimitedPlaylists => 'Unbegrenzte Playlists';
+
+  @override
+  String get paywallBenefitUnlimitedPlaylistsDesc => 'Xtream, M3U, Stalker — keine Grenzen';
+
+  @override
+  String get paywallBenefitAiSubtitles => 'KI-Untertitel';
+
+  @override
+  String get paywallBenefitAiSubtitlesDesc => '100+ Sprachen (40 Stunden/Monat)';
+
+  @override
+  String get paywallBenefitCloudSync => 'Cloud-Synchronisierung';
+
+  @override
+  String get paywallBenefitCloudSyncDesc => 'Favoriten und Verlauf geräteübergreifend';
+
+  @override
+  String get paywallBenefitTvApps => 'TV + Telefon';
+
+  @override
+  String get paywallBenefitTvAppsDesc => 'Android TV, Google TV, iPhone, iPad';
+
+  @override
+  String get paywallPlanMonthly => 'Monatlich';
+
+  @override
+  String get paywallPlanYearly => 'Jährlich';
+
+  @override
+  String get paywallPlanLifetime => 'Lebenslang';
+
+  @override
+  String get paywallBadgeBest => 'BESTE';
+
+  @override
+  String get paywallBadgePopular => 'BELIEBT';
+
+  @override
+  String get paywallSubscribeButton => 'Pro werden';
+
+  @override
+  String get paywallRestoreButton => 'Käufe wiederherstellen';
+
+  @override
+  String get paywallSignInRequired => 'Bitte melde dich zuerst an.';
+
+  @override
+  String get paywallSignInButton => 'Zuerst anmelden';
+
+  @override
+  String get paywallTermsFooter => 'Abonnements verlängern sich automatisch. Verwalten in den Einstellungen.';
+
+  @override
+  String get paywallPrivacyLink => 'Datenschutz';
+
+  @override
+  String get paywallTermsLink => 'Nutzungsbedingungen';
+
+  @override
+  String get paywallPurchaseSuccess => 'Pro aktiviert. Viel Spaß!';
+
+  @override
+  String get paywallPurchaseCancelled => 'Kauf abgebrochen.';
+
+  @override
+  String paywallPurchaseError(String message) {
+    return 'Kauf fehlgeschlagen: $message';
+  }
+
+  @override
+  String get paywallNotConfigured => 'Käufe sind noch nicht konfiguriert. Versuche es später erneut.';
+
+  @override
+  String get paywallNoOfferings => 'Keine Angebote verfügbar.';
+
+  @override
+  String get paywallTriggerSecondPlaylist => 'Pro erforderlich für eine zweite Playlist';
+
+  @override
+  String get paywallTriggerAiSubtitle => 'Pro erforderlich für KI-Untertitel';
+
+  @override
+  String get paywallTriggerCloudSync => 'Pro erforderlich für Cloud-Synchronisierung';
 }

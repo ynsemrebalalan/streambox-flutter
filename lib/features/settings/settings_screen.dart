@@ -11,6 +11,7 @@ import '../../data/services/epg_service.dart';
 import '../../l10n/generated/app_localizations.dart';
 import '../auth/data/auth_state.dart';
 import '../auth/providers/auth_providers.dart';
+import '../billing/providers/purchases_providers.dart';
 
 // ── State ─────────────────────────────────────────────────────────────────────
 
@@ -497,6 +498,7 @@ class _AccountCard extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final l = AppLocalizations.of(context);
     final auth = ref.watch(authStateProvider).valueOrNull;
+    final isPro = ref.watch(isProProvider);
     final cs = Theme.of(context).colorScheme;
 
     final isAuth = auth is AuthAuthenticated;
@@ -508,8 +510,7 @@ class _AccountCard extends ConsumerWidget {
           ListTile(
             leading: const Icon(Icons.account_circle),
             title: Text(email ?? l.authNotSignedIn),
-            // TODO(Phase D): Pro durumu entitlementProvider'dan gelecek.
-            subtitle: Text(l.authFreeTier,
+            subtitle: Text(isPro ? l.authProActive : l.authFreeTier,
                 style: TextStyle(color: cs.onSurfaceVariant)),
             trailing: const Icon(Icons.chevron_right),
             onTap: () {
@@ -520,7 +521,18 @@ class _AccountCard extends ConsumerWidget {
               }
             },
           ),
-          // TODO(Phase D): "Pro'ya Geç" satırı entitlement.isPro=false ise gösterilecek.
+          if (!isPro)
+            ListTile(
+              leading: Icon(Icons.workspace_premium, color: cs.primary),
+              title: Text(l.authUpgradeToPro,
+                  style: TextStyle(
+                      color: cs.primary, fontWeight: FontWeight.w600)),
+              trailing: Icon(Icons.chevron_right, color: cs.primary),
+              onTap: () => context.push(
+                AppRoutes.paywall,
+                extra: <String, dynamic>{'trigger': 'settingsCta'},
+              ),
+            ),
         ],
       ),
     );

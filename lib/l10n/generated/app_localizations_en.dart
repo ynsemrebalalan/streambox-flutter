@@ -740,4 +740,96 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get authRequiresRecentLogin => 'This action requires recent sign-in. Please sign in again.';
+
+  @override
+  String get paywallTitle => 'Go Pro, Remove the Limits';
+
+  @override
+  String get paywallSubtitle => 'AI subtitles, unlimited playlists, cross-device sync — all in one purchase.';
+
+  @override
+  String get paywallBenefitUnlimitedPlaylists => 'Unlimited Playlists';
+
+  @override
+  String get paywallBenefitUnlimitedPlaylistsDesc => 'Xtream, M3U, Stalker — no limits';
+
+  @override
+  String get paywallBenefitAiSubtitles => 'AI Subtitles';
+
+  @override
+  String get paywallBenefitAiSubtitlesDesc => '100+ languages (40 hours/month)';
+
+  @override
+  String get paywallBenefitCloudSync => 'Cloud Sync';
+
+  @override
+  String get paywallBenefitCloudSyncDesc => 'Favorites and history across devices';
+
+  @override
+  String get paywallBenefitTvApps => 'TV + Phone';
+
+  @override
+  String get paywallBenefitTvAppsDesc => 'Android TV, Google TV, iPhone, iPad';
+
+  @override
+  String get paywallPlanMonthly => 'Monthly';
+
+  @override
+  String get paywallPlanYearly => 'Yearly';
+
+  @override
+  String get paywallPlanLifetime => 'Lifetime';
+
+  @override
+  String get paywallBadgeBest => 'BEST';
+
+  @override
+  String get paywallBadgePopular => 'POPULAR';
+
+  @override
+  String get paywallSubscribeButton => 'Go Pro';
+
+  @override
+  String get paywallRestoreButton => 'Restore Purchases';
+
+  @override
+  String get paywallSignInRequired => 'Sign in to continue.';
+
+  @override
+  String get paywallSignInButton => 'Sign in first';
+
+  @override
+  String get paywallTermsFooter => 'Subscriptions auto-renew. Manage in Settings.';
+
+  @override
+  String get paywallPrivacyLink => 'Privacy Policy';
+
+  @override
+  String get paywallTermsLink => 'Terms of Use';
+
+  @override
+  String get paywallPurchaseSuccess => 'Pro activated. Enjoy!';
+
+  @override
+  String get paywallPurchaseCancelled => 'Purchase cancelled.';
+
+  @override
+  String paywallPurchaseError(String message) {
+    return 'Purchase failed: $message';
+  }
+
+  @override
+  String get paywallNotConfigured => 'Purchases are not configured yet. Try again later.';
+
+  @override
+  String get paywallNoOfferings => 'No offerings available.';
+
+  @override
+  String get paywallTriggerSecondPlaylist => 'Pro required for a second playlist';
+
+  @override
+  String get paywallTriggerAiSubtitle => 'Pro required for AI subtitles';
+
+  @override
+  String get paywallTriggerCloudSync => 'Pro required for cloud sync';
 }

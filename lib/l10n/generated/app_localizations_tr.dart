@@ -740,4 +740,96 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String get authRequiresRecentLogin => 'Bu işlem için son zamanlarda giriş yapmış olman gerekiyor. Lütfen tekrar giriş yap.';
+
+  @override
+  String get paywallTitle => 'Pro\'ya Geç, Sınırları Kaldır';
+
+  @override
+  String get paywallSubtitle => 'AI altyazı, sınırsız playlist, cihazlar arası senkron — hepsi tek seferlik ödeme ile.';
+
+  @override
+  String get paywallBenefitUnlimitedPlaylists => 'Sınırsız Playlist';
+
+  @override
+  String get paywallBenefitUnlimitedPlaylistsDesc => 'Xtream, M3U, Stalker fark etmez';
+
+  @override
+  String get paywallBenefitAiSubtitles => 'AI Altyazı';
+
+  @override
+  String get paywallBenefitAiSubtitlesDesc => '100+ dilde otomatik altyazı (40 saat/ay)';
+
+  @override
+  String get paywallBenefitCloudSync => 'Cloud Senkron';
+
+  @override
+  String get paywallBenefitCloudSyncDesc => 'Favoriler ve geçmiş cihazlar arası';
+
+  @override
+  String get paywallBenefitTvApps => 'TV + Telefon';
+
+  @override
+  String get paywallBenefitTvAppsDesc => 'Android TV, Google TV, iPhone, iPad';
+
+  @override
+  String get paywallPlanMonthly => 'Aylık';
+
+  @override
+  String get paywallPlanYearly => 'Yıllık';
+
+  @override
+  String get paywallPlanLifetime => 'Yaşam Boyu';
+
+  @override
+  String get paywallBadgeBest => 'EN İYİ';
+
+  @override
+  String get paywallBadgePopular => 'POPÜLER';
+
+  @override
+  String get paywallSubscribeButton => 'Pro\'ya Geç';
+
+  @override
+  String get paywallRestoreButton => 'Satın Alımları Geri Yükle';
+
+  @override
+  String get paywallSignInRequired => 'Devam etmek için önce hesap aç.';
+
+  @override
+  String get paywallSignInButton => 'Önce hesap aç';
+
+  @override
+  String get paywallTermsFooter => 'Abonelikler otomatik yenilenir. Ayarlar\'dan yönetebilirsin.';
+
+  @override
+  String get paywallPrivacyLink => 'Gizlilik Politikası';
+
+  @override
+  String get paywallTermsLink => 'Kullanım Koşulları';
+
+  @override
+  String get paywallPurchaseSuccess => 'Pro aktif. İyi seyirler!';
+
+  @override
+  String get paywallPurchaseCancelled => 'Satın alma iptal edildi.';
+
+  @override
+  String paywallPurchaseError(String message) {
+    return 'Satın alma başarısız: $message';
+  }
+
+  @override
+  String get paywallNotConfigured => 'Satın alma şu anda yapılandırılmadı. Daha sonra tekrar dene.';
+
+  @override
+  String get paywallNoOfferings => 'Şu an aktif paket yok.';
+
+  @override
+  String get paywallTriggerSecondPlaylist => 'İkinci playlist için Pro gerekiyor';
+
+  @override
+  String get paywallTriggerAiSubtitle => 'AI altyazı için Pro gerekiyor';
+
+  @override
+  String get paywallTriggerCloudSync => 'Cloud senkron için Pro gerekiyor';
 }

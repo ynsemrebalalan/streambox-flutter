@@ -14,6 +14,7 @@ import '../../data/models/playlist_model.dart';
 import '../../data/services/m3u_parser.dart';
 import '../../data/services/xtream_service.dart';
 import '../../l10n/generated/app_localizations.dart';
+import '../billing/widgets/paywall_trigger.dart';
 import '../home/home_provider.dart';
 
 // ── provider ─────────────────────────────────────────────────────────────────
@@ -290,7 +291,19 @@ class PlaylistsScreen extends ConsumerWidget {
     );
   }
 
-  void _showAddDialog(BuildContext context, WidgetRef ref) {
+  Future<void> _showAddDialog(BuildContext context, WidgetRef ref) async {
+    // Adim 22 Phase D: 2. playlist gate. Mevcut listede 1+ varsa Pro
+    // gerekli — anon ise once login akisi, sonra paywall.
+    final existing = ref.read(playlistsProvider).valueOrNull ?? const [];
+    if (existing.isNotEmpty) {
+      final allowed = await requirePro(
+        context,
+        ref,
+        PaywallTrigger.secondPlaylist,
+      );
+      if (!allowed || !context.mounted) return;
+    }
+    if (!context.mounted) return;
     showDialog(
       context: context,
       builder: (_) => FocusTraversalGroup(

@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import '../../features/auth/screens/account_screen.dart';
 import '../../features/auth/screens/login_screen.dart';
 import '../../features/auth/screens/register_screen.dart';
+import '../../features/billing/screens/paywall_screen.dart';
 import '../../features/home/home_screen.dart';
 import '../../features/onboarding/disclaimer_screen.dart';
 import '../../features/player/player_screen.dart';
@@ -122,6 +123,16 @@ final appRouter = GoRouter(
     GoRoute(
       path:    AppRoutes.account,
       builder: (ctx, state) => const AccountScreen(),
+    ),
+    GoRoute(
+      path: AppRoutes.paywall,
+      builder: (ctx, state) {
+        final extra = state.extra;
+        final trigger = (extra is Map && extra['trigger'] is String)
+            ? extra['trigger'] as String
+            : 'unknown';
+        return PaywallScreen(trigger: trigger);
+      },
     ),
   ],
 );

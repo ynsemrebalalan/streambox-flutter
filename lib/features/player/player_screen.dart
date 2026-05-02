@@ -9,6 +9,7 @@ import '../../core/analytics/analytics.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_tokens.dart';
 import '../../l10n/generated/app_localizations.dart';
+import '../billing/widgets/paywall_trigger.dart';
 import '../home/home_provider.dart';
 import 'widgets/subtitle_overlay.dart';
 
@@ -470,6 +471,20 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
     if (mounted) Navigator.of(context).pop();
   }
 
+  /// Adim 22 Phase D: AI altyazi gating.
+  /// Kapali → açıyorsa Pro check; aksi durumda dogrudan kapat.
+  Future<void> _toggleAiSubtitle() async {
+    if (_aiSubtitleEnabled) {
+      // Aciksa → kapat (Pro gerektirmez).
+      setState(() => _aiSubtitleEnabled = false);
+      return;
+    }
+    final allowed =
+        await requirePro(context, ref, PaywallTrigger.aiSubtitle);
+    if (!allowed || !mounted) return;
+    setState(() => _aiSubtitleEnabled = true);
+  }
+
   @override
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context);
@@ -553,8 +568,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
                   onReconnect:      _manualReconnect,
                   volume:           _player.state.volume,
                   subtitleEnabled:  _aiSubtitleEnabled,
-                  onSubtitleToggle: () => setState(
-                      () => _aiSubtitleEnabled = !_aiSubtitleEnabled),
+                  onSubtitleToggle: _toggleAiSubtitle,
                   videoFit:         _videoFit,
                   onFitChange:      (f) => setState(() => _videoFit = f),
                 ),

@@ -1508,6 +1508,186 @@ abstract class AppLocalizations {
   /// In tr, this message translates to:
   /// **'Bu işlem için son zamanlarda giriş yapmış olman gerekiyor. Lütfen tekrar giriş yap.'**
   String get authRequiresRecentLogin;
+
+  /// No description provided for @paywallTitle.
+  ///
+  /// In tr, this message translates to:
+  /// **'Pro\'ya Geç, Sınırları Kaldır'**
+  String get paywallTitle;
+
+  /// No description provided for @paywallSubtitle.
+  ///
+  /// In tr, this message translates to:
+  /// **'AI altyazı, sınırsız playlist, cihazlar arası senkron — hepsi tek seferlik ödeme ile.'**
+  String get paywallSubtitle;
+
+  /// No description provided for @paywallBenefitUnlimitedPlaylists.
+  ///
+  /// In tr, this message translates to:
+  /// **'Sınırsız Playlist'**
+  String get paywallBenefitUnlimitedPlaylists;
+
+  /// No description provided for @paywallBenefitUnlimitedPlaylistsDesc.
+  ///
+  /// In tr, this message translates to:
+  /// **'Xtream, M3U, Stalker fark etmez'**
+  String get paywallBenefitUnlimitedPlaylistsDesc;
+
+  /// No description provided for @paywallBenefitAiSubtitles.
+  ///
+  /// In tr, this message translates to:
+  /// **'AI Altyazı'**
+  String get paywallBenefitAiSubtitles;
+
+  /// No description provided for @paywallBenefitAiSubtitlesDesc.
+  ///
+  /// In tr, this message translates to:
+  /// **'100+ dilde otomatik altyazı (40 saat/ay)'**
+  String get paywallBenefitAiSubtitlesDesc;
+
+  /// No description provided for @paywallBenefitCloudSync.
+  ///
+  /// In tr, this message translates to:
+  /// **'Cloud Senkron'**
+  String get paywallBenefitCloudSync;
+
+  /// No description provided for @paywallBenefitCloudSyncDesc.
+  ///
+  /// In tr, this message translates to:
+  /// **'Favoriler ve geçmiş cihazlar arası'**
+  String get paywallBenefitCloudSyncDesc;
+
+  /// No description provided for @paywallBenefitTvApps.
+  ///
+  /// In tr, this message translates to:
+  /// **'TV + Telefon'**
+  String get paywallBenefitTvApps;
+
+  /// No description provided for @paywallBenefitTvAppsDesc.
+  ///
+  /// In tr, this message translates to:
+  /// **'Android TV, Google TV, iPhone, iPad'**
+  String get paywallBenefitTvAppsDesc;
+
+  /// No description provided for @paywallPlanMonthly.
+  ///
+  /// In tr, this message translates to:
+  /// **'Aylık'**
+  String get paywallPlanMonthly;
+
+  /// No description provided for @paywallPlanYearly.
+  ///
+  /// In tr, this message translates to:
+  /// **'Yıllık'**
+  String get paywallPlanYearly;
+
+  /// No description provided for @paywallPlanLifetime.
+  ///
+  /// In tr, this message translates to:
+  /// **'Yaşam Boyu'**
+  String get paywallPlanLifetime;
+
+  /// No description provided for @paywallBadgeBest.
+  ///
+  /// In tr, this message translates to:
+  /// **'EN İYİ'**
+  String get paywallBadgeBest;
+
+  /// No description provided for @paywallBadgePopular.
+  ///
+  /// In tr, this message translates to:
+  /// **'POPÜLER'**
+  String get paywallBadgePopular;
+
+  /// No description provided for @paywallSubscribeButton.
+  ///
+  /// In tr, this message translates to:
+  /// **'Pro\'ya Geç'**
+  String get paywallSubscribeButton;
+
+  /// No description provided for @paywallRestoreButton.
+  ///
+  /// In tr, this message translates to:
+  /// **'Satın Alımları Geri Yükle'**
+  String get paywallRestoreButton;
+
+  /// No description provided for @paywallSignInRequired.
+  ///
+  /// In tr, this message translates to:
+  /// **'Devam etmek için önce hesap aç.'**
+  String get paywallSignInRequired;
+
+  /// No description provided for @paywallSignInButton.
+  ///
+  /// In tr, this message translates to:
+  /// **'Önce hesap aç'**
+  String get paywallSignInButton;
+
+  /// No description provided for @paywallTermsFooter.
+  ///
+  /// In tr, this message translates to:
+  /// **'Abonelikler otomatik yenilenir. Ayarlar\'dan yönetebilirsin.'**
+  String get paywallTermsFooter;
+
+  /// No description provided for @paywallPrivacyLink.
+  ///
+  /// In tr, this message translates to:
+  /// **'Gizlilik Politikası'**
+  String get paywallPrivacyLink;
+
+  /// No description provided for @paywallTermsLink.
+  ///
+  /// In tr, this message translates to:
+  /// **'Kullanım Koşulları'**
+  String get paywallTermsLink;
+
+  /// No description provided for @paywallPurchaseSuccess.
+  ///
+  /// In tr, this message translates to:
+  /// **'Pro aktif. İyi seyirler!'**
+  String get paywallPurchaseSuccess;
+
+  /// No description provided for @paywallPurchaseCancelled.
+  ///
+  /// In tr, this message translates to:
+  /// **'Satın alma iptal edildi.'**
+  String get paywallPurchaseCancelled;
+
+  /// No description provided for @paywallPurchaseError.
+  ///
+  /// In tr, this message translates to:
+  /// **'Satın alma başarısız: {message}'**
+  String paywallPurchaseError(String message);
+
+  /// No description provided for @paywallNotConfigured.
+  ///
+  /// In tr, this message translates to:
+  /// **'Satın alma şu anda yapılandırılmadı. Daha sonra tekrar dene.'**
+  String get paywallNotConfigured;
+
+  /// No description provided for @paywallNoOfferings.
+  ///
+  /// In tr, this message translates to:
+  /// **'Şu an aktif paket yok.'**
+  String get paywallNoOfferings;
+
+  /// No description provided for @paywallTriggerSecondPlaylist.
+  ///
+  /// In tr, this message translates to:
+  /// **'İkinci playlist için Pro gerekiyor'**
+  String get paywallTriggerSecondPlaylist;
+
+  /// No description provided for @paywallTriggerAiSubtitle.
+  ///
+  /// In tr, this message translates to:
+  /// **'AI altyazı için Pro gerekiyor'**
+  String get paywallTriggerAiSubtitle;
+
+  /// No description provided for @paywallTriggerCloudSync.
+  ///
+  /// In tr, this message translates to:
+  /// **'Cloud senkron için Pro gerekiyor'**
+  String get paywallTriggerCloudSync;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

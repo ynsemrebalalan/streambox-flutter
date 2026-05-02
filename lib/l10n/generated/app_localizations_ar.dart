@@ -740,4 +740,96 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get authRequiresRecentLogin => 'هذا الإجراء يتطلب تسجيل دخول حديث. يرجى تسجيل الدخول مرة أخرى.';
+
+  @override
+  String get paywallTitle => 'احصل على Pro، أزِل القيود';
+
+  @override
+  String get paywallSubtitle => 'ترجمة الذكاء الاصطناعي، قوائم تشغيل غير محدودة، مزامنة عبر الأجهزة — كل ذلك بشراء واحد.';
+
+  @override
+  String get paywallBenefitUnlimitedPlaylists => 'قوائم تشغيل غير محدودة';
+
+  @override
+  String get paywallBenefitUnlimitedPlaylistsDesc => 'Xtream، M3U، Stalker — بلا حدود';
+
+  @override
+  String get paywallBenefitAiSubtitles => 'ترجمة الذكاء الاصطناعي';
+
+  @override
+  String get paywallBenefitAiSubtitlesDesc => 'أكثر من 100 لغة (40 ساعة/شهر)';
+
+  @override
+  String get paywallBenefitCloudSync => 'مزامنة سحابية';
+
+  @override
+  String get paywallBenefitCloudSyncDesc => 'المفضلة والسجل عبر الأجهزة';
+
+  @override
+  String get paywallBenefitTvApps => 'TV + هاتف';
+
+  @override
+  String get paywallBenefitTvAppsDesc => 'Android TV، Google TV، iPhone، iPad';
+
+  @override
+  String get paywallPlanMonthly => 'شهري';
+
+  @override
+  String get paywallPlanYearly => 'سنوي';
+
+  @override
+  String get paywallPlanLifetime => 'مدى الحياة';
+
+  @override
+  String get paywallBadgeBest => 'الأفضل';
+
+  @override
+  String get paywallBadgePopular => 'شائع';
+
+  @override
+  String get paywallSubscribeButton => 'احصل على Pro';
+
+  @override
+  String get paywallRestoreButton => 'استعادة المشتريات';
+
+  @override
+  String get paywallSignInRequired => 'سجّل الدخول للمتابعة.';
+
+  @override
+  String get paywallSignInButton => 'سجّل الدخول أولاً';
+
+  @override
+  String get paywallTermsFooter => 'تتجدد الاشتراكات تلقائيًا. يمكنك الإدارة من الإعدادات.';
+
+  @override
+  String get paywallPrivacyLink => 'سياسة الخصوصية';
+
+  @override
+  String get paywallTermsLink => 'شروط الاستخدام';
+
+  @override
+  String get paywallPurchaseSuccess => 'تم تفعيل Pro. استمتع!';
+
+  @override
+  String get paywallPurchaseCancelled => 'تم إلغاء الشراء.';
+
+  @override
+  String paywallPurchaseError(String message) {
+    return 'فشل الشراء: $message';
+  }
+
+  @override
+  String get paywallNotConfigured => 'لم يتم تكوين عمليات الشراء بعد. حاول لاحقًا.';
+
+  @override
+  String get paywallNoOfferings => 'لا توجد عروض متاحة.';
+
+  @override
+  String get paywallTriggerSecondPlaylist => 'Pro مطلوب لإضافة قائمة تشغيل ثانية';
+
+  @override
+  String get paywallTriggerAiSubtitle => 'Pro مطلوب للترجمة بالذكاء الاصطناعي';
+
+  @override
+  String get paywallTriggerCloudSync => 'Pro مطلوب للمزامنة السحابية';
 }
