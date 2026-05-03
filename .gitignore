@@ -51,3 +51,4 @@ android/key.properties
 
 # Local config
 android/local.properties
+secrets.local.properties
