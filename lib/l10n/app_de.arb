@@ -400,5 +400,31 @@
   "epgAutoRefreshTitle": "Auto-Update",
   "epgAutoRefreshOff":   "Aus",
   "@epgAutoRefreshEvery": { "placeholders": { "h": { "type": "int" } } },
-  "epgAutoRefreshEvery": "Alle {h}h"
+  "epgAutoRefreshEvery": "Alle {h}h",
+
+  "playerPipTooltip": "Bild-in-Bild (Pro)",
+  "playerPipUnavailable": "PiP wird auf diesem Gerät nicht unterstützt",
+  "playerPipEntered": "Wiedergabe im Mini-Fenster",
+  "playerAirplayTooltip": "AirPlay (Pro)",
+  "playerAirplayUnavailable": "AirPlay nur unter iOS",
+  "playerCastTooltip": "Cast (bald verfügbar)",
+
+  "settingsPipSection": "Bild-in-Bild",
+  "settingsPipAuto":    "Auto-PiP bei Home-Taste",
+  "settingsPipAutoSubtitle": "Pro — Wenn der Player geöffnet ist, wechselt die Wiedergabe beim Drücken der Home-Taste in ein Mini-Fenster",
+  "settingsAdsSection": "Werbung",
+  "settingsAdsRemoved": "Pro: keine Werbung",
+  "settingsAdsFreeNotice": "Die Free-Version zeigt unten ein Banner. Mit Pro werbefrei genießen.",
+
+  "profileSwitcherTitle": "Profile",
+  "profileDefaultName": "Standard",
+  "profileAdd": "Neues Profil",
+  "profileEdit": "Profil bearbeiten",
+  "profileDelete": "Profil löschen",
+  "profileDeleteConfirm": "Dieses Profil und seine privaten Favoriten/Merkliste werden gelöscht. Fortfahren?",
+  "profileNameLabel": "Profilname",
+  "profileEmptyName": "Profilname darf nicht leer sein",
+  "profileSwitched": "Profil gewechselt",
+  "profileMaxFreeReached": "Free-Version unterstützt 1 Profil. Pro schaltet unbegrenzte Profile frei.",
+  "profileSection": "Profil"
 }

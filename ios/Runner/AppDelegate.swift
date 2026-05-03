@@ -1,3 +1,5 @@
+import AVFoundation
+import AVKit
 import Flutter
 import UIKit
 
@@ -27,6 +29,24 @@ import UIKit
     _ application: UIApplication,
     didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
   ) -> Bool {
+    // 0) AVAudioSession — Background audio + AirPlay route + PiP icin sart.
+    //    .playback category, video playback + lock screen + control center
+    //    integration sagliyor; .allowAirPlay ile AirPlay/Apple TV route'lari
+    //    sistem tarafindan tanitiliyor. Hata olursa app rendering blokmaz —
+    //    sadece debug log.
+    do {
+      let session = AVAudioSession.sharedInstance()
+      try session.setCategory(
+        .playback,
+        mode: .moviePlayback,
+        options: [.allowAirPlay, .allowBluetoothA2DP]
+      )
+      try session.setActive(true, options: [])
+      NSLog("[Audio] AVAudioSession .playback + .allowAirPlay aktif.")
+    } catch {
+      NSLog("[Audio] AVAudioSession setup failed: \(error.localizedDescription)")
+    }
+
     // 1) Engine'i onceden baslat — plugin'ler ve task runner hazir olur.
     flutterEngine.run()
 
@@ -45,7 +65,49 @@ import UIKit
     window?.rootViewController = flutterViewController
     window?.makeKeyAndVisible()
 
+    // 4) AirPlay route picker MethodChannel — Flutter tarafindan
+    //    sistem AirPlay sheet'ini acmak icin kullanilir.
+    let airplayChannel = FlutterMethodChannel(
+      name: "iptvai/airplay",
+      binaryMessenger: flutterEngine.binaryMessenger
+    )
+    airplayChannel.setMethodCallHandler { [weak self] call, result in
+      switch call.method {
+      case "isAvailable":
+        // iOS 11+'da AirPlay her zaman destekleniyor.
+        result(true)
+      case "showRoutePicker":
+        self?.showAirPlayRoutePicker()
+        result(true)
+      default:
+        result(FlutterMethodNotImplemented)
+      }
+    }
+
     NSLog("[Flutter] Explicit engine prewarmed + FlutterViewController ready.")
     return true
+  }
+
+  /// AirPlay sistem sheet'ini ac. AVRoutePickerView gorunmez sekilde
+  /// eklenir, button.sendActions tetiklenir → iOS native dialog.
+  private func showAirPlayRoutePicker() {
+    DispatchQueue.main.async { [weak self] in
+      guard let rootVC = self?.window?.rootViewController else { return }
+      let routePicker = AVRoutePickerView(frame: CGRect(x: -100, y: -100, width: 50, height: 50))
+      routePicker.activeTintColor = .systemBlue
+      routePicker.tintColor = .label
+      rootVC.view.addSubview(routePicker)
+      // UIButton'a benzeyen icteki control'u bul ve tetikle.
+      for subview in routePicker.subviews {
+        if let button = subview as? UIButton {
+          button.sendActions(for: .touchUpInside)
+          break
+        }
+      }
+      // Sheet acildiktan sonra kaldir.
+      DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+        routePicker.removeFromSuperview()
+      }
+    }
   }
 }

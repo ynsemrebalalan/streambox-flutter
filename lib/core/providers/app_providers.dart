@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/repositories/channel_repository.dart';
 import '../../data/repositories/epg_repository.dart';
 import '../../data/repositories/playlist_repository.dart';
+import '../../data/repositories/profile_repository.dart';
 import '../../data/repositories/settings_repository.dart';
 import '../../data/repositories/watchlist_repository.dart';
 import '../theme/app_theme.dart';
@@ -27,6 +28,39 @@ final epgRepoProvider = Provider<EpgRepository>(
 
 final watchlistRepoProvider = Provider<WatchlistRepository>(
   (_) => WatchlistRepository(),
+);
+
+final profileRepoProvider = Provider<ProfileRepository>(
+  (_) => ProfileRepository(),
+);
+
+// ── Active profile (Phase 6) ─────────────────────────────────────────────────
+//
+// Default 'default' — uygulama ilk acilista bu profil aktif. Pro user yeni
+// profil olusturup gecis yapabilir; gectikten sonra favorites/watchlist o
+// profil bazinda filtrelenir.
+
+class ActiveProfileNotifier extends Notifier<String> {
+  @override
+  String build() => ProfileRepository.defaultProfileId;
+
+  void setActive(String profileId) {
+    state = profileId;
+    ref.read(settingsRepoProvider).set(SettingsKeys.activeProfileId, profileId);
+  }
+
+  Future<void> loadFromDb() async {
+    final raw = await ref.read(settingsRepoProvider).get(SettingsKeys.activeProfileId);
+    if (raw != null && raw.isNotEmpty) {
+      // Profilin hala var oldugunu dogrula — silinmis olabilir.
+      final p = await ref.read(profileRepoProvider).getById(raw);
+      state = p?.id ?? ProfileRepository.defaultProfileId;
+    }
+  }
+}
+
+final activeProfileProvider = NotifierProvider<ActiveProfileNotifier, String>(
+  ActiveProfileNotifier.new,
 );
 
 // ── Theme ─────────────────────────────────────────────────────────────────────

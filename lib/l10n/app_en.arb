@@ -400,5 +400,31 @@
   "epgAutoRefreshTitle": "Auto Refresh",
   "epgAutoRefreshOff":   "Off",
   "@epgAutoRefreshEvery": { "placeholders": { "h": { "type": "int" } } },
-  "epgAutoRefreshEvery": "Every {h}h"
+  "epgAutoRefreshEvery": "Every {h}h",
+
+  "playerPipTooltip": "Picture-in-Picture (Pro)",
+  "playerPipUnavailable": "PiP not supported on this device",
+  "playerPipEntered": "Playing in mini window",
+  "playerAirplayTooltip": "AirPlay (Pro)",
+  "playerAirplayUnavailable": "AirPlay is iOS only",
+  "playerCastTooltip": "Cast (coming soon)",
+
+  "settingsPipSection": "Picture-in-Picture",
+  "settingsPipAuto":    "Auto-PiP on Home button",
+  "settingsPipAutoSubtitle": "Pro — When the player is open, pressing Home moves playback to a mini window",
+  "settingsAdsSection": "Ads",
+  "settingsAdsRemoved": "Pro: no ads",
+  "settingsAdsFreeNotice": "Free version shows a banner at the bottom. Subscribe to Pro for an ad-free experience.",
+
+  "profileSwitcherTitle": "Profiles",
+  "profileDefaultName": "Default",
+  "profileAdd": "New Profile",
+  "profileEdit": "Edit Profile",
+  "profileDelete": "Delete Profile",
+  "profileDeleteConfirm": "This profile and its private favorites/watchlist will be deleted. Continue?",
+  "profileNameLabel": "Profile Name",
+  "profileEmptyName": "Profile name cannot be empty",
+  "profileSwitched": "Profile switched",
+  "profileMaxFreeReached": "Free version supports 1 profile. Pro unlocks unlimited profiles.",
+  "profileSection": "Profile"
 }

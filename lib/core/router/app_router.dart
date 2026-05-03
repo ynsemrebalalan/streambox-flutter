@@ -13,6 +13,7 @@ import '../../features/settings/settings_screen.dart';
 import '../../features/epg/epg_guide_screen.dart';
 import '../../features/parental/parental_lock_screen.dart';
 import '../../features/playlists/playlists_screen.dart';
+import '../../features/profiles/profiles_screen.dart';
 import '../../features/search/search_screen.dart';
 import '../../features/settings/theme_picker_screen.dart';
 import '../../features/watchlist/watchlist_screen.dart';
@@ -36,6 +37,8 @@ abstract final class AppRoutes {
   static const themePicker   = '/theme-picker';
   // Phase 3:
   static const epgGuide      = '/epg-guide';
+  // Phase 6:
+  static const profiles      = '/profiles';
 }
 
 final appRouter = GoRouter(
@@ -167,6 +170,10 @@ final appRouter = GoRouter(
     GoRoute(
       path:    AppRoutes.epgGuide,
       builder: (ctx, state) => const EpgGuideScreen(),
+    ),
+    GoRoute(
+      path:    AppRoutes.profiles,
+      builder: (ctx, state) => const ProfilesScreen(),
     ),
   ],
 );

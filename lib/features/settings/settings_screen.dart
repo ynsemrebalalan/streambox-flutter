@@ -12,6 +12,7 @@ import '../../l10n/generated/app_localizations.dart';
 import '../auth/data/auth_state.dart';
 import '../auth/providers/auth_providers.dart';
 import '../billing/providers/purchases_providers.dart';
+import '../billing/widgets/paywall_trigger.dart';
 import '../cloud_sync/widgets/cloud_sync_tile.dart';
 import '../epg/widgets/epg_auto_refresh_tile.dart';
 
@@ -485,7 +486,35 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 ),
                 // Phase 2 — Cloud Sync (Pro)
                 const CloudSyncTile(),
+                // Phase 6 — Multi-profile (Pro)
+                ListTile(
+                  leading: const Icon(Icons.switch_account),
+                  title:   Text(l.profileSwitcherTitle),
+                  onTap:   () => context.push(AppRoutes.profiles),
+                ),
               ],
+            ),
+          ),
+
+          const SizedBox(height: Spacing.xl),
+
+          // ── PiP (Phase 4) ────────────────────────────────────────────────
+          _SectionHeader(title: l.settingsPipSection),
+          const Card(child: _PipAutoTile()),
+
+          const SizedBox(height: Spacing.xl),
+
+          // ── Reklamsız notice (Phase 5) ───────────────────────────────────
+          _SectionHeader(title: l.settingsAdsSection),
+          Card(
+            child: ListTile(
+              leading: Icon(
+                ref.watch(isProProvider) ? Icons.block : Icons.campaign,
+                color: ref.watch(isProProvider) ? Colors.green : null,
+              ),
+              title: Text(ref.watch(isProProvider)
+                  ? l.settingsAdsRemoved
+                  : l.settingsAdsFreeNotice),
             ),
           ),
 
@@ -570,6 +599,61 @@ class _AccountCard extends ConsumerWidget {
             ),
         ],
       ),
+    );
+  }
+}
+
+// ── Phase 4: PiP auto-mode tile (Pro gating) ────────────────────────────────
+
+class _PipAutoTile extends ConsumerStatefulWidget {
+  const _PipAutoTile();
+
+  @override
+  ConsumerState<_PipAutoTile> createState() => _PipAutoTileState();
+}
+
+class _PipAutoTileState extends ConsumerState<_PipAutoTile> {
+  bool _enabled = false;
+  bool _loaded = false;
+  static const _key = 'pip_auto_enabled';
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    final v = await SettingsRepository().get(_key);
+    if (mounted) {
+      setState(() {
+        _enabled = v == 'true';
+        _loaded = true;
+      });
+    }
+  }
+
+  Future<void> _toggle(bool v) async {
+    if (v) {
+      final allowed = await requirePro(context, ref, PaywallTrigger.pip);
+      if (!allowed) return;
+    }
+    await SettingsRepository().set(_key, v ? 'true' : 'false');
+    if (mounted) setState(() => _enabled = v);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context);
+    if (!_loaded) {
+      return const ListTile(title: SizedBox(height: 24));
+    }
+    return SwitchListTile(
+      secondary: const Icon(Icons.picture_in_picture_alt),
+      title: Text(l.settingsPipAuto),
+      subtitle: Text(l.settingsPipAutoSubtitle),
+      value: _enabled,
+      onChanged: _toggle,
     );
   }
 }

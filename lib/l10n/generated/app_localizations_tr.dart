@@ -1018,4 +1018,73 @@ class AppLocalizationsTr extends AppLocalizations {
   String epgAutoRefreshEvery(int h) {
     return 'Her $h saatte bir';
   }
+
+  @override
+  String get playerPipTooltip => 'Pencereye Küçült (Pro)';
+
+  @override
+  String get playerPipUnavailable => 'Bu cihazda PiP desteklenmiyor';
+
+  @override
+  String get playerPipEntered => 'Küçük pencerede oynatılıyor';
+
+  @override
+  String get playerAirplayTooltip => 'AirPlay (Pro)';
+
+  @override
+  String get playerAirplayUnavailable => 'AirPlay sadece iOS\'ta';
+
+  @override
+  String get playerCastTooltip => 'Cast (yakında)';
+
+  @override
+  String get settingsPipSection => 'Picture-in-Picture';
+
+  @override
+  String get settingsPipAuto => 'Home tuşuna basınca otomatik PiP';
+
+  @override
+  String get settingsPipAutoSubtitle => 'Pro — Player açıkken Home tuşuna basınca yayın küçük pencereye geçer';
+
+  @override
+  String get settingsAdsSection => 'Reklam';
+
+  @override
+  String get settingsAdsRemoved => 'Pro: reklam yok';
+
+  @override
+  String get settingsAdsFreeNotice => 'Free sürümde alt kısımda banner reklam görüntülenir. Pro abonelikle kalıcı reklamsız.';
+
+  @override
+  String get profileSwitcherTitle => 'Profiller';
+
+  @override
+  String get profileDefaultName => 'Varsayılan';
+
+  @override
+  String get profileAdd => 'Yeni Profil';
+
+  @override
+  String get profileEdit => 'Profili Düzenle';
+
+  @override
+  String get profileDelete => 'Profili Sil';
+
+  @override
+  String get profileDeleteConfirm => 'Bu profil ve özel favori/izleme listesi silinecek. Devam edilsin mi?';
+
+  @override
+  String get profileNameLabel => 'Profil Adı';
+
+  @override
+  String get profileEmptyName => 'Profil adı boş olamaz';
+
+  @override
+  String get profileSwitched => 'Profil değiştirildi';
+
+  @override
+  String get profileMaxFreeReached => 'Free sürümde 1 profil. Pro ile sınırsız profil.';
+
+  @override
+  String get profileSection => 'Profil';
 }

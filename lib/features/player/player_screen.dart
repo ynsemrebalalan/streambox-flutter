@@ -8,9 +8,13 @@ import 'package:screen_brightness/screen_brightness.dart';
 import '../../core/analytics/analytics.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_tokens.dart';
+import '../../data/repositories/settings_repository.dart';
 import '../../l10n/generated/app_localizations.dart';
+import '../billing/providers/purchases_providers.dart';
 import '../billing/widgets/paywall_trigger.dart';
 import '../home/home_provider.dart';
+import 'services/airplay_service.dart';
+import 'services/pip_service.dart';
 import 'widgets/subtitle_overlay.dart';
 
 class PlayerScreen extends ConsumerStatefulWidget {
@@ -55,6 +59,10 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
   bool _aiSubtitleEnabled = false;
   BoxFit _videoFit = BoxFit.contain; // 20.2: Original=contain | Fill=cover | Stretch=fill
 
+  // ── Phase 4: PiP / AirPlay durumu ──────────────────────────────────────────
+  bool _inPipMode = false;
+  StreamSubscription<bool>? _pipModeSub;
+
   // ── Swipe gesture state (sol yarı = parlaklık, sağ yarı = ses) ──────────────
   // Android paritesi (StreamBox PlayerScreen.kt). Tuzaklar: memory
   // `feedback_brightness_gesture_init.md` — drag eşiği 40px, min brightness
@@ -95,6 +103,13 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
     Future.microtask(() => ref
         .read(homeProvider.notifier)
         .markWatched(widget.channelId));
+
+    // ── Phase 4: PiP — auto-PiP setup. Pro user + auto pref ON ise
+    //    Home tusuna basinca otomatik PiP'e gec.
+    _setupAutoPip();
+    _pipModeSub = PipService.instance.modeStream.listen((inPip) {
+      if (mounted) setState(() => _inPipMode = inPip);
+    });
     // İlk parlaklık değerini sakla — dispose'da bu değere geri dön.
     // Ekrana özel override yapmadığımız sürece sistem değeri.
     ScreenBrightness().application.then((b) {
@@ -286,6 +301,10 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
     _positionSub?.cancel();
     _errorSub?.cancel();
     _completedSub?.cancel();
+    _pipModeSub?.cancel();
+    // PiP auto-mode kapat (player kapanirken Home tusu PiP'e gecmesin).
+    PipService.instance.setPlayerActive(false);
+    PipService.instance.setAutoPip(false);
     // Explicit stop önce — bazı backend'lerde (özellikle iOS AVPlayer +
     // Android MediaSession aktif olduğunda) sadece dispose() background'da
     // playback'i sustaramaz; stop() native pipeline'ı tertip eder. Future
@@ -471,6 +490,55 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
     if (mounted) Navigator.of(context).pop();
   }
 
+  /// Phase 4: PiP — Pro auto-mode ayarini DB'den oku, native'e ilet.
+  /// Player aktiflik bayragi da set edilir → onUserLeaveHint dogru karar verir.
+  Future<void> _setupAutoPip() async {
+    try {
+      await PipService.instance.ensureInitialized();
+      await PipService.instance.setPlayerActive(true);
+      final repo = SettingsRepository();
+      final autoPref = await repo.get('pip_auto_enabled') == 'true';
+      final isPro = ref.read(isProProvider);
+      // Auto-PiP sadece Pro user'a + tercih ON ise aktif.
+      await PipService.instance.setAutoPip(isPro && autoPref);
+    } catch (e) {
+      debugPrint('[Player] auto-PiP setup failed: $e');
+    }
+  }
+
+  /// Phase 4: PiP — manuel buton. Pro check + native enter.
+  Future<void> _enterPip() async {
+    if (!PipService.instance.isSupported) {
+      _showSnack(AppLocalizations.of(context).playerPipUnavailable);
+      return;
+    }
+    final allowed = await requirePro(context, ref, PaywallTrigger.pip);
+    if (!allowed || !mounted) return;
+    final ok = await PipService.instance.enter();
+    if (!ok && mounted) {
+      _showSnack(AppLocalizations.of(context).playerPipUnavailable);
+    }
+  }
+
+  /// Phase 4: AirPlay — manuel buton. Pro check + AirPlay sheet.
+  Future<void> _showAirplay() async {
+    final available = await AirplayService.instance.isAvailable();
+    if (!available) {
+      if (mounted) _showSnack(AppLocalizations.of(context).playerAirplayUnavailable);
+      return;
+    }
+    final allowed = await requirePro(context, ref, PaywallTrigger.airplay);
+    if (!allowed || !mounted) return;
+    await AirplayService.instance.showRoutePicker();
+  }
+
+  void _showSnack(String msg) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(msg), duration: const Duration(seconds: 2)),
+    );
+  }
+
   /// Adim 22 Phase D: AI altyazi gating.
   /// Kapali → açıyorsa Pro check; aksi durumda dogrudan kapat.
   Future<void> _toggleAiSubtitle() async {
@@ -556,7 +624,8 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
 
             // Controls overlay — gizlendiginde focus tree'den cikar,
             // yoksa gorunmez butonlara D-pad ile atlanir.
-            if (_controlsVisible)
+            // PiP modundayken kontroller hep gizli (mini pencerede gorunmemeli).
+            if (_controlsVisible && !_inPipMode)
               AnimatedOpacity(
                 opacity:  1.0,
                 duration: const Duration(milliseconds: 250),
@@ -571,6 +640,8 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
                   onSubtitleToggle: _toggleAiSubtitle,
                   videoFit:         _videoFit,
                   onFitChange:      (f) => setState(() => _videoFit = f),
+                  onPip:            _enterPip,
+                  onAirplay:        _showAirplay,
                 ),
               ),
             // Swipe gesture feedback overlay — sol yarı parlaklık, sağ yarı ses
@@ -601,6 +672,8 @@ class _ControlsOverlay extends StatefulWidget {
   final VoidCallback onSubtitleToggle;
   final BoxFit              videoFit;
   final ValueChanged<BoxFit> onFitChange;
+  final VoidCallback onPip;
+  final VoidCallback onAirplay;
 
   const _ControlsOverlay({
     required this.player,
@@ -613,6 +686,8 @@ class _ControlsOverlay extends StatefulWidget {
     required this.onSubtitleToggle,
     required this.videoFit,
     required this.onFitChange,
+    required this.onPip,
+    required this.onAirplay,
   });
 
   @override
@@ -668,6 +743,24 @@ class _ControlsOverlayState extends State<_ControlsOverlay> {
                           fontWeight: FontWeight.w600),
                       maxLines:  1,
                       overflow:  TextOverflow.ellipsis,
+                    ),
+                  ),
+                  // Phase 4 — AirPlay (iOS Pro)
+                  FocusTraversalOrder(
+                    order: const NumericFocusOrder(1.7),
+                    child: _TvIconButton(
+                      icon: Icons.airplay,
+                      tooltip: l.playerAirplayTooltip,
+                      onTap: widget.onAirplay,
+                    ),
+                  ),
+                  // Phase 4 — PiP (Android Pro)
+                  FocusTraversalOrder(
+                    order: const NumericFocusOrder(1.8),
+                    child: _TvIconButton(
+                      icon: Icons.picture_in_picture_alt,
+                      tooltip: l.playerPipTooltip,
+                      onTap: widget.onPip,
                     ),
                   ),
                   FocusTraversalOrder(

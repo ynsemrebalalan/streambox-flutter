@@ -1018,4 +1018,73 @@ class AppLocalizationsAr extends AppLocalizations {
   String epgAutoRefreshEvery(int h) {
     return 'كل $h ساعة';
   }
+
+  @override
+  String get playerPipTooltip => 'نافذة صغيرة (Pro)';
+
+  @override
+  String get playerPipUnavailable => 'PiP غير مدعوم على هذا الجهاز';
+
+  @override
+  String get playerPipEntered => 'يتم التشغيل في نافذة صغيرة';
+
+  @override
+  String get playerAirplayTooltip => 'AirPlay (Pro)';
+
+  @override
+  String get playerAirplayUnavailable => 'AirPlay على iOS فقط';
+
+  @override
+  String get playerCastTooltip => 'Cast (قريبًا)';
+
+  @override
+  String get settingsPipSection => 'نافذة صغيرة';
+
+  @override
+  String get settingsPipAuto => 'PiP تلقائي عند زر Home';
+
+  @override
+  String get settingsPipAutoSubtitle => 'Pro — عند فتح المشغل والضغط على Home ينتقل التشغيل إلى نافذة صغيرة';
+
+  @override
+  String get settingsAdsSection => 'الإعلانات';
+
+  @override
+  String get settingsAdsRemoved => 'Pro: بدون إعلانات';
+
+  @override
+  String get settingsAdsFreeNotice => 'الإصدار المجاني يعرض إعلانًا في الأسفل. اشترك في Pro لتجربة بدون إعلانات.';
+
+  @override
+  String get profileSwitcherTitle => 'الملفات الشخصية';
+
+  @override
+  String get profileDefaultName => 'افتراضي';
+
+  @override
+  String get profileAdd => 'ملف جديد';
+
+  @override
+  String get profileEdit => 'تعديل الملف';
+
+  @override
+  String get profileDelete => 'حذف الملف';
+
+  @override
+  String get profileDeleteConfirm => 'سيتم حذف هذا الملف والمفضلة وقائمة المشاهدة الخاصة به. متابعة؟';
+
+  @override
+  String get profileNameLabel => 'اسم الملف';
+
+  @override
+  String get profileEmptyName => 'لا يمكن أن يكون اسم الملف فارغًا';
+
+  @override
+  String get profileSwitched => 'تم تبديل الملف';
+
+  @override
+  String get profileMaxFreeReached => 'الإصدار المجاني يدعم ملفًا واحدًا. Pro يفتح ملفات غير محدودة.';
+
+  @override
+  String get profileSection => 'الملف';
 }

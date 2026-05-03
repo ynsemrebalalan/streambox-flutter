@@ -400,5 +400,31 @@
   "epgAutoRefreshTitle": "تحديث تلقائي",
   "epgAutoRefreshOff":   "إيقاف",
   "@epgAutoRefreshEvery": { "placeholders": { "h": { "type": "int" } } },
-  "epgAutoRefreshEvery": "كل {h} ساعة"
+  "epgAutoRefreshEvery": "كل {h} ساعة",
+
+  "playerPipTooltip": "نافذة صغيرة (Pro)",
+  "playerPipUnavailable": "PiP غير مدعوم على هذا الجهاز",
+  "playerPipEntered": "يتم التشغيل في نافذة صغيرة",
+  "playerAirplayTooltip": "AirPlay (Pro)",
+  "playerAirplayUnavailable": "AirPlay على iOS فقط",
+  "playerCastTooltip": "Cast (قريبًا)",
+
+  "settingsPipSection": "نافذة صغيرة",
+  "settingsPipAuto":    "PiP تلقائي عند زر Home",
+  "settingsPipAutoSubtitle": "Pro — عند فتح المشغل والضغط على Home ينتقل التشغيل إلى نافذة صغيرة",
+  "settingsAdsSection": "الإعلانات",
+  "settingsAdsRemoved": "Pro: بدون إعلانات",
+  "settingsAdsFreeNotice": "الإصدار المجاني يعرض إعلانًا في الأسفل. اشترك في Pro لتجربة بدون إعلانات.",
+
+  "profileSwitcherTitle": "الملفات الشخصية",
+  "profileDefaultName": "افتراضي",
+  "profileAdd": "ملف جديد",
+  "profileEdit": "تعديل الملف",
+  "profileDelete": "حذف الملف",
+  "profileDeleteConfirm": "سيتم حذف هذا الملف والمفضلة وقائمة المشاهدة الخاصة به. متابعة؟",
+  "profileNameLabel": "اسم الملف",
+  "profileEmptyName": "لا يمكن أن يكون اسم الملف فارغًا",
+  "profileSwitched": "تم تبديل الملف",
+  "profileMaxFreeReached": "الإصدار المجاني يدعم ملفًا واحدًا. Pro يفتح ملفات غير محدودة.",
+  "profileSection": "الملف"
 }

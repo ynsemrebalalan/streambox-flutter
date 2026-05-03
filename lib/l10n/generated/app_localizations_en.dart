@@ -1018,4 +1018,73 @@ class AppLocalizationsEn extends AppLocalizations {
   String epgAutoRefreshEvery(int h) {
     return 'Every ${h}h';
   }
+
+  @override
+  String get playerPipTooltip => 'Picture-in-Picture (Pro)';
+
+  @override
+  String get playerPipUnavailable => 'PiP not supported on this device';
+
+  @override
+  String get playerPipEntered => 'Playing in mini window';
+
+  @override
+  String get playerAirplayTooltip => 'AirPlay (Pro)';
+
+  @override
+  String get playerAirplayUnavailable => 'AirPlay is iOS only';
+
+  @override
+  String get playerCastTooltip => 'Cast (coming soon)';
+
+  @override
+  String get settingsPipSection => 'Picture-in-Picture';
+
+  @override
+  String get settingsPipAuto => 'Auto-PiP on Home button';
+
+  @override
+  String get settingsPipAutoSubtitle => 'Pro — When the player is open, pressing Home moves playback to a mini window';
+
+  @override
+  String get settingsAdsSection => 'Ads';
+
+  @override
+  String get settingsAdsRemoved => 'Pro: no ads';
+
+  @override
+  String get settingsAdsFreeNotice => 'Free version shows a banner at the bottom. Subscribe to Pro for an ad-free experience.';
+
+  @override
+  String get profileSwitcherTitle => 'Profiles';
+
+  @override
+  String get profileDefaultName => 'Default';
+
+  @override
+  String get profileAdd => 'New Profile';
+
+  @override
+  String get profileEdit => 'Edit Profile';
+
+  @override
+  String get profileDelete => 'Delete Profile';
+
+  @override
+  String get profileDeleteConfirm => 'This profile and its private favorites/watchlist will be deleted. Continue?';
+
+  @override
+  String get profileNameLabel => 'Profile Name';
+
+  @override
+  String get profileEmptyName => 'Profile name cannot be empty';
+
+  @override
+  String get profileSwitched => 'Profile switched';
+
+  @override
+  String get profileMaxFreeReached => 'Free version supports 1 profile. Pro unlocks unlimited profiles.';
+
+  @override
+  String get profileSection => 'Profile';
 }

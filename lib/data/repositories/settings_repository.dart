@@ -60,4 +60,5 @@ abstract final class SettingsKeys {
   static const String secureStorageMigrated = 'secure_storage_migrated';
   static const String language = 'language'; // 'system' | 'tr' | 'en' | 'de' | 'ar'
   static const String welcomeShown = 'welcome_shown'; // 'true' = welcome screen kapatildi
+  static const String activeProfileId = 'active_profile_id'; // Phase 6 (default 'default')
 }

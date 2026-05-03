@@ -2036,6 +2036,144 @@ abstract class AppLocalizations {
   /// In tr, this message translates to:
   /// **'Her {h} saatte bir'**
   String epgAutoRefreshEvery(int h);
+
+  /// No description provided for @playerPipTooltip.
+  ///
+  /// In tr, this message translates to:
+  /// **'Pencereye Küçült (Pro)'**
+  String get playerPipTooltip;
+
+  /// No description provided for @playerPipUnavailable.
+  ///
+  /// In tr, this message translates to:
+  /// **'Bu cihazda PiP desteklenmiyor'**
+  String get playerPipUnavailable;
+
+  /// No description provided for @playerPipEntered.
+  ///
+  /// In tr, this message translates to:
+  /// **'Küçük pencerede oynatılıyor'**
+  String get playerPipEntered;
+
+  /// No description provided for @playerAirplayTooltip.
+  ///
+  /// In tr, this message translates to:
+  /// **'AirPlay (Pro)'**
+  String get playerAirplayTooltip;
+
+  /// No description provided for @playerAirplayUnavailable.
+  ///
+  /// In tr, this message translates to:
+  /// **'AirPlay sadece iOS\'ta'**
+  String get playerAirplayUnavailable;
+
+  /// No description provided for @playerCastTooltip.
+  ///
+  /// In tr, this message translates to:
+  /// **'Cast (yakında)'**
+  String get playerCastTooltip;
+
+  /// No description provided for @settingsPipSection.
+  ///
+  /// In tr, this message translates to:
+  /// **'Picture-in-Picture'**
+  String get settingsPipSection;
+
+  /// No description provided for @settingsPipAuto.
+  ///
+  /// In tr, this message translates to:
+  /// **'Home tuşuna basınca otomatik PiP'**
+  String get settingsPipAuto;
+
+  /// No description provided for @settingsPipAutoSubtitle.
+  ///
+  /// In tr, this message translates to:
+  /// **'Pro — Player açıkken Home tuşuna basınca yayın küçük pencereye geçer'**
+  String get settingsPipAutoSubtitle;
+
+  /// No description provided for @settingsAdsSection.
+  ///
+  /// In tr, this message translates to:
+  /// **'Reklam'**
+  String get settingsAdsSection;
+
+  /// No description provided for @settingsAdsRemoved.
+  ///
+  /// In tr, this message translates to:
+  /// **'Pro: reklam yok'**
+  String get settingsAdsRemoved;
+
+  /// No description provided for @settingsAdsFreeNotice.
+  ///
+  /// In tr, this message translates to:
+  /// **'Free sürümde alt kısımda banner reklam görüntülenir. Pro abonelikle kalıcı reklamsız.'**
+  String get settingsAdsFreeNotice;
+
+  /// No description provided for @profileSwitcherTitle.
+  ///
+  /// In tr, this message translates to:
+  /// **'Profiller'**
+  String get profileSwitcherTitle;
+
+  /// No description provided for @profileDefaultName.
+  ///
+  /// In tr, this message translates to:
+  /// **'Varsayılan'**
+  String get profileDefaultName;
+
+  /// No description provided for @profileAdd.
+  ///
+  /// In tr, this message translates to:
+  /// **'Yeni Profil'**
+  String get profileAdd;
+
+  /// No description provided for @profileEdit.
+  ///
+  /// In tr, this message translates to:
+  /// **'Profili Düzenle'**
+  String get profileEdit;
+
+  /// No description provided for @profileDelete.
+  ///
+  /// In tr, this message translates to:
+  /// **'Profili Sil'**
+  String get profileDelete;
+
+  /// No description provided for @profileDeleteConfirm.
+  ///
+  /// In tr, this message translates to:
+  /// **'Bu profil ve özel favori/izleme listesi silinecek. Devam edilsin mi?'**
+  String get profileDeleteConfirm;
+
+  /// No description provided for @profileNameLabel.
+  ///
+  /// In tr, this message translates to:
+  /// **'Profil Adı'**
+  String get profileNameLabel;
+
+  /// No description provided for @profileEmptyName.
+  ///
+  /// In tr, this message translates to:
+  /// **'Profil adı boş olamaz'**
+  String get profileEmptyName;
+
+  /// No description provided for @profileSwitched.
+  ///
+  /// In tr, this message translates to:
+  /// **'Profil değiştirildi'**
+  String get profileSwitched;
+
+  /// No description provided for @profileMaxFreeReached.
+  ///
+  /// In tr, this message translates to:
+  /// **'Free sürümde 1 profil. Pro ile sınırsız profil.'**
+  String get profileMaxFreeReached;
+
+  /// No description provided for @profileSection.
+  ///
+  /// In tr, this message translates to:
+  /// **'Profil'**
+  String get profileSection;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

@@ -3,7 +3,7 @@ import 'package:sqflite/sqflite.dart';
 import '../utils/device_tier.dart';
 
 class AppDatabase {
-  static const _version = 4;
+  static const _version = 5;
   static const _name    = 'iptvai.db';
 
   static Database? _db;
@@ -195,6 +195,58 @@ class AppDatabase {
     await db.execute('''
       CREATE INDEX idx_watchlist_added ON watchlist(playlistId, addedAt DESC)
     ''');
+
+    // Phase 6 — Multi-profile (Pro). Free=1 profil, Pro=sinirsiz.
+    await _createProfilesSchema(db);
+  }
+
+  /// Phase 6 — profiles + profile_favorites + profile_watchlist tablolari.
+  /// Default profil insert edilir, isFavorite=1 channels seed edilir.
+  static Future<void> _createProfilesSchema(Database db) async {
+    await db.execute('''
+      CREATE TABLE profiles (
+        id        TEXT PRIMARY KEY,
+        name      TEXT NOT NULL,
+        icon      TEXT DEFAULT 'person',
+        isDefault INTEGER NOT NULL DEFAULT 0,
+        createdAt INTEGER NOT NULL DEFAULT 0
+      )
+    ''');
+    await db.execute('''
+      CREATE TABLE profile_favorites (
+        profileId  TEXT NOT NULL,
+        channelId  TEXT NOT NULL,
+        addedAt    INTEGER NOT NULL DEFAULT 0,
+        PRIMARY KEY (profileId, channelId)
+      )
+    ''');
+    await db.execute('''
+      CREATE INDEX idx_profile_favorites_profile
+      ON profile_favorites(profileId, addedAt DESC)
+    ''');
+    await db.execute('''
+      CREATE TABLE profile_watchlist (
+        profileId  TEXT NOT NULL,
+        channelId  TEXT NOT NULL,
+        playlistId TEXT NOT NULL,
+        addedAt    INTEGER NOT NULL DEFAULT 0,
+        PRIMARY KEY (profileId, channelId)
+      )
+    ''');
+    await db.execute('''
+      CREATE INDEX idx_profile_watchlist_profile
+      ON profile_watchlist(profileId, addedAt DESC)
+    ''');
+
+    // Default profili olustur — onCreate'de henuz channel yok ama upgrade'de
+    // isFavorite=1 channel'lar bu profile aktarilir.
+    await db.insert('profiles', {
+      'id':        'default',
+      'name':      'Default',
+      'icon':      'person',
+      'isDefault': 1,
+      'createdAt': DateTime.now().millisecondsSinceEpoch,
+    });
   }
 
   static Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
@@ -243,6 +295,77 @@ class AppDatabase {
       await db.execute('''
         CREATE INDEX IF NOT EXISTS idx_watchlist_added
         ON watchlist(playlistId, addedAt DESC)
+      ''');
+    }
+    // v4 → v5: Multi-profile (Pro). Default profil + mevcut isFavorite=1
+    // kanallari profil_favorites'e seed et.
+    if (oldVersion < 5) {
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS profiles (
+          id        TEXT PRIMARY KEY,
+          name      TEXT NOT NULL,
+          icon      TEXT DEFAULT 'person',
+          isDefault INTEGER NOT NULL DEFAULT 0,
+          createdAt INTEGER NOT NULL DEFAULT 0
+        )
+      ''');
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS profile_favorites (
+          profileId  TEXT NOT NULL,
+          channelId  TEXT NOT NULL,
+          addedAt    INTEGER NOT NULL DEFAULT 0,
+          PRIMARY KEY (profileId, channelId)
+        )
+      ''');
+      await db.execute('''
+        CREATE INDEX IF NOT EXISTS idx_profile_favorites_profile
+        ON profile_favorites(profileId, addedAt DESC)
+      ''');
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS profile_watchlist (
+          profileId  TEXT NOT NULL,
+          channelId  TEXT NOT NULL,
+          playlistId TEXT NOT NULL,
+          addedAt    INTEGER NOT NULL DEFAULT 0,
+          PRIMARY KEY (profileId, channelId)
+        )
+      ''');
+      await db.execute('''
+        CREATE INDEX IF NOT EXISTS idx_profile_watchlist_profile
+        ON profile_watchlist(profileId, addedAt DESC)
+      ''');
+
+      // Default profili insert et (yoksa).
+      final existing = await db.query(
+        'profiles',
+        where: 'id = ?',
+        whereArgs: ['default'],
+      );
+      if (existing.isEmpty) {
+        await db.insert('profiles', {
+          'id':        'default',
+          'name':      'Default',
+          'icon':      'person',
+          'isDefault': 1,
+          'createdAt': DateTime.now().millisecondsSinceEpoch,
+        });
+      }
+
+      // Mevcut isFavorite=1 channels -> default profile_favorites.
+      await db.execute('''
+        INSERT OR IGNORE INTO profile_favorites (profileId, channelId, addedAt)
+        SELECT 'default', id,
+               CASE WHEN lastWatched > 0 THEN lastWatched
+                    ELSE strftime('%s','now') * 1000 END
+        FROM channels
+        WHERE isFavorite = 1
+      ''');
+
+      // Mevcut watchlist -> default profile_watchlist.
+      await db.execute('''
+        INSERT OR IGNORE INTO profile_watchlist (profileId, channelId, playlistId, addedAt)
+        SELECT 'default', channelId, playlistId, addedAt
+        FROM watchlist
       ''');
     }
     // Ensure all tables exist even if upgrading from a corrupted/partial state

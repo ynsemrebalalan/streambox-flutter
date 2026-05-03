@@ -12,6 +12,7 @@ import 'core/utils/device_tier.dart';
 import 'core/utils/secure_storage.dart';
 import 'data/repositories/settings_repository.dart';
 import 'data/services/demo_seed_service.dart';
+import 'features/ads/ads_service.dart';
 import 'features/auth/data/auth_state.dart';
 import 'features/auth/providers/auth_providers.dart';
 import 'features/billing/data/purchases_service.dart';
@@ -84,7 +85,21 @@ Future<void> _bootstrapInBackground() async {
   // sonradan friendly hata gosterir).
   unawaited(_initRevenueCat());
 
+  // AdMob — Free user banner reklamlari icin. Pro user'da widget reklam
+  // yuklenmez ama init yine yapilir (Pro -> Free downgrade'de gecikme yok).
+  unawaited(_initAdMob());
+
   unawaited(DemoSeedService.seedIfNeeded());
+}
+
+Future<void> _initAdMob() async {
+  try {
+    await AdsService.instance
+        .ensureInitialized()
+        .timeout(const Duration(seconds: 5));
+  } catch (e) {
+    debugPrint('AdMob init failed or timed out: $e');
+  }
 }
 
 /// RevenueCat configure — boş API key ise atlanır (BuildConfig kontrol).
@@ -179,6 +194,11 @@ class _IPTVAIPlayerAppState extends ConsumerState<IPTVAIPlayerApp>
         await ref.read(activePlaylistProvider.notifier).loadFromDb();
       } catch (e) {
         debugPrint('Playlist load failed: $e');
+      }
+      try {
+        await ref.read(activeProfileProvider.notifier).loadFromDb();
+      } catch (e) {
+        debugPrint('Profile load failed: $e');
       }
       try {
         final repo = ref.read(settingsRepoProvider);

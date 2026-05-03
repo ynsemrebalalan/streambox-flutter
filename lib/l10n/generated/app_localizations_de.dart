@@ -1018,4 +1018,73 @@ class AppLocalizationsDe extends AppLocalizations {
   String epgAutoRefreshEvery(int h) {
     return 'Alle ${h}h';
   }
+
+  @override
+  String get playerPipTooltip => 'Bild-in-Bild (Pro)';
+
+  @override
+  String get playerPipUnavailable => 'PiP wird auf diesem Gerät nicht unterstützt';
+
+  @override
+  String get playerPipEntered => 'Wiedergabe im Mini-Fenster';
+
+  @override
+  String get playerAirplayTooltip => 'AirPlay (Pro)';
+
+  @override
+  String get playerAirplayUnavailable => 'AirPlay nur unter iOS';
+
+  @override
+  String get playerCastTooltip => 'Cast (bald verfügbar)';
+
+  @override
+  String get settingsPipSection => 'Bild-in-Bild';
+
+  @override
+  String get settingsPipAuto => 'Auto-PiP bei Home-Taste';
+
+  @override
+  String get settingsPipAutoSubtitle => 'Pro — Wenn der Player geöffnet ist, wechselt die Wiedergabe beim Drücken der Home-Taste in ein Mini-Fenster';
+
+  @override
+  String get settingsAdsSection => 'Werbung';
+
+  @override
+  String get settingsAdsRemoved => 'Pro: keine Werbung';
+
+  @override
+  String get settingsAdsFreeNotice => 'Die Free-Version zeigt unten ein Banner. Mit Pro werbefrei genießen.';
+
+  @override
+  String get profileSwitcherTitle => 'Profile';
+
+  @override
+  String get profileDefaultName => 'Standard';
+
+  @override
+  String get profileAdd => 'Neues Profil';
+
+  @override
+  String get profileEdit => 'Profil bearbeiten';
+
+  @override
+  String get profileDelete => 'Profil löschen';
+
+  @override
+  String get profileDeleteConfirm => 'Dieses Profil und seine privaten Favoriten/Merkliste werden gelöscht. Fortfahren?';
+
+  @override
+  String get profileNameLabel => 'Profilname';
+
+  @override
+  String get profileEmptyName => 'Profilname darf nicht leer sein';
+
+  @override
+  String get profileSwitched => 'Profil gewechselt';
+
+  @override
+  String get profileMaxFreeReached => 'Free-Version unterstützt 1 Profil. Pro schaltet unbegrenzte Profile frei.';
+
+  @override
+  String get profileSection => 'Profil';
 }

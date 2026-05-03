@@ -427,5 +427,31 @@
   "epgAutoRefreshTitle": "Otomatik Yenile",
   "epgAutoRefreshOff":   "Kapalı",
   "@epgAutoRefreshEvery": { "placeholders": { "h": { "type": "int" } } },
-  "epgAutoRefreshEvery": "Her {h} saatte bir"
+  "epgAutoRefreshEvery": "Her {h} saatte bir",
+
+  "playerPipTooltip": "Pencereye Küçült (Pro)",
+  "playerPipUnavailable": "Bu cihazda PiP desteklenmiyor",
+  "playerPipEntered": "Küçük pencerede oynatılıyor",
+  "playerAirplayTooltip": "AirPlay (Pro)",
+  "playerAirplayUnavailable": "AirPlay sadece iOS'ta",
+  "playerCastTooltip": "Cast (yakında)",
+
+  "settingsPipSection": "Picture-in-Picture",
+  "settingsPipAuto":    "Home tuşuna basınca otomatik PiP",
+  "settingsPipAutoSubtitle": "Pro — Player açıkken Home tuşuna basınca yayın küçük pencereye geçer",
+  "settingsAdsSection": "Reklam",
+  "settingsAdsRemoved": "Pro: reklam yok",
+  "settingsAdsFreeNotice": "Free sürümde alt kısımda banner reklam görüntülenir. Pro abonelikle kalıcı reklamsız.",
+
+  "profileSwitcherTitle": "Profiller",
+  "profileDefaultName": "Varsayılan",
+  "profileAdd": "Yeni Profil",
+  "profileEdit": "Profili Düzenle",
+  "profileDelete": "Profili Sil",
+  "profileDeleteConfirm": "Bu profil ve özel favori/izleme listesi silinecek. Devam edilsin mi?",
+  "profileNameLabel": "Profil Adı",
+  "profileEmptyName": "Profil adı boş olamaz",
+  "profileSwitched": "Profil değiştirildi",
+  "profileMaxFreeReached": "Free sürümde 1 profil. Pro ile sınırsız profil.",
+  "profileSection": "Profil"
 }
