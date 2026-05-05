@@ -58,13 +58,14 @@
 		<true/>
 	</dict>
 	<!-- Background modes:
-	     audio                    — arka planda ses devam eder (live TV / film)
-	     audio + airplay          — AirPlay'e ses/video stream'i
-	     picture-in-picture       — Pro: video PiP penceresi (iOS 14+) -->
+	     audio  — arka planda ses devam eder (live TV / film) + AirPlay
+	     NOT: 'picture-in-picture' UIBackgroundModes enum'unda DEGIL (ASC reject 90112).
+	     PiP icin Info.plist key gerekmez; AVPictureInPictureController native API'si
+	     audio mode + AVAudioSession.playback ile calisir. media_kit Texture-based
+	     oldugu icin iOS PiP zaten devre disi (Pro features memo). -->
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>audio</string>
-		<string>picture-in-picture</string>
 	</array>
 	<!-- App does not use non-exempt encryption -->
 	<key>ITSAppUsesNonExemptEncryption</key>
