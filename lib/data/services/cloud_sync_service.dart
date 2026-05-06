@@ -44,6 +44,11 @@ class CloudSyncService {
     final uid = _userUid();
     if (uid == null) return;
     try {
+      // v7 — updatedAt'i model'den al (LWW conflict resolution kaynagi).
+      // Model'de 0 ise simdi (cold migration).
+      final updatedAt = p.updatedAt > 0
+          ? p.updatedAt
+          : DateTime.now().millisecondsSinceEpoch;
       await _db
           .collection('users')
           .doc(uid)
@@ -58,7 +63,7 @@ class CloudSyncService {
         // TODO: encrypt password with device UUID before storing.
         'password':     p.password,
         'allowedTypes': p.allowedTypes,
-        'updatedAt':    FieldValue.serverTimestamp(),
+        'updatedAt':    updatedAt,
       }, SetOptions(merge: true));
     } catch (e) {
       debugPrint('[CloudSync] pushPlaylist fail: $e');
@@ -91,12 +96,14 @@ class CloudSyncService {
           .collection('favorites')
           .doc(key);
       if (added) {
+        final now = DateTime.now().millisecondsSinceEpoch;
         await docRef.set({
           'playlistId': ch.playlistId,
           'channelId':  ch.id,
           'name':       ch.name,
           'logo':       ch.logoUrl,
-          'addedAt':    FieldValue.serverTimestamp(),
+          'addedAt':    now,
+          'updatedAt':  now, // v7 — LWW conflict resolution.
         });
       } else {
         await docRef.delete();
@@ -117,12 +124,14 @@ class CloudSyncService {
           .collection('watchlist')
           .doc(key);
       if (added) {
+        final now = DateTime.now().millisecondsSinceEpoch;
         await docRef.set({
           'playlistId': ch.playlistId,
           'channelId':  ch.id,
           'name':       ch.name,
           'logo':       ch.logoUrl,
-          'addedAt':    FieldValue.serverTimestamp(),
+          'addedAt':    now,
+          'updatedAt':  now, // v7 — LWW conflict resolution.
         });
       } else {
         await docRef.delete();

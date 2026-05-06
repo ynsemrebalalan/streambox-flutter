@@ -450,6 +450,50 @@ class AppLocalizationsDe extends AppLocalizations {
   String get playerSpeedDialog => 'Wiedergabegeschwindigkeit';
 
   @override
+  String get playerSubtitleDialogTitle => 'Untertitel';
+
+  @override
+  String get playerSubtitleAi => 'KI-Untertitel';
+
+  @override
+  String get playerSubtitleAiActive => '(Aktiv)';
+
+  @override
+  String playerSubtitleEmbedded(int n) {
+    return 'Eingebettet $n';
+  }
+
+  @override
+  String get playerSubtitleOff => 'Aus';
+
+  @override
+  String get playerScreenSizeTooltip => 'Bildschirmgröße';
+
+  @override
+  String get playerScreenSizeDialog => 'Bildschirmgröße';
+
+  @override
+  String get playerFitOriginal => 'Original';
+
+  @override
+  String get playerFitCover => 'Bildschirm füllen (Beschneiden)';
+
+  @override
+  String get playerFitStretch => 'Strecken';
+
+  @override
+  String get playerResolutionTooltip => 'Auflösung';
+
+  @override
+  String get playerResolutionDialog => 'Auflösung';
+
+  @override
+  String get playerResolutionAuto => 'Auto';
+
+  @override
+  String get playerSingleQuality => 'Dieser Stream bietet nur eine Qualität.';
+
+  @override
   String get disclaimerWelcome => 'Willkommen';
 
   @override

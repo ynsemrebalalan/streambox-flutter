@@ -3,7 +3,13 @@ import 'package:sqflite/sqflite.dart';
 import '../utils/device_tier.dart';
 
 class AppDatabase {
-  static const _version = 5;
+  // v7 — CloudSync conflict resolution + Anon→linked local migration:
+  //   - tum cloud-sync edilen tablolara `ownerUid` (multi-user izolasyon) +
+  //     `updatedAt` (LWW conflict resolution) + `lastSyncedAt` (push delta)
+  //     kolonlari eklendi.
+  //   - `sync_tombstones` tablosu: silmelerin Firestore'a propagate edilebilmesi
+  //     icin tombstone log.
+  static const _version = 7;
   static const _name    = 'iptvai.db';
 
   static Database? _db;
@@ -81,7 +87,10 @@ class AppDatabase {
         addedAt      INTEGER DEFAULT 0,
         allowedTypes TEXT DEFAULT 'live,movie,series',
         etag         TEXT DEFAULT '',
-        lastModified TEXT DEFAULT ''
+        lastModified TEXT DEFAULT '',
+        ownerUid     TEXT,
+        updatedAt    INTEGER DEFAULT 0,
+        lastSyncedAt INTEGER
       )
     ''');
 
@@ -104,7 +113,10 @@ class AppDatabase {
         tvgId         TEXT DEFAULT '',
         addedAt       INTEGER DEFAULT 0,
         isWatched     INTEGER DEFAULT 0,
-        duration      INTEGER DEFAULT 0
+        duration      INTEGER DEFAULT 0,
+        ownerUid      TEXT,
+        updatedAt     INTEGER DEFAULT 0,
+        lastSyncedAt  INTEGER
       )
     ''');
 
@@ -186,9 +198,12 @@ class AppDatabase {
     // — aynı kanal listede iki kez olmaz; addedAt sıralama için.
     await db.execute('''
       CREATE TABLE watchlist (
-        channelId  TEXT NOT NULL,
-        playlistId TEXT NOT NULL,
-        addedAt    INTEGER NOT NULL DEFAULT 0,
+        channelId    TEXT NOT NULL,
+        playlistId   TEXT NOT NULL,
+        addedAt      INTEGER NOT NULL DEFAULT 0,
+        ownerUid     TEXT,
+        updatedAt    INTEGER DEFAULT 0,
+        lastSyncedAt INTEGER,
         PRIMARY KEY (channelId, playlistId)
       )
     ''');
@@ -198,6 +213,65 @@ class AppDatabase {
 
     // Phase 6 — Multi-profile (Pro). Free=1 profil, Pro=sinirsiz.
     await _createProfilesSchema(db);
+
+    // v6 — Channel ↔ Category junction. Xtream `category_ids` (plural array)
+    // ve M3U virgüllü group-title (örn. "Aksiyon,Komedi") çoklu kategori
+    // desteği için. channels.category KALDI (display + cloud sync diff için);
+    // sort/filter junction üzerinden JOIN ile yapılır.
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS channel_categories (
+        channelId  TEXT NOT NULL,
+        playlistId TEXT NOT NULL,
+        category   TEXT NOT NULL,
+        PRIMARY KEY (channelId, category)
+      )
+    ''');
+    await db.execute('''
+      CREATE INDEX IF NOT EXISTS idx_chcat_playlist_cat
+      ON channel_categories(playlistId, category)
+    ''');
+
+    // v7 — Sync tombstones: silinen kayitlarin Firestore'a propagate
+    // edilebilmesi icin. Push asamasinda syncedAt set edilince temizlenir.
+    await _createSyncTombstones(db);
+  }
+
+  /// SQLite ALTER TABLE ADD COLUMN idempotent wrapper. Kolon zaten varsa
+  /// 'duplicate column name' patlar, yutariz. Tablonun var oldugu varsayilir;
+  /// tablo yoksa "no such table" patlar, o da yutulur (defensif migration).
+  static Future<void> _addColumnIfMissing(
+    Database db,
+    String table,
+    String column,
+    String type,
+  ) async {
+    try {
+      // PRAGMA table_info ile kolon listesi cekip var mi diye check etmek
+      // daha temiz olabilir ama 1 round-trip vs 1 try/catch — hot path degil,
+      // try/catch yeterli.
+      await db.execute('ALTER TABLE $table ADD COLUMN $column $type');
+    } catch (e) {
+      // Sessizce yut: kolon zaten var veya tablo yok.
+    }
+  }
+
+  /// v7 — Sync tombstone tablosu. Local silme → tombstone insert →
+  /// CloudSync push delete → syncedAt set. Tombstone reset edilmez (idempotent).
+  static Future<void> _createSyncTombstones(Database db) async {
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS sync_tombstones (
+        tableName TEXT NOT NULL,
+        recordId  TEXT NOT NULL,
+        ownerUid  TEXT NOT NULL,
+        deletedAt INTEGER NOT NULL,
+        syncedAt  INTEGER,
+        PRIMARY KEY (tableName, recordId, ownerUid)
+      )
+    ''');
+    await db.execute('''
+      CREATE INDEX IF NOT EXISTS idx_tombstones_owner_synced
+      ON sync_tombstones(ownerUid, syncedAt)
+    ''');
   }
 
   /// Phase 6 — profiles + profile_favorites + profile_watchlist tablolari.
@@ -205,11 +279,14 @@ class AppDatabase {
   static Future<void> _createProfilesSchema(Database db) async {
     await db.execute('''
       CREATE TABLE profiles (
-        id        TEXT PRIMARY KEY,
-        name      TEXT NOT NULL,
-        icon      TEXT DEFAULT 'person',
-        isDefault INTEGER NOT NULL DEFAULT 0,
-        createdAt INTEGER NOT NULL DEFAULT 0
+        id           TEXT PRIMARY KEY,
+        name         TEXT NOT NULL,
+        icon         TEXT DEFAULT 'person',
+        isDefault    INTEGER NOT NULL DEFAULT 0,
+        createdAt    INTEGER NOT NULL DEFAULT 0,
+        ownerUid     TEXT,
+        updatedAt    INTEGER DEFAULT 0,
+        lastSyncedAt INTEGER
       )
     ''');
     await db.execute('''
@@ -368,6 +445,72 @@ class AppDatabase {
         FROM watchlist
       ''');
     }
+    // v5 → v6: Channel ↔ Category junction (Xtream `category_ids` + M3U çoklu
+    // group-title). Mevcut channels.category seed edilir; geriye dönük
+    // veritabanlarında IF NOT EXISTS ile idempotent.
+    if (oldVersion < 6) {
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS channel_categories (
+          channelId  TEXT NOT NULL,
+          playlistId TEXT NOT NULL,
+          category   TEXT NOT NULL,
+          PRIMARY KEY (channelId, category)
+        )
+      ''');
+      await db.execute('''
+        CREATE INDEX IF NOT EXISTS idx_chcat_playlist_cat
+        ON channel_categories(playlistId, category)
+      ''');
+      // Seed: mevcut channels.category değerinden junction doldur.
+      // TRIM ile baş/son boşluk normalize, boş kategori atla.
+      await db.execute('''
+        INSERT OR IGNORE INTO channel_categories (channelId, playlistId, category)
+        SELECT id, playlistId, TRIM(category)
+        FROM channels
+        WHERE category IS NOT NULL AND TRIM(category) != ''
+      ''');
+    }
+
+    // v6 → v7: CloudSync conflict resolution (LWW) + Anon→linked migration.
+    // - Tum cloud-sync edilen tablolara ownerUid + updatedAt + lastSyncedAt
+    //   kolonlari eklenir.
+    // - sync_tombstones tablosu: silmelerin remote'a propagate edilebilmesi.
+    //
+    // SQLite ALTER TABLE ADD COLUMN: IF NOT EXISTS desteklemez. Migration
+    // idempotent olsun diye her ALTER kendi try/catch'inde — kolon zaten varsa
+    // 'duplicate column' patlar, yutariz.
+    if (oldVersion < 7) {
+      const tablesNeedingOwnerUid = [
+        'playlists',
+        'channels',
+        'watchlist',
+        'profiles',
+      ];
+      for (final t in tablesNeedingOwnerUid) {
+        await _addColumnIfMissing(db, t, 'ownerUid', 'TEXT');
+        await _addColumnIfMissing(db, t, 'updatedAt', 'INTEGER DEFAULT 0');
+        await _addColumnIfMissing(db, t, 'lastSyncedAt', 'INTEGER');
+      }
+
+      // Mevcut satirlar icin updatedAt seed: NULL/0 -> simdi (ms epoch).
+      // Boylece migration sonrasi local satirlar "yeni" sayilir, ilk
+      // sync'te push'e dahil olur. (Cloud'da daha yeni varsa LWW ezer.)
+      final now = DateTime.now().millisecondsSinceEpoch;
+      for (final t in tablesNeedingOwnerUid) {
+        try {
+          await db.execute(
+            'UPDATE $t SET updatedAt = ? WHERE updatedAt IS NULL OR updatedAt = 0',
+            [now],
+          );
+        } catch (_) {
+          // Tablo yoksa atla (defensif).
+        }
+      }
+
+      // Tombstone tablosu.
+      await _createSyncTombstones(db);
+    }
+
     // Ensure all tables exist even if upgrading from a corrupted/partial state
     if (oldVersion < newVersion) {
       await db.execute('''

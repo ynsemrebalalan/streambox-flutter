@@ -75,7 +75,10 @@ class XtreamService {
   ) async {
     final seriesId = s['series_id']?.toString() ?? '';
     final name     = s['name']?.toString() ?? '';
-    final cat      = catMap[s['category_id']?.toString() ?? ''] ?? 'Genel';
+    // v6: çoklu kategori — `category_ids` array veya `category_id` virgüllü.
+    final catIds   = _extractCategoryIds(s as Map<String, dynamic>);
+    final catNames = _resolveCatNames(catIds, catMap);
+    final cat      = catNames.isNotEmpty ? catNames.first : 'Genel';
     final logo     = s['cover']?.toString() ?? '';
     if (seriesId.isEmpty) return const [];
 
@@ -120,6 +123,7 @@ class XtreamService {
             streamUrl:     url,
             logoUrl:       logo,
             category:      cat,
+            categoryIds:   catNames,
             streamType:    'series',
             seriesName:    name,
             seasonNumber:  finalSeason,
@@ -212,17 +216,64 @@ class XtreamService {
       final url  = type == 'live'
           ? '${p.url}/live/${p.username}/${p.password}/$id.ts'
           : '${p.url}/movie/${p.username}/${p.password}/$id.$ext';
-      final cat  = catMap[s['category_id']?.toString() ?? ''] ?? 'Genel';
+      // v6: çoklu kategori — `category_ids` array veya `category_id` virgüllü
+      // (Xtream provider varyasyonları). En az bir kategori = legacy display.
+      final catIds   = _extractCategoryIds(s as Map<String, dynamic>);
+      final catNames = _resolveCatNames(catIds, catMap);
+      final cat      = catNames.isNotEmpty ? catNames.first : 'Genel';
       return ChannelModel(
-        id:         _uuid.v5(Namespace.url.value, '${p.id}:$type:$id'),
-        playlistId: p.id,
-        name:       s['name']?.toString() ?? '',
-        streamUrl:  url,
-        logoUrl:    s['stream_icon']?.toString() ?? '',
-        category:   cat,
-        streamType: type,
-        sortOrder:  sort++,
+        id:          _uuid.v5(Namespace.url.value, '${p.id}:$type:$id'),
+        playlistId:  p.id,
+        name:        s['name']?.toString() ?? '',
+        streamUrl:   url,
+        logoUrl:     s['stream_icon']?.toString() ?? '',
+        category:    cat,
+        categoryIds: catNames,
+        streamType:  type,
+        sortOrder:   sort++,
       );
     }).toList();
+  }
+
+  /// Xtream JSON response'undan tüm category id'lerini çıkarır.
+  /// Üç olası şema:
+  ///   1) `category_ids: ["1","3","7"]` — yeni Xtream sürümleri (array)
+  ///   2) `category_id: "1,3,7"`         — virgüllü string (bazı panel'ler)
+  ///   3) `category_id: "1"`             — tek değer (legacy)
+  /// Boş/null güvenli; trim + dedup koruması.
+  static List<String> _extractCategoryIds(Map<String, dynamic> s) {
+    final raw = s['category_ids'];
+    if (raw is List) {
+      final out = <String>{};
+      for (final e in raw) {
+        final v = e?.toString().trim() ?? '';
+        if (v.isNotEmpty) out.add(v);
+      }
+      if (out.isNotEmpty) return out.toList();
+    }
+    final single = s['category_id']?.toString().trim() ?? '';
+    if (single.isEmpty) return const [];
+    if (!single.contains(',')) return [single];
+    final out = <String>{};
+    for (final part in single.split(',')) {
+      final v = part.trim();
+      if (v.isNotEmpty) out.add(v);
+    }
+    return out.toList();
+  }
+
+  /// Id list'i kategori adlarına çevirir. Map'te olmayan id'ler düşürülür.
+  /// Dedup + display sırası korunur.
+  static List<String> _resolveCatNames(
+    List<String> ids,
+    Map<String, String> catMap,
+  ) {
+    if (ids.isEmpty) return const [];
+    final out = <String>{};
+    for (final id in ids) {
+      final n = catMap[id];
+      if (n != null && n.trim().isNotEmpty) out.add(n);
+    }
+    return out.toList();
   }
 }

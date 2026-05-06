@@ -8,6 +8,7 @@ import 'package:flutter/foundation.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 
+import '../../../core/database/app_database.dart';
 import '../../../data/services/firebase_sync_service.dart';
 import 'auth_state.dart';
 
@@ -212,7 +213,14 @@ class AuthRepository {
 
     try {
       // Happy path: UID korunur, Firestore data zaten dogru path'te.
-      return await anon.linkWithCredential(credential);
+      final result = await anon.linkWithCredential(credential);
+      // Local DB'de anon UID ile (veya NULL ile) yazilmis satirlari yeni
+      // UID'e tasi. Happy path'te anonUid == newUid oldugu icin no-op
+      // gibi gozukur ama NULL satirlar (v7 migration sonrasi seed) bu
+      // sayede anon UID alir → ilk login'de propagate olur.
+      final newUid = result.user?.uid ?? anonUid;
+      await _migrateLocalAnonToLinked(anonUid: anonUid, newUid: newUid);
+      return result;
     } on FirebaseAuthException catch (e) {
       if (e.code != 'credential-already-in-use' &&
           e.code != 'email-already-in-use') {
@@ -227,8 +235,67 @@ class AuthRepository {
           fromAnonUid: anonUid,
           toUserUid: newUid,
         );
+        // Local DB'deki anon-time satirlari da yeni UID'e tasi (merge stratejisi:
+        // mevcut satir varsa olduğu gibi kalır, conflict resolution sync'te LWW
+        // ile updatedAt'a göre çözülür).
+        await _migrateLocalAnonToLinked(anonUid: anonUid, newUid: newUid);
       }
       return result;
+    }
+  }
+
+  /// Anon iken yazilmis local DB satirlarini yeni (kalici) UID'e tasir.
+  ///
+  /// Strateji: ownerUid IS NULL veya ownerUid == anonUid olan tum cloud-sync
+  /// edilen tablolarin satirlari `ownerUid = newUid` olarak guncellenir.
+  /// Tek transaction; tablo yoksa try/catch ile yutulur.
+  ///
+  /// Sad path'te (yeni UID'in ESKI verisi varsa): merge yapilir — eski + yeni
+  /// satirlar yan yana kalir; conflict resolution updatedAt LWW ile cozer.
+  Future<void> _migrateLocalAnonToLinked({
+    required String anonUid,
+    required String newUid,
+  }) async {
+    if (anonUid == newUid) {
+      // Happy path same-uid: NULL ownerUid'leri yeni UID'e set et (seed).
+    }
+    try {
+      final db = await AppDatabase.instance;
+      await db.transaction((txn) async {
+        const tables = [
+          'playlists',
+          'channels',
+          'watchlist',
+          'profiles',
+        ];
+        for (final t in tables) {
+          try {
+            await txn.update(
+              t,
+              {'ownerUid': newUid},
+              where: 'ownerUid = ? OR ownerUid IS NULL',
+              whereArgs: [anonUid],
+            );
+          } catch (e) {
+            // Tablo yoksa atla.
+            debugPrint('[Auth] migrate local "$t" skip: $e');
+          }
+        }
+        // Tombstone'lari da migrate et — anon iken silinen ama henuz push
+        // edilmemis kayitlar yeni UID altinda push edilebilsin.
+        try {
+          await txn.update(
+            'sync_tombstones',
+            {'ownerUid': newUid},
+            where: 'ownerUid = ? OR ownerUid IS NULL',
+            whereArgs: [anonUid],
+          );
+        } catch (_) {}
+      });
+    } catch (e) {
+      debugPrint('[Auth] _migrateLocalAnonToLinked failed: $e');
+      // Migration fail olsa login akisini kesme — kullanici hala giris yapabilir,
+      // local data'sina erisebilir; sadece UID propagate olmaz.
     }
   }
 

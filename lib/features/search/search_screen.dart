@@ -25,6 +25,32 @@ class SearchScreen extends ConsumerStatefulWidget {
   ConsumerState<SearchScreen> createState() => _SearchScreenState();
 }
 
+List<String> _alphabetForLocale(Locale locale) {
+  switch (locale.languageCode) {
+    case 'tr':
+      return const [
+        'A','B','C','Ç','D','E','F','G','Ğ','H','I','İ','J','K','L',
+        'M','N','O','Ö','P','R','S','Ş','T','U','Ü','V','Y','Z','#',
+      ];
+    case 'de':
+      return const [
+        'A','B','C','D','E','F','G','H','I','J','K','L','M','N','O',
+        'P','Q','R','S','T','U','V','W','X','Y','Z','Ä','Ö','Ü','#',
+      ];
+    case 'ar':
+      return const [
+        'ا','ب','ت','ث','ج','ح','خ','د','ذ','ر','ز','س','ش','ص',
+        'ض','ط','ظ','ع','غ','ف','ق','ك','ل','م','ن','ه','و','ي','#',
+      ];
+    case 'en':
+    default:
+      return const [
+        'A','B','C','D','E','F','G','H','I','J','K','L','M','N','O',
+        'P','Q','R','S','T','U','V','W','X','Y','Z','#',
+      ];
+  }
+}
+
 class _SearchScreenState extends ConsumerState<SearchScreen> {
   final _ctrl = TextEditingController();
 
@@ -67,23 +93,13 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
               child: Wrap(
                 spacing: 8,
                 runSpacing: 8,
-                children: [
-                  _QuickFilter(label: 'A', onTap: () => _setQuery('a')),
-                  _QuickFilter(label: 'B', onTap: () => _setQuery('b')),
-                  _QuickFilter(label: 'C', onTap: () => _setQuery('c')),
-                  _QuickFilter(label: 'D', onTap: () => _setQuery('d')),
-                  _QuickFilter(label: 'E', onTap: () => _setQuery('e')),
-                  _QuickFilter(label: 'F', onTap: () => _setQuery('f')),
-                  _QuickFilter(label: 'G', onTap: () => _setQuery('g')),
-                  _QuickFilter(label: 'H', onTap: () => _setQuery('h')),
-                  _QuickFilter(label: 'I', onTap: () => _setQuery('i')),
-                  _QuickFilter(label: 'K', onTap: () => _setQuery('k')),
-                  _QuickFilter(label: 'M', onTap: () => _setQuery('m')),
-                  _QuickFilter(label: 'N', onTap: () => _setQuery('n')),
-                  _QuickFilter(label: 'O', onTap: () => _setQuery('o')),
-                  _QuickFilter(label: 'S', onTap: () => _setQuery('s')),
-                  _QuickFilter(label: 'T', onTap: () => _setQuery('t')),
-                ],
+                children: _alphabetForLocale(Localizations.localeOf(context))
+                    .map((letter) => _QuickFilter(
+                          label: letter,
+                          onTap: () => _setQuery(
+                              letter == '#' ? '#' : letter.toLowerCase()),
+                        ))
+                    .toList(),
               ),
             ),
           Expanded(

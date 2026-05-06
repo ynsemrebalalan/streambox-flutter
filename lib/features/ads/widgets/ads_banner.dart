@@ -35,10 +35,9 @@ class _AdsBannerState extends ConsumerState<AdsBanner> {
   Future<void> _maybeLoad() async {
     // Web'de kapali, kIsWeb early-return.
     if (kIsWeb) return;
-    // Pro check — initState anindaki snapshot. Pro/Free toggle olunca widget
-    // rebuild olmasa bile reklam yuklenmis olabilir; build() guncel kontrol
-    // yapar ve gostermez. Pro user'a gercekten dusen Pro'luk yine reklam
-    // yuklenmesini onler.
+    // Idempotent guard: zaten yuklendiyse tekrar BannerAd olusturma.
+    if (_loaded) return;
+    // Pro check — cagri anindaki snapshot.
     final isPro = ref.read(isProProvider);
     if (isPro) return;
 
@@ -75,6 +74,14 @@ class _AdsBannerState extends ConsumerState<AdsBanner> {
 
   @override
   Widget build(BuildContext context) {
+    // Pro → Free geçişini reaktif dinle: abonelik expire olursa banner yükle.
+    ref.listen<bool>(isProProvider, (prev, next) {
+      if (prev == true && next == false && !_loaded) {
+        _maybeLoad();
+      }
+      // Free → Pro geçişinde banner zaten aşağıdaki isPro guard'ı ile gizlenir.
+    });
+
     // Pro user'a hic gostermez (her rebuild'de en son durum).
     final isPro = ref.watch(isProProvider);
     if (isPro) return const SizedBox.shrink();

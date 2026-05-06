@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:purchases_flutter/purchases_flutter.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/utils/responsive.dart';
 import '../../../l10n/generated/app_localizations.dart';
@@ -191,11 +192,25 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             TextButton(
-                onPressed: () {/* TODO: Phase G — privacy URL */},
+                onPressed: () async {
+                  final uri = Uri.parse(
+                      'https://iptvaiplayer.com.tr/verisilme.php');
+                  if (await canLaunchUrl(uri)) {
+                    await launchUrl(uri,
+                        mode: LaunchMode.externalApplication);
+                  }
+                },
                 child: Text(l.paywallPrivacyLink)),
             const Text(' • '),
             TextButton(
-                onPressed: () {/* TODO: Phase G — terms URL */},
+                onPressed: () async {
+                  final uri = Uri.parse(
+                      'https://iptvaiplayer.com.tr/subscription-terms.php');
+                  if (await canLaunchUrl(uri)) {
+                    await launchUrl(uri,
+                        mode: LaunchMode.externalApplication);
+                  }
+                },
                 child: Text(l.paywallTermsLink)),
           ],
         ),

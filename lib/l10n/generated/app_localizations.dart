@@ -945,6 +945,90 @@ abstract class AppLocalizations {
   /// **'Oynatma hızı'**
   String get playerSpeedDialog;
 
+  /// No description provided for @playerSubtitleDialogTitle.
+  ///
+  /// In tr, this message translates to:
+  /// **'Altyazı'**
+  String get playerSubtitleDialogTitle;
+
+  /// No description provided for @playerSubtitleAi.
+  ///
+  /// In tr, this message translates to:
+  /// **'AI Altyazı'**
+  String get playerSubtitleAi;
+
+  /// No description provided for @playerSubtitleAiActive.
+  ///
+  /// In tr, this message translates to:
+  /// **'(Aktif)'**
+  String get playerSubtitleAiActive;
+
+  /// No description provided for @playerSubtitleEmbedded.
+  ///
+  /// In tr, this message translates to:
+  /// **'Yerleşik {n}'**
+  String playerSubtitleEmbedded(int n);
+
+  /// No description provided for @playerSubtitleOff.
+  ///
+  /// In tr, this message translates to:
+  /// **'Kapalı'**
+  String get playerSubtitleOff;
+
+  /// No description provided for @playerScreenSizeTooltip.
+  ///
+  /// In tr, this message translates to:
+  /// **'Ekran Boyutu'**
+  String get playerScreenSizeTooltip;
+
+  /// No description provided for @playerScreenSizeDialog.
+  ///
+  /// In tr, this message translates to:
+  /// **'Ekran Boyutu'**
+  String get playerScreenSizeDialog;
+
+  /// No description provided for @playerFitOriginal.
+  ///
+  /// In tr, this message translates to:
+  /// **'Orijinal'**
+  String get playerFitOriginal;
+
+  /// No description provided for @playerFitCover.
+  ///
+  /// In tr, this message translates to:
+  /// **'Ekranı Doldur (Kırp)'**
+  String get playerFitCover;
+
+  /// No description provided for @playerFitStretch.
+  ///
+  /// In tr, this message translates to:
+  /// **'Esnet'**
+  String get playerFitStretch;
+
+  /// No description provided for @playerResolutionTooltip.
+  ///
+  /// In tr, this message translates to:
+  /// **'Çözünürlük'**
+  String get playerResolutionTooltip;
+
+  /// No description provided for @playerResolutionDialog.
+  ///
+  /// In tr, this message translates to:
+  /// **'Çözünürlük'**
+  String get playerResolutionDialog;
+
+  /// No description provided for @playerResolutionAuto.
+  ///
+  /// In tr, this message translates to:
+  /// **'Otomatik'**
+  String get playerResolutionAuto;
+
+  /// No description provided for @playerSingleQuality.
+  ///
+  /// In tr, this message translates to:
+  /// **'Bu yayın tek kalite sunuyor.'**
+  String get playerSingleQuality;
+
   /// No description provided for @disclaimerWelcome.
   ///
   /// In tr, this message translates to:

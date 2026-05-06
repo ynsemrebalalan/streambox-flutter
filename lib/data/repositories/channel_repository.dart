@@ -6,7 +6,8 @@ import '../models/channel_model.dart';
 import '../services/cloud_sync_service.dart';
 
 class ChannelRepository {
-  static const _table = 'channels';
+  static const _table     = 'channels';
+  static const _catTable  = 'channel_categories';
 
   // KULLANICI KURALI: Provider ne isim verdiyse aynen gosterilir.
   // Runtime title parse / reparse / DB UPDATE YAPILMIYOR.
@@ -54,24 +55,32 @@ class ChannelRepository {
     String streamType,
     String category,
   ) async {
-    final db   = await AppDatabase.instance;
-    final rows = await db.query(
-      _table,
-      where:     'playlistId = ? AND streamType = ? AND category = ?',
-      whereArgs: [playlistId, streamType, category],
-      orderBy:   _orderFor(streamType),
-    );
+    final db = await AppDatabase.instance;
+    // v6: junction üzerinden JOIN — kanal birden fazla kategoride olabilir.
+    // _orderFor server-side string; channels alias'ı zaten kolonlara cleanly
+    // referans verecek (seriesName/seasonNumber/sortOrder/name).
+    final rows = await db.rawQuery('''
+      SELECT channels.* FROM channels
+      INNER JOIN $_catTable cc
+        ON cc.channelId = channels.id AND cc.playlistId = channels.playlistId
+      WHERE channels.playlistId = ?
+        AND channels.streamType = ?
+        AND cc.category = ?
+      ORDER BY ${_orderFor(streamType)}
+    ''', [playlistId, streamType, category.trim()]);
     return rows.map(ChannelModel.fromMap).toList();
   }
 
   Future<List<String>> getCategories(String playlistId, String streamType) async {
-    final db   = await AppDatabase.instance;
-    final rows = await db.rawQuery(
-      'SELECT DISTINCT category FROM $_table '
-      'WHERE playlistId = ? AND streamType = ? '
-      'ORDER BY category ASC',
-      [playlistId, streamType],
-    );
+    final db = await AppDatabase.instance;
+    // v6: junction üzerinden DISTINCT — çoklu kategori varsa hepsi görünür.
+    final rows = await db.rawQuery('''
+      SELECT DISTINCT cc.category FROM $_catTable cc
+      INNER JOIN channels c
+        ON c.id = cc.channelId AND c.playlistId = cc.playlistId
+      WHERE cc.playlistId = ? AND c.streamType = ?
+      ORDER BY cc.category COLLATE NOCASE ASC
+    ''', [playlistId, streamType]);
     return rows.map((r) => r['category'] as String).toList();
   }
 
@@ -100,12 +109,29 @@ class ChannelRepository {
 
   /// En son eklenen kanallar — rowid DESC'e göre (SQLite'ta insert sırası).
   /// Ana Sayfa row'ları için kullanılır.
+  /// Dizi tipi için GROUP BY seriesName → her dizi tek kart olarak görünür.
   Future<List<ChannelModel>> getLatestByType(
     String playlistId,
     String streamType, {
     int limit = 20,
   }) async {
-    final db   = await AppDatabase.instance;
+    final db = await AppDatabase.instance;
+
+    if (streamType == 'series') {
+      final rows = await db.rawQuery('''
+        SELECT * FROM channels
+        WHERE playlistId = ? AND streamType = 'series'
+          AND rowid IN (
+            SELECT MAX(rowid) FROM channels
+            WHERE playlistId = ? AND streamType = 'series'
+            GROUP BY COALESCE(NULLIF(seriesName,''), name)
+          )
+        ORDER BY rowid DESC
+        LIMIT ?
+      ''', [playlistId, playlistId, limit]);
+      return rows.map(ChannelModel.fromMap).toList();
+    }
+
     final rows = await db.query(
       _table,
       where:     'playlistId = ? AND streamType = ?',
@@ -146,15 +172,26 @@ class ChannelRepository {
   /// Sadece dizi bölümü tipi izleme geçmişi (Ana Sayfa "İzlediğin Diziler" satırı için).
   /// `getContinueWatching` ile fark: burada isWatched filtresi yok — tamamlanmış ve
   /// devam eden tüm dizi bölümlerinin son aktivite sırası.
+  /// Her diziden yalnızca en son izlenen bölüm gösterilir (MAX(lastWatched) dedup).
   Future<List<ChannelModel>> getWatchedSeriesEpisodes(String playlistId, {int limit = 20}) async {
-    final db   = await AppDatabase.instance;
-    final rows = await db.query(
-      _table,
-      where:     'playlistId = ? AND streamType = ? AND lastWatched > 0',
-      whereArgs: [playlistId, 'series'],
-      orderBy:   'lastWatched DESC',
-      limit:     limit,
-    );
+    final db = await AppDatabase.instance;
+    final rows = await db.rawQuery('''
+      SELECT * FROM channels
+      WHERE playlistId = ? AND streamType = 'series' AND lastWatched IS NOT NULL AND lastWatched > 0
+        AND rowid IN (
+          SELECT rowid FROM channels c1
+          WHERE c1.playlistId = ? AND c1.streamType = 'series'
+            AND c1.lastWatched IS NOT NULL AND c1.lastWatched > 0
+            AND c1.lastWatched = (
+              SELECT MAX(c2.lastWatched) FROM channels c2
+              WHERE c2.playlistId = c1.playlistId
+                AND COALESCE(NULLIF(c2.seriesName,''), c2.name)
+                  = COALESCE(NULLIF(c1.seriesName,''), c1.name)
+            )
+        )
+      ORDER BY lastWatched DESC
+      LIMIT ?
+    ''', [playlistId, playlistId, limit]);
     return rows.map(ChannelModel.fromMap).toList();
   }
 
@@ -189,6 +226,10 @@ class ChannelRepository {
     final batch = db.batch();
     for (final ch in channels) {
       batch.insert(_table, ch.toMap(), conflictAlgorithm: ConflictAlgorithm.replace);
+      // v6: junction yazımı — her kategori için bir satır.
+      for (final c in _categoryRows(ch)) {
+        batch.insert(_catTable, c, conflictAlgorithm: ConflictAlgorithm.ignore);
+      }
     }
     await batch.commit(noResult: true);
   }
@@ -196,6 +237,30 @@ class ChannelRepository {
   Future<void> deleteByPlaylist(String playlistId) async {
     final db = await AppDatabase.instance;
     await db.delete(_table, where: 'playlistId = ?', whereArgs: [playlistId]);
+    // v6: junction da temizlenmeli — orphan satır kalmasın.
+    await db.delete(_catTable, where: 'playlistId = ?', whereArgs: [playlistId]);
+  }
+
+  /// Bir kanalın junction tablosuna yazılacak satırlarını döndürür.
+  /// `categoryIds` doluysa o liste; boşsa fallback olarak `category` alanı
+  /// (legacy / migration sonrası seed). Hepsi TRIM + boş atlanır.
+  static List<Map<String, Object?>> _categoryRows(ChannelModel ch) {
+    final raw = ch.categoryIds.isNotEmpty
+        ? ch.categoryIds
+        : <String>[ch.category];
+    final seen = <String>{};
+    final out = <Map<String, Object?>>[];
+    for (final c in raw) {
+      final t = c.trim();
+      if (t.isEmpty) continue;
+      if (!seen.add(t)) continue;
+      out.add({
+        'channelId':  ch.id,
+        'playlistId': ch.playlistId,
+        'category':   t,
+      });
+    }
+    return out;
   }
 
   /// Atomik sync: eski kanallari sil + yenilerini yaz.
@@ -221,6 +286,9 @@ class ChannelRepository {
     await db.transaction((txn) async {
       await txn.delete(_table,
           where: 'playlistId = ?', whereArgs: [playlistId]);
+      // v6: junction da sil — yeni veri ile yeniden seed edilecek.
+      await txn.delete(_catTable,
+          where: 'playlistId = ?', whereArgs: [playlistId]);
 
       // Chunk'li batch: her chunk ayri batch.commit ile yazilir
       // ama hepsi ayni transaction icinde → atomik.
@@ -231,6 +299,11 @@ class ChannelRepository {
         for (final ch in chunk) {
           batch.insert(_table, ch.toMap(),
               conflictAlgorithm: ConflictAlgorithm.replace);
+          // v6: junction satırları (1..N kategori per kanal).
+          for (final c in _categoryRows(ch)) {
+            batch.insert(_catTable, c,
+                conflictAlgorithm: ConflictAlgorithm.ignore);
+          }
         }
         await batch.commit(noResult: true);
       }

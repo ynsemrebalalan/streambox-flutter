@@ -450,6 +450,50 @@ class AppLocalizationsAr extends AppLocalizations {
   String get playerSpeedDialog => 'سرعة التشغيل';
 
   @override
+  String get playerSubtitleDialogTitle => 'الترجمة';
+
+  @override
+  String get playerSubtitleAi => 'ترجمة AI';
+
+  @override
+  String get playerSubtitleAiActive => '(نشط)';
+
+  @override
+  String playerSubtitleEmbedded(int n) {
+    return 'مدمج $n';
+  }
+
+  @override
+  String get playerSubtitleOff => 'إيقاف';
+
+  @override
+  String get playerScreenSizeTooltip => 'حجم الشاشة';
+
+  @override
+  String get playerScreenSizeDialog => 'حجم الشاشة';
+
+  @override
+  String get playerFitOriginal => 'الأصلي';
+
+  @override
+  String get playerFitCover => 'ملء الشاشة (قص)';
+
+  @override
+  String get playerFitStretch => 'تمديد';
+
+  @override
+  String get playerResolutionTooltip => 'الدقة';
+
+  @override
+  String get playerResolutionDialog => 'الدقة';
+
+  @override
+  String get playerResolutionAuto => 'تلقائي';
+
+  @override
+  String get playerSingleQuality => 'يقدم هذا البث جودة واحدة فقط.';
+
+  @override
   String get disclaimerWelcome => 'مرحبًا';
 
   @override

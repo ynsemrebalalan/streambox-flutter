@@ -111,14 +111,25 @@ class _ChannelListItemState extends ConsumerState<ChannelListItem> {
                             ? FontWeight.w700
                             : FontWeight.w500),
                   ),
+                  // v6: Live + EPG → solda EPG / sağda kategori chip.
+                  // Diğer durumlarda tek başına chip (kompakt badge).
                   if (channel.streamType == 'live' && channel.tvgId.isNotEmpty)
-                    _EpgLine(tvgId: channel.tvgId)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 2),
+                      child: Row(
+                        children: [
+                          if (channel.category.isNotEmpty) ...[
+                            _categoryChip(context, channel.category),
+                            const SizedBox(width: 6),
+                          ],
+                          Expanded(child: _EpgLine(tvgId: channel.tvgId)),
+                        ],
+                      ),
+                    )
                   else if (channel.category.isNotEmpty)
-                    Text(
-                      channel.category,
-                      style: TextStyle(
-                          fontSize: TextSize.caption,
-                          color:    cs.onSurfaceVariant),
+                    Padding(
+                      padding: const EdgeInsets.only(top: 2),
+                      child: _categoryChip(context, channel.category),
                     ),
                 ],
               ),
@@ -155,6 +166,29 @@ class _ChannelListItemState extends ConsumerState<ChannelListItem> {
       ),
     );
   }
+}
+
+/// v6: Kategori chip — Material3 secondaryContainer üzerinde kompakt badge.
+/// Channel kart altında tip/kategori göstermek için kullanılır.
+Widget _categoryChip(BuildContext context, String category) {
+  final cs = Theme.of(context).colorScheme;
+  return Container(
+    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+    decoration: BoxDecoration(
+      color: cs.secondaryContainer,
+      borderRadius: BorderRadius.circular(8),
+    ),
+    child: Text(
+      category,
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
+      style: TextStyle(
+        fontSize: 11,
+        color: cs.onSecondaryContainer,
+        fontWeight: FontWeight.w500,
+      ),
+    ),
+  );
 }
 
 // ── Watchlist toggle ─────────────────────────────────────────────────────────

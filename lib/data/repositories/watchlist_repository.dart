@@ -1,3 +1,4 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:sqflite/sqflite.dart';
 import '../../core/database/app_database.dart';
 import '../models/channel_model.dart';
@@ -8,6 +9,21 @@ import '../models/channel_model.dart';
 /// tüketir ve playlist refresh edildikten sonra otomatik güncel kalır.
 class WatchlistRepository {
   static const _table = 'watchlist';
+
+  String? _currentUid() {
+    try {
+      return FirebaseAuth.instance.currentUser?.uid;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// Watchlist tombstone PK formati — composite (channelId|playlistId).
+  /// Tombstone tablosunda `recordId` TEXT, watchlist'in iki anahtari var,
+  /// "${cid}__${pid}" formatinda birlestirip recordId'ye yazariz. CloudSync
+  /// push tarafi bu formati ayristirip remote dokumani silebilir.
+  String _tombstoneKey(String channelId, String playlistId) =>
+      '${channelId}__$playlistId';
 
   Future<bool> isInWatchlist(String channelId, String playlistId) async {
     final db = await AppDatabase.instance;
@@ -22,12 +38,15 @@ class WatchlistRepository {
 
   Future<void> add(String channelId, String playlistId) async {
     final db = await AppDatabase.instance;
+    final now = DateTime.now().millisecondsSinceEpoch;
     await db.insert(
       _table,
       {
         'channelId':  channelId,
         'playlistId': playlistId,
-        'addedAt':    DateTime.now().millisecondsSinceEpoch,
+        'addedAt':    now,
+        'ownerUid':   _currentUid(),
+        'updatedAt':  now,
       },
       conflictAlgorithm: ConflictAlgorithm.replace,
     );
@@ -35,11 +54,29 @@ class WatchlistRepository {
 
   Future<void> remove(String channelId, String playlistId) async {
     final db = await AppDatabase.instance;
-    await db.delete(
-      _table,
-      where:     'channelId = ? AND playlistId = ?',
-      whereArgs: [channelId, playlistId],
-    );
+    final uid = _currentUid();
+    final now = DateTime.now().millisecondsSinceEpoch;
+    await db.transaction((txn) async {
+      await txn.delete(
+        _table,
+        where:     'channelId = ? AND playlistId = ?',
+        whereArgs: [channelId, playlistId],
+      );
+      // v7 — tombstone: CloudSync push tarafi remote'tan da silebilsin.
+      if (uid != null) {
+        await txn.insert(
+          'sync_tombstones',
+          {
+            'tableName': 'watchlist',
+            'recordId':  _tombstoneKey(channelId, playlistId),
+            'ownerUid':  uid,
+            'deletedAt': now,
+            'syncedAt':  null,
+          },
+          conflictAlgorithm: ConflictAlgorithm.replace,
+        );
+      }
+    });
   }
 
   Future<void> toggle(String channelId, String playlistId) async {

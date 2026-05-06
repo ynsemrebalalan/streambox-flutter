@@ -250,9 +250,12 @@ class PlaylistsScreen extends ConsumerWidget {
                                         action: SnackBarAction(
                                           label: l.playlistsRetryAction,
                                           textColor: Colors.white,
-                                          onPressed: () => ref
-                                              .read(playlistsProvider.notifier)
-                                              .sync(p, l),
+                                          onPressed: () async {
+                                            if (!context.mounted) return;
+                                            await ref
+                                                .read(playlistsProvider.notifier)
+                                                .sync(p, l);
+                                          },
                                         ),
                                       ),
                                     );

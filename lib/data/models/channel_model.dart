@@ -17,6 +17,11 @@ class ChannelModel {
   final int addedAt;
   final bool isWatched;
   final int duration;
+  // v6 — Çoklu kategori desteği (Xtream category_ids / M3U virgüllü
+  // group-title). Sadece insert path'inde junction tablosuna yazmak için
+  // taşınır; toMap/fromMap'e dahil DEĞİL — channels tablosunda kolon yok.
+  // Boş ise legacy davranış: sadece `category` tek kategori olarak kullanılır.
+  final List<String> categoryIds;
 
   const ChannelModel({
     required this.id,
@@ -37,6 +42,7 @@ class ChannelModel {
     int? addedAt,
     this.isWatched = false,
     this.duration = 0,
+    this.categoryIds = const [],
   }) : addedAt = addedAt ?? 0;
 
   factory ChannelModel.fromMap(Map<String, dynamic> map) => ChannelModel(
@@ -100,6 +106,7 @@ class ChannelModel {
     int? addedAt,
     bool? isWatched,
     int? duration,
+    List<String>? categoryIds,
   }) =>
       ChannelModel(
         id:            id            ?? this.id,
@@ -120,5 +127,6 @@ class ChannelModel {
         addedAt:       addedAt       ?? this.addedAt,
         isWatched:     isWatched     ?? this.isWatched,
         duration:      duration      ?? this.duration,
+        categoryIds:   categoryIds   ?? this.categoryIds,
       );
 }

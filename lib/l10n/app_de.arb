@@ -179,6 +179,23 @@
     "placeholders": { "n": { "type": "int" } }
   },
   "playerSpeedDialog": "Wiedergabegeschwindigkeit",
+  "playerSubtitleDialogTitle": "Untertitel",
+  "playerSubtitleAi": "KI-Untertitel",
+  "playerSubtitleAiActive": "(Aktiv)",
+  "playerSubtitleEmbedded": "Eingebettet {n}",
+  "@playerSubtitleEmbedded": {
+    "placeholders": { "n": { "type": "int" } }
+  },
+  "playerSubtitleOff": "Aus",
+  "playerScreenSizeTooltip": "Bildschirmgröße",
+  "playerScreenSizeDialog": "Bildschirmgröße",
+  "playerFitOriginal": "Original",
+  "playerFitCover": "Bildschirm füllen (Beschneiden)",
+  "playerFitStretch": "Strecken",
+  "playerResolutionTooltip": "Auflösung",
+  "playerResolutionDialog": "Auflösung",
+  "playerResolutionAuto": "Auto",
+  "playerSingleQuality": "Dieser Stream bietet nur eine Qualität.",
 
   "disclaimerWelcome": "Willkommen",
   "disclaimerBodyEn": "IPTV AI Player is a media player for your own M3U playlists and Xtream Codes sources.\n\nThis app does not provide, host, or distribute any content. You must supply your own legally obtained playlist URL.",

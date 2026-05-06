@@ -99,6 +99,13 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
     _startWatchdog();
     _startHideTimer();
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
+    // Bug #1 fix: iOS Portrait Lock acikken player landscape'e donmuyordu.
+    // Player ekranina ozel olarak landscape orientation'lari aciyoruz.
+    SystemChrome.setPreferredOrientations(const [
+      DeviceOrientation.portraitUp,
+      DeviceOrientation.landscapeLeft,
+      DeviceOrientation.landscapeRight,
+    ]);
     // Mark channel as watched
     Future.microtask(() => ref
         .read(homeProvider.notifier)
@@ -270,20 +277,24 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
     _startHideTimer();
   }
 
+  /// Bug #4 fix: tap koşulsuz `_showControls()` çağırıyordu; toggle değildi.
+  /// D-pad menü tuşundaki (LogicalKeyboardKey.contextMenu) pattern ile aynı:
+  /// görünürse gizle, gizliyse göster.
+  void _toggleControls() {
+    if (_controlsVisible) {
+      _hideTimer?.cancel();
+      setState(() => _controlsVisible = false);
+    } else {
+      _showControls();
+    }
+  }
+
   @override
   void dispose() {
-    // VOD resume: pozisyonu kaydet (canli yayinda anlamsiz).
-    if (widget.streamType != 'live') {
-      final pos = _player.state.position.inMilliseconds;
-      final dur = _player.state.duration.inMilliseconds;
-      if (pos > 0) {
-        ref.read(homeProvider.notifier).markWatched(
-          widget.channelId,
-          position: pos,
-          duration: dur,
-        );
-      }
-    }
+    // Bug #9 fix: VOD resume markWatched dispose'da fire-and-forget cagriliyordu;
+    // hizli cikiste DB write tamamlanmadan tear down oluyordu. Artik
+    // _stopAndPop() icinde await ile cagriliyor — burada sadece guvenli fallback
+    // (cikis sirasinda _stopAndPop devre disi kalirsa diye) tutmuyoruz.
     _hideTimer?.cancel();
     _gestureHideTimer?.cancel();
     // Parlaklık override'ını kaldır — kullanıcı player'da değiştirdiyse
@@ -312,6 +323,11 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
     _player.stop().catchError((_) {});
     _player.dispose();
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+    // Bug #1 fix: player kapanirken orientation'i portrait'e geri kilitle —
+    // diger ekranlar (home, splash) landscape kalmasin.
+    SystemChrome.setPreferredOrientations(const [
+      DeviceOrientation.portraitUp,
+    ]);
     super.dispose();
   }
 
@@ -484,6 +500,23 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
   /// back button (`onClose`) hem sistem back tuşu (`PopScope`) tarafından
   /// çağrılır → pop **öncesi** await ile stop sequence garanti edilir.
   Future<void> _stopAndPop() async {
+    // Bug #9 fix: VOD resume — markWatched() onceden dispose() icinde
+    // fire-and-forget cagriliyordu; hizli cikis senaryolarinda DB write
+    // tamamlanmadan widget agaci tear down oluyordu. Artik pop oncesi
+    // await ile cagriyoruz, position guvenli sekilde kayit edilir.
+    if (widget.streamType != 'live') {
+      final pos = _player.state.position.inMilliseconds;
+      final dur = _player.state.duration.inMilliseconds;
+      if (pos > 0) {
+        try {
+          await ref.read(homeProvider.notifier).markWatched(
+            widget.channelId,
+            position: pos,
+            duration: dur,
+          );
+        } catch (_) {}
+      }
+    }
     try { await _player.setVolume(0);     } catch (_) {}
     try { await _player.pause();          } catch (_) {}
     try { await _player.stop();           } catch (_) {}
@@ -572,7 +605,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
         autofocus: true,
         onKeyEvent: _onKeyEvent,
         child: GestureDetector(
-          onTap: _showControls,
+          onTap: _toggleControls,
           onVerticalDragStart:  _onVerticalDragStart,
           onVerticalDragUpdate: _onVerticalDragUpdate,
           onVerticalDragEnd:    _onVerticalDragEnd,
@@ -633,7 +666,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
                   player:           _player,
                   title:            widget.title,
                   onClose:          _stopAndPop,
-                  onTap:            _showControls,
+                  onTap:            _toggleControls,
                   onReconnect:      _manualReconnect,
                   volume:           _player.state.volume,
                   subtitleEnabled:  _aiSubtitleEnabled,
@@ -1373,25 +1406,32 @@ class _SubtitleButton extends StatelessWidget {
         final embedded = tracks.where((t) => t.id != 'no' && t.id != 'auto').toList();
         final result = await showDialog<String>(
           context: context,
-          builder: (ctx) => SimpleDialog(
-            title: const Text('Altyazı'),
-            children: [
-              _TvDialogOption(
-                label: 'AI Altyazı ${aiEnabled ? "(Aktif)" : ""}',
-                onTap: () => Navigator.pop(ctx, 'ai'),
-              ),
-              for (var i = 0; i < embedded.length; i++)
+          builder: (ctx) {
+            final ll = AppLocalizations.of(ctx);
+            return SimpleDialog(
+              title: Text(ll.playerSubtitleDialogTitle),
+              children: [
                 _TvDialogOption(
-                  label: 'Yerleşik ${i + 1}'
-                      '${embedded[i].language != null ? " (${embedded[i].language})" : ""}',
-                  onTap: () => Navigator.pop(ctx, 'emb_${embedded[i].id}'),
+                  label: aiEnabled
+                      ? '${ll.playerSubtitleAi} ${ll.playerSubtitleAiActive}'
+                      : ll.playerSubtitleAi,
+                  onTap: () => Navigator.pop(ctx, 'ai'),
                 ),
-              _TvDialogOption(
-                label: 'Kapalı',
-                onTap: () => Navigator.pop(ctx, 'off'),
-              ),
-            ],
-          ),
+                for (var i = 0; i < embedded.length; i++)
+                  _TvDialogOption(
+                    label: ll.playerSubtitleEmbedded(i + 1) +
+                        (embedded[i].language != null
+                            ? ' (${embedded[i].language})'
+                            : ''),
+                    onTap: () => Navigator.pop(ctx, 'emb_${embedded[i].id}'),
+                  ),
+                _TvDialogOption(
+                  label: ll.playerSubtitleOff,
+                  onTap: () => Navigator.pop(ctx, 'off'),
+                ),
+              ],
+            );
+          },
         );
         if (result == null) return;
         if (result == 'ai') {
@@ -1424,29 +1464,33 @@ class _AspectRatioButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context);
     return _TvIconButton(
       icon: Icons.aspect_ratio,
-      tooltip: 'Ekran Boyutu',
+      tooltip: l.playerScreenSizeTooltip,
       onTap: () async {
         final result = await showDialog<BoxFit>(
           context: context,
-          builder: (ctx) => SimpleDialog(
-            title: const Text('Ekran Boyutu'),
-            children: [
-              _TvDialogOption(
-                label: 'Orijinal${fit == BoxFit.contain ? " ✓" : ""}',
-                onTap: () => Navigator.pop(ctx, BoxFit.contain),
-              ),
-              _TvDialogOption(
-                label: 'Ekranı Doldur (Kırp)${fit == BoxFit.cover ? " ✓" : ""}',
-                onTap: () => Navigator.pop(ctx, BoxFit.cover),
-              ),
-              _TvDialogOption(
-                label: 'Esnet${fit == BoxFit.fill ? " ✓" : ""}',
-                onTap: () => Navigator.pop(ctx, BoxFit.fill),
-              ),
-            ],
-          ),
+          builder: (ctx) {
+            final ll = AppLocalizations.of(ctx);
+            return SimpleDialog(
+              title: Text(ll.playerScreenSizeDialog),
+              children: [
+                _TvDialogOption(
+                  label: '${ll.playerFitOriginal}${fit == BoxFit.contain ? " ✓" : ""}',
+                  onTap: () => Navigator.pop(ctx, BoxFit.contain),
+                ),
+                _TvDialogOption(
+                  label: '${ll.playerFitCover}${fit == BoxFit.cover ? " ✓" : ""}',
+                  onTap: () => Navigator.pop(ctx, BoxFit.cover),
+                ),
+                _TvDialogOption(
+                  label: '${ll.playerFitStretch}${fit == BoxFit.fill ? " ✓" : ""}',
+                  onTap: () => Navigator.pop(ctx, BoxFit.fill),
+                ),
+              ],
+            );
+          },
         );
         if (result != null) onChange(result);
       },
@@ -1462,9 +1506,10 @@ class _ResolutionButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context);
     return _TvIconButton(
       icon: Icons.high_quality,
-      tooltip: 'Çözünürlük',
+      tooltip: l.playerResolutionTooltip,
       onTap: () async {
         final tracks = player.state.tracks.video;
         // Auto (id='auto') + gerçek varyantları göster
@@ -1475,28 +1520,31 @@ class _ResolutionButton extends StatelessWidget {
 
         final result = await showDialog<String>(
           context: context,
-          builder: (ctx) => SimpleDialog(
-            title: const Text('Çözünürlük'),
-            children: [
-              _TvDialogOption(
-                label: 'Otomatik',
-                onTap: () => Navigator.pop(ctx, 'auto'),
-              ),
-              for (final t in variants)
+          builder: (ctx) {
+            final ll = AppLocalizations.of(ctx);
+            return SimpleDialog(
+              title: Text(ll.playerResolutionDialog),
+              children: [
                 _TvDialogOption(
-                  label: '${t.h}p${t.fps != null ? " ${t.fps!.round()}fps" : ""}',
-                  onTap: () => Navigator.pop(ctx, t.id),
+                  label: ll.playerResolutionAuto,
+                  onTap: () => Navigator.pop(ctx, 'auto'),
                 ),
-              if (variants.isEmpty)
-                const Padding(
-                  padding: EdgeInsets.all(16),
-                  child: Text(
-                    'Bu yayın tek kalite sunuyor.',
-                    style: TextStyle(color: Colors.white54),
+                for (final t in variants)
+                  _TvDialogOption(
+                    label: '${t.h}p${t.fps != null ? " ${t.fps!.round()}fps" : ""}',
+                    onTap: () => Navigator.pop(ctx, t.id),
                   ),
-                ),
-            ],
-          ),
+                if (variants.isEmpty)
+                  Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Text(
+                      ll.playerSingleQuality,
+                      style: const TextStyle(color: Colors.white54),
+                    ),
+                  ),
+              ],
+            );
+          },
         );
         if (result == null) return;
         if (result == 'auto') {

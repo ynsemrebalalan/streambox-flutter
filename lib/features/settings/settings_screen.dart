@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import '../../core/providers/app_providers.dart';
 import '../../core/router/app_router.dart';
 import '../../core/theme/app_tokens.dart';
@@ -141,6 +142,19 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   final _groqProxyUrlCtrl = TextEditingController();
   final _groqSecretCtrl   = TextEditingController();
   bool _initialized = false;
+  String _appVersion = '';
+
+  @override
+  void initState() {
+    super.initState();
+    PackageInfo.fromPlatform().then((info) {
+      if (mounted) {
+        setState(() {
+          _appVersion = '${info.version} (${info.buildNumber})';
+        });
+      }
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -454,7 +468,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 ListTile(
                   leading: const Icon(Icons.info_outline),
                   title:   Text(l.homeAppTitle),
-                  subtitle: Text(l.settingsAppVersion('1.0.0'),
+                  subtitle: Text(l.settingsAppVersion(_appVersion.isEmpty ? '…' : _appVersion),
                       style: TextStyle(color: cs.onSurfaceVariant)),
                 ),
                 ListTile(

@@ -450,6 +450,50 @@ class AppLocalizationsTr extends AppLocalizations {
   String get playerSpeedDialog => 'Oynatma hızı';
 
   @override
+  String get playerSubtitleDialogTitle => 'Altyazı';
+
+  @override
+  String get playerSubtitleAi => 'AI Altyazı';
+
+  @override
+  String get playerSubtitleAiActive => '(Aktif)';
+
+  @override
+  String playerSubtitleEmbedded(int n) {
+    return 'Yerleşik $n';
+  }
+
+  @override
+  String get playerSubtitleOff => 'Kapalı';
+
+  @override
+  String get playerScreenSizeTooltip => 'Ekran Boyutu';
+
+  @override
+  String get playerScreenSizeDialog => 'Ekran Boyutu';
+
+  @override
+  String get playerFitOriginal => 'Orijinal';
+
+  @override
+  String get playerFitCover => 'Ekranı Doldur (Kırp)';
+
+  @override
+  String get playerFitStretch => 'Esnet';
+
+  @override
+  String get playerResolutionTooltip => 'Çözünürlük';
+
+  @override
+  String get playerResolutionDialog => 'Çözünürlük';
+
+  @override
+  String get playerResolutionAuto => 'Otomatik';
+
+  @override
+  String get playerSingleQuality => 'Bu yayın tek kalite sunuyor.';
+
+  @override
   String get disclaimerWelcome => 'Welcome';
 
   @override

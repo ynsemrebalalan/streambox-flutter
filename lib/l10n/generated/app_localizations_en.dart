@@ -450,6 +450,50 @@ class AppLocalizationsEn extends AppLocalizations {
   String get playerSpeedDialog => 'Playback speed';
 
   @override
+  String get playerSubtitleDialogTitle => 'Subtitle';
+
+  @override
+  String get playerSubtitleAi => 'AI Subtitle';
+
+  @override
+  String get playerSubtitleAiActive => '(Active)';
+
+  @override
+  String playerSubtitleEmbedded(int n) {
+    return 'Embedded $n';
+  }
+
+  @override
+  String get playerSubtitleOff => 'Off';
+
+  @override
+  String get playerScreenSizeTooltip => 'Screen Size';
+
+  @override
+  String get playerScreenSizeDialog => 'Screen Size';
+
+  @override
+  String get playerFitOriginal => 'Original';
+
+  @override
+  String get playerFitCover => 'Fill Screen (Crop)';
+
+  @override
+  String get playerFitStretch => 'Stretch';
+
+  @override
+  String get playerResolutionTooltip => 'Resolution';
+
+  @override
+  String get playerResolutionDialog => 'Resolution';
+
+  @override
+  String get playerResolutionAuto => 'Auto';
+
+  @override
+  String get playerSingleQuality => 'This stream offers only one quality.';
+
+  @override
   String get disclaimerWelcome => 'Welcome';
 
   @override

@@ -200,6 +200,23 @@
     }
   },
   "playerSpeedDialog": "Oynatma hızı",
+  "playerSubtitleDialogTitle": "Altyazı",
+  "playerSubtitleAi": "AI Altyazı",
+  "playerSubtitleAiActive": "(Aktif)",
+  "playerSubtitleEmbedded": "Yerleşik {n}",
+  "@playerSubtitleEmbedded": {
+    "placeholders": { "n": { "type": "int" } }
+  },
+  "playerSubtitleOff": "Kapalı",
+  "playerScreenSizeTooltip": "Ekran Boyutu",
+  "playerScreenSizeDialog": "Ekran Boyutu",
+  "playerFitOriginal": "Orijinal",
+  "playerFitCover": "Ekranı Doldur (Kırp)",
+  "playerFitStretch": "Esnet",
+  "playerResolutionTooltip": "Çözünürlük",
+  "playerResolutionDialog": "Çözünürlük",
+  "playerResolutionAuto": "Otomatik",
+  "playerSingleQuality": "Bu yayın tek kalite sunuyor.",
 
   "disclaimerWelcome": "Welcome",
   "disclaimerBodyEn": "IPTV AI Player is a media player for your own M3U playlists and Xtream Codes sources.\n\nThis app does not provide, host, or distribute any content. You must supply your own legally obtained playlist URL.",

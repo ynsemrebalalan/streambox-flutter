@@ -9,6 +9,11 @@ class PlaylistModel {
   final String allowedTypes; // "live,movie,series"
   final String etag;
   final String lastModified;
+  // v7 — CloudSync: ownerUid (multi-user izolasyon), updatedAt (LWW
+  // conflict resolution), lastSyncedAt (push delta - dirty satir tespiti).
+  final String? ownerUid;
+  final int updatedAt;
+  final int? lastSyncedAt;
 
   const PlaylistModel({
     required this.id,
@@ -21,7 +26,11 @@ class PlaylistModel {
     this.allowedTypes = 'live,movie,series',
     this.etag = '',
     this.lastModified = '',
-  }) : addedAt = addedAt ?? 0;
+    this.ownerUid,
+    int? updatedAt,
+    this.lastSyncedAt,
+  })  : addedAt = addedAt ?? 0,
+        updatedAt = updatedAt ?? 0;
 
   factory PlaylistModel.fromMap(Map<String, dynamic> map) => PlaylistModel(
         id:           map['id'] as String,
@@ -34,6 +43,9 @@ class PlaylistModel {
         allowedTypes: map['allowedTypes'] as String? ?? 'live,movie,series',
         etag:         map['etag'] as String? ?? '',
         lastModified: map['lastModified'] as String? ?? '',
+        ownerUid:     map['ownerUid'] as String?,
+        updatedAt:    map['updatedAt'] as int? ?? 0,
+        lastSyncedAt: map['lastSyncedAt'] as int?,
       );
 
   Map<String, dynamic> toMap() => {
@@ -47,6 +59,9 @@ class PlaylistModel {
         'allowedTypes': allowedTypes,
         'etag':         etag,
         'lastModified': lastModified,
+        'ownerUid':     ownerUid,
+        'updatedAt':    updatedAt,
+        'lastSyncedAt': lastSyncedAt,
       };
 
   PlaylistModel copyWith({
@@ -60,6 +75,9 @@ class PlaylistModel {
     String? allowedTypes,
     String? etag,
     String? lastModified,
+    String? ownerUid,
+    int? updatedAt,
+    int? lastSyncedAt,
   }) =>
       PlaylistModel(
         id:           id           ?? this.id,
@@ -72,5 +90,8 @@ class PlaylistModel {
         allowedTypes: allowedTypes ?? this.allowedTypes,
         etag:         etag         ?? this.etag,
         lastModified: lastModified ?? this.lastModified,
+        ownerUid:     ownerUid     ?? this.ownerUid,
+        updatedAt:    updatedAt    ?? this.updatedAt,
+        lastSyncedAt: lastSyncedAt ?? this.lastSyncedAt,
       );
 }

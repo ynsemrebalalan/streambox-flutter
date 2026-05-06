@@ -20,10 +20,7 @@ class ParentalLockService {
 
   // ── PIN ────────────────────────────────────────────────────────────────────
 
-  Future<bool> hasPin() async {
-    final pin = await SecureStorage.getParentalPin();
-    return pin.length == 4;
-  }
+  Future<bool> hasPin() => SecureStorage.hasParentalPin();
 
   Future<void> setPin(String pin) async {
     if (pin.length != 4 || int.tryParse(pin) == null) {
@@ -32,10 +29,8 @@ class ParentalLockService {
     await SecureStorage.setParentalPin(pin);
   }
 
-  Future<bool> verifyPin(String pin) async {
-    final saved = await SecureStorage.getParentalPin();
-    return saved == pin;
-  }
+  /// Brute-force koruması içermez — cooldown pin_dialog katmanında.
+  Future<bool> verifyPin(String pin) => SecureStorage.verifyParentalPin(pin);
 
   Future<void> clearPin() async {
     await SecureStorage.deleteParentalPin();

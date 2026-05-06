@@ -51,6 +51,7 @@ class M3uParser {
     final allowed  = playlist.allowedTypes.split(',');
 
     String? name, logo, category, tvgId, streamType, seriesName;
+    List<String> categories = const [];
     int seasonNum = 0, epNum = 0, sortIdx = 0;
 
     for (var i = 0; i < lines.length; i++) {
@@ -61,7 +62,12 @@ class M3uParser {
         name = _attr(line, 'tvg-name')    ?? _displayName(line);
         logo = _attr(line, 'tvg-logo')    ?? '';
         tvgId= _attr(line, 'tvg-id')      ?? '';
-        category = _attr(line, 'group-title') ?? 'Genel';
+        // v6: çoklu kategori — `group-title="Aksiyon,Komedi"` virgülle
+        // ayrılmışsa kanal birden fazla kategoriye ait sayılır. Tek değer
+        // ise legacy davranış: liste tek elemanlı, display = aynısı.
+        final rawGroup = _attr(line, 'group-title') ?? 'Genel';
+        categories = _splitCategories(rawGroup);
+        category = categories.isNotEmpty ? categories.first : 'Genel';
         streamType = _detectStreamType(category, name);
         seriesName = '';
         seasonNum  = 0;
@@ -83,6 +89,7 @@ class M3uParser {
             streamUrl:     url,
             logoUrl:       logo ?? '',
             category:      category ?? 'Genel',
+            categoryIds:   categories,
             streamType:    streamType ?? 'live',
             tvgId:         tvgId ?? '',
             sortOrder:     sortIdx++,
@@ -107,6 +114,26 @@ class M3uParser {
   static String _displayName(String line) {
     final idx = line.lastIndexOf(',');
     return idx >= 0 ? line.substring(idx + 1).trim() : '';
+  }
+
+  /// `group-title` attribute'unu virgülle bölerek çoklu kategoriye dönüştürür.
+  /// Trim + boş eleman + duplicate filtresi. Boş input → [].
+  /// Bilinen risk: bazı provider'lar tek bir kategori adında virgül kullanabilir
+  /// ("Action, Drama" gibi); bu durumda 2 kategori olarak split olur. Bu nadir
+  /// sapma riskine karşılık çoklu kategori desteği daha değerli (IPTV Extreme,
+  /// TiviMate aynı davranışı sergiliyor).
+  static List<String> _splitCategories(String raw) {
+    if (raw.isEmpty) return const [];
+    if (!raw.contains(',')) {
+      final t = raw.trim();
+      return t.isEmpty ? const [] : [t];
+    }
+    final out = <String>{};
+    for (final part in raw.split(',')) {
+      final v = part.trim();
+      if (v.isNotEmpty) out.add(v);
+    }
+    return out.toList();
   }
 
   // Stream type detection. Sira kritik:

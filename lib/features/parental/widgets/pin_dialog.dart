@@ -1,7 +1,10 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/utils/secure_storage.dart';
 import '../../../l10n/generated/app_localizations.dart';
 import '../parental_lock_service.dart';
 
@@ -11,7 +14,16 @@ import '../parental_lock_service.dart';
 ///   - [PinDialogMode.verify] — Kayıtlı PIN'i doğrula. true/false döner.
 ///   - [PinDialogMode.create] — Yeni PIN oluştur (2 kez giriş, eşleşmeli).
 ///   - [PinDialogMode.change] — Eski PIN ver, yeni PIN oluştur.
+///
+/// Brute-force koruması: 5 yanlış giriş → 30 saniyelik cooldown.
+/// Cooldown sırasında kalan süre geri sayım olarak gösterilir.
 enum PinDialogMode { verify, create, change }
+
+/// Maksimum ardışık yanlış giriş sayısı.
+const _kMaxAttempts = 5;
+
+/// Cooldown süresi (saniye).
+const _kCooldownSeconds = 30;
 
 class PinDialog extends ConsumerStatefulWidget {
   final PinDialogMode mode;
@@ -45,16 +57,23 @@ class _PinDialogState extends ConsumerState<PinDialog> {
   bool _step2 = false; // create/change mode'da ikinci adım
   bool _busy = false;
 
+  // ── Cooldown ───────────────────────────────────────────────────────────────
+  int _cooldownRemaining = 0; // sıfır ise cooldown yok
+  Timer? _cooldownTimer;
+
   @override
   void initState() {
     super.initState();
+    // Diyalog açılır açılmaz mevcut cooldown kontrol et.
+    _checkCooldownOnOpen();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _focus1.requestFocus();
+      if (_cooldownRemaining == 0) _focus1.requestFocus();
     });
   }
 
   @override
   void dispose() {
+    _cooldownTimer?.cancel();
     _ctrl1.dispose();
     _ctrl2.dispose();
     _focus1.dispose();
@@ -62,8 +81,87 @@ class _PinDialogState extends ConsumerState<PinDialog> {
     super.dispose();
   }
 
+  // ── Cooldown yönetimi ──────────────────────────────────────────────────────
+
+  Future<void> _checkCooldownOnOpen() async {
+    final until = await SecureStorage.getCooldownUntil();
+    if (until == null) return;
+    final remaining = until.difference(DateTime.now()).inSeconds;
+    if (remaining > 0) {
+      _startCooldownTimer(remaining);
+    } else {
+      // Süresi geçmiş cooldown'ı temizle.
+      await SecureStorage.clearCooldown();
+    }
+  }
+
+  void _startCooldownTimer(int seconds) {
+    setState(() {
+      _cooldownRemaining = seconds;
+      _error = null;
+    });
+    _cooldownTimer?.cancel();
+    _cooldownTimer = Timer.periodic(const Duration(seconds: 1), (t) {
+      if (!mounted) {
+        t.cancel();
+        return;
+      }
+      setState(() {
+        _cooldownRemaining--;
+      });
+      if (_cooldownRemaining <= 0) {
+        t.cancel();
+        setState(() {
+          _cooldownRemaining = 0;
+        });
+        // Cooldown bitti; odağı geri ver.
+        _focus1.requestFocus();
+      }
+    });
+  }
+
+  /// verify/change modlarında yanlış giriş sonrası çağrılır.
+  Future<void> _handleFailedAttempt() async {
+    await SecureStorage.incrementFailedAttempts();
+    final attempts = await SecureStorage.getFailedPinAttempts();
+
+    if (attempts >= _kMaxAttempts) {
+      // Cooldown başlat.
+      final until = DateTime.now().add(
+        const Duration(seconds: _kCooldownSeconds),
+      );
+      await SecureStorage.setCooldownUntil(until);
+      await SecureStorage.resetFailedAttempts();
+      _startCooldownTimer(_kCooldownSeconds);
+      setState(() {
+        _error = null; // cooldown mesajı widget'ta gösterilecek
+        _ctrl1.clear();
+        _busy = false;
+      });
+    } else {
+      final remaining = _kMaxAttempts - attempts;
+      setState(() {
+        _error =
+            'Yanlış PIN. $remaining deneme hakkınız kaldı.';
+        _ctrl1.clear();
+        _busy = false;
+      });
+      _focus1.requestFocus();
+    }
+  }
+
+  Future<void> _handleSuccessfulVerify() async {
+    await SecureStorage.resetFailedAttempts();
+    await SecureStorage.clearCooldown();
+  }
+
+  // ── Submit ─────────────────────────────────────────────────────────────────
+
   Future<void> _onSubmit() async {
+    // Cooldown aktifse engelle.
+    if (_cooldownRemaining > 0) return;
     if (_busy) return;
+
     setState(() {
       _error = null;
       _busy = true;
@@ -77,14 +175,10 @@ class _PinDialogState extends ConsumerState<PinDialog> {
           final ok = await svc.verifyPin(_ctrl1.text);
           if (!mounted) return;
           if (!ok) {
-            setState(() {
-              _error = AppLocalizations.of(context).parentalPinIncorrect;
-              _ctrl1.clear();
-              _busy = false;
-            });
-            _focus1.requestFocus();
+            await _handleFailedAttempt();
             return;
           }
+          await _handleSuccessfulVerify();
           if (mounted) Navigator.pop(context, true);
           break;
 
@@ -125,14 +219,10 @@ class _PinDialogState extends ConsumerState<PinDialog> {
             final ok = await svc.verifyPin(_ctrl1.text);
             if (!mounted) return;
             if (!ok) {
-              setState(() {
-                _error = AppLocalizations.of(context).parentalPinIncorrect;
-                _ctrl1.clear();
-                _busy = false;
-              });
-              _focus1.requestFocus();
+              await _handleFailedAttempt();
               return;
             }
+            await _handleSuccessfulVerify();
             setState(() {
               _step2 = true;
               _busy = false;
@@ -172,6 +262,8 @@ class _PinDialogState extends ConsumerState<PinDialog> {
     }
   }
 
+  // ── Build ──────────────────────────────────────────────────────────────────
+
   @override
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context);
@@ -192,30 +284,75 @@ class _PinDialogState extends ConsumerState<PinDialog> {
         ? l.parentalConfirmPin
         : null;
 
+    final isCooldown = _cooldownRemaining > 0;
+
     return AlertDialog(
       title: Text(title),
       content: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          _PinField(
-            controller: _ctrl1,
-            focusNode: _focus1,
-            onChanged: (v) {
-              if (v.length == 4 && widget.mode == PinDialogMode.verify) {
-                _onSubmit();
-              }
-            },
-          ),
-          if (widget.mode == PinDialogMode.create && _step2 ||
-              widget.mode == PinDialogMode.change && _step2) ...[
-            const SizedBox(height: 12),
-            _PinField(
-              controller: _ctrl2,
-              focusNode: _focus2,
-              hint: hint,
+          // Cooldown banner
+          if (isCooldown) ...[
+            Container(
+              padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+              decoration: BoxDecoration(
+                color: cs.errorContainer,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.lock_clock, color: cs.onErrorContainer, size: 18),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Çok fazla yanlış giriş. '
+                      '$_cooldownRemaining saniye bekleyin.',
+                      style: TextStyle(
+                        color: cs.onErrorContainer,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
+            const SizedBox(height: 12),
           ],
-          if (_error != null) ...[
+
+          // PIN field(lar)
+          AbsorbPointer(
+            absorbing: isCooldown,
+            child: Opacity(
+              opacity: isCooldown ? 0.4 : 1.0,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  _PinField(
+                    controller: _ctrl1,
+                    focusNode: _focus1,
+                    onChanged: (v) {
+                      if (v.length == 4 &&
+                          widget.mode == PinDialogMode.verify &&
+                          !isCooldown) {
+                        _onSubmit();
+                      }
+                    },
+                  ),
+                  if (widget.mode == PinDialogMode.create && _step2 ||
+                      widget.mode == PinDialogMode.change && _step2) ...[
+                    const SizedBox(height: 12),
+                    _PinField(
+                      controller: _ctrl2,
+                      focusNode: _focus2,
+                      hint: hint,
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ),
+
+          if (_error != null && !isCooldown) ...[
             const SizedBox(height: 8),
             Text(_error!, style: TextStyle(color: cs.error, fontSize: 12)),
           ],
@@ -227,7 +364,7 @@ class _PinDialogState extends ConsumerState<PinDialog> {
           child: Text(l.cancel),
         ),
         FilledButton(
-          onPressed: _busy ? null : _onSubmit,
+          onPressed: (isCooldown || _busy) ? null : _onSubmit,
           child: Text(_step2 || widget.mode == PinDialogMode.verify
               ? l.parentalSubmit
               : l.parentalNext),

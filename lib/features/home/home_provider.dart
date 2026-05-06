@@ -337,9 +337,13 @@ class HomeNotifier extends AsyncNotifier<HomeState> {
     }
 
     // Hidden categories filtresi uygula.
-    final hidden = await _hiddenCategories();
-    if (hidden.isNotEmpty) {
-      channels = channels.where((c) => !hidden.contains(c.category)).toList();
+    // v6: trim'li set — junction'da TRIM ile yazılı, kontrol da eşleşmeli.
+    final hiddenRaw = await _hiddenCategories();
+    if (hiddenRaw.isNotEmpty) {
+      final hidden = hiddenRaw.map((e) => e.trim()).toSet();
+      channels = channels
+          .where((c) => !hidden.contains(c.category.trim()))
+          .toList();
     }
 
     return s.copyWith(channels: channels, isLoading: false, clearError: true);
