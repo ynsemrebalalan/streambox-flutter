@@ -15,11 +15,16 @@ class M3uParser {
   /// - Low: ana thread'de parse (isolate spawn overhead'i atlanir)
   ///        AMA 5000+ kanal varsa low'da bile isolate kullanilir.
   static Future<List<ChannelModel>> fetchAndParse(PlaylistModel playlist) async {
+    // ignore: avoid_print
+    print('[M3uParser] Fetching: ${playlist.url}');
     final response = await AppHttp.get(
       Uri.parse(playlist.url),
       timeout: const Duration(seconds: 30),
       retries: 3,
     );
+    // ignore: avoid_print
+    print('[M3uParser] HTTP ${response.statusCode}, '
+        '${response.bodyBytes.length}B');
     if (response.statusCode != 200) {
       throw HttpStatusException(response.statusCode, playlist.url);
     }
@@ -35,11 +40,15 @@ class M3uParser {
           'isolate=$useIsolate, tier=${DeviceProfile.tier}');
     }
 
+    final List<ChannelModel> result;
     if (useIsolate) {
-      return compute(_parseInIsolate, _ParseArgs(playlist, content));
+      result = await compute(_parseInIsolate, _ParseArgs(playlist, content));
     } else {
-      return parse(playlist, content);
+      result = parse(playlist, content);
     }
+    // ignore: avoid_print
+    print('[M3uParser] Parsed ${result.length} channels');
+    return result;
   }
 
   static List<ChannelModel> _parseInIsolate(_ParseArgs args) =>
@@ -68,35 +77,43 @@ class M3uParser {
         final rawGroup = _attr(line, 'group-title') ?? 'Genel';
         categories = _splitCategories(rawGroup);
         category = categories.isNotEmpty ? categories.first : 'Genel';
-        streamType = _detectStreamType(category, name);
+        // Geçici tahmin — URL geldikten sonra _detectStreamType yeniden
+        // çağrılır (URL extension/path en güçlü sinyal). 2026-05-11.
+        streamType = _detectStreamType(category, name, '');
         seriesName = '';
         seasonNum  = 0;
         epNum      = 0;
-
-        if (streamType == 'series') {
-          final parsed = _parseSeries(name);
-          seriesName = parsed.$1;
-          seasonNum  = parsed.$2;
-          epNum      = parsed.$3;
-        }
       } else if (!line.startsWith('#') && name != null) {
         final url = line.trim();
-        if (url.isNotEmpty && allowed.contains(streamType ?? 'live')) {
-          channels.add(ChannelModel(
-            id:            _uuid.v5(Namespace.url.value, '${playlist.id}:$url'),
-            playlistId:    playlist.id,
-            name:          name,
-            streamUrl:     url,
-            logoUrl:       logo ?? '',
-            category:      category ?? 'Genel',
-            categoryIds:   categories,
-            streamType:    streamType ?? 'live',
-            tvgId:         tvgId ?? '',
-            sortOrder:     sortIdx++,
-            seriesName:    seriesName ?? '',
-            seasonNumber:  seasonNum,
-            episodeNumber: epNum,
-          ));
+        if (url.isNotEmpty) {
+          // URL bilgisiyle stream type'ı YENİDEN değerlendir — en sağlam
+          // tespit URL extension'dan (.mp4 = movie, .m3u8 = live, vs.) ve
+          // Xtream path segmentinden (/live/, /movie/, /series/) gelir.
+          // 2026-05-11 kullanıcı raporu: "canlı içinde filmler vardı".
+          final finalType = _detectStreamType(category ?? '', name, url);
+          if (finalType == 'series') {
+            final parsed = _parseSeries(name);
+            seriesName = parsed.$1;
+            seasonNum  = parsed.$2;
+            epNum      = parsed.$3;
+          }
+          if (allowed.contains(finalType)) {
+            channels.add(ChannelModel(
+              id:            _uuid.v5(Namespace.url.value, '${playlist.id}:$url'),
+              playlistId:    playlist.id,
+              name:          name,
+              streamUrl:     url,
+              logoUrl:       logo ?? '',
+              category:      category ?? 'Genel',
+              categoryIds:   categories,
+              streamType:    finalType,
+              tvgId:         tvgId ?? '',
+              sortOrder:     sortIdx++,
+              seriesName:    seriesName ?? '',
+              seasonNumber:  seasonNum,
+              episodeNumber: epNum,
+            ));
+          }
         }
         name = null;
       }
@@ -148,34 +165,98 @@ class M3uParser {
   // gidiyordu ve dizi sekmesinde gorunmuyordu. Ayrica series sadece
   // season>0 ile yakalanip "Yargi - Bolum 5" (season=0, episode=5)
   // live'a dusuyordu.
-  static String _detectStreamType(String category, String name) {
+  /// Public wrapper — DB migration / runtime re-classify için kullanılır.
+  /// Mevcut DB'de yanlış stream type'la kaydedilmiş kanallar için reclassify.
+  static String detectStreamType(String category, String name,
+      [String url = '']) => _detectStreamType(category, name, url);
+
+  static String _detectStreamType(String category, String name,
+      [String url = '']) {
     final cat = category.toLowerCase();
     final nm  = name.toLowerCase();
+    final u   = url.toLowerCase();
 
-    // 1) Series — kategori sinyali
-    if (cat.contains('series') || cat.contains('dizi') ||
-        cat.contains('show')   || cat.contains('drama') ||
-        cat.contains('tv shows')) {
-      return 'series';
+    // Sıra kritik (2026-05-11 v3, Kotlin StreamBox referansı):
+    // URL path > Name pattern > URL extension > Kategori > Year > Default.
+    // URL path provider'ın endpoint'i; en güvenilir sinyal.
+
+    // 1) URL path — provider explicit endpoint
+    if (u.isNotEmpty) {
+      if (u.contains('/series/')) return 'series';
+      if (u.contains('/movie/')  || u.contains('/movies/') ||
+          u.contains('/vod/')) {
+        // Series isim pattern movie endpoint'inde de olabilir (Xtream bazı
+        // provider'larda dizileri de /movie/ altına koyar)
+        final p = _parseSeries(name);
+        if (p.$2 > 0 || p.$3 > 0) return 'series';
+        return 'movie';
+      }
+      if (u.contains('/live/')) return 'live';
     }
 
-    // 2) Series — isim pattern: season VEYA episode tespit edildiyse seri
+    // 2) Name pattern — S01E01/Bölüm/Sezon (tartışmasız series)
     final p = _parseSeries(name);
     if (p.$2 > 0 || p.$3 > 0) return 'series';
 
-    // 3) Movie — kategori sinyali
-    if (cat.contains('movie') || cat.contains('film') ||
-        cat.contains('vod')   || cat.contains('cinema')) {
+    // 3) URL extension — VOD dosyaları
+    if (u.isNotEmpty) {
+      if (u.endsWith('.mp4')  || u.endsWith('.mkv')  ||
+          u.endsWith('.avi')  || u.endsWith('.mov')  ||
+          u.endsWith('.webm') || u.endsWith('.flv')  ||
+          u.endsWith('.wmv')  || u.endsWith('.divx') ||
+          u.contains('.mp4?') || u.contains('.mkv?') ||
+          u.contains('.avi?')) {
+        // VOD ext + series kategori → series
+        if (cat.contains('series') || cat.contains('dizi') ||
+            cat.contains('anime')  || cat.contains('cartoon') ||
+            cat.contains('çizgi')  || cat.contains('cizgi')) {
+          return 'series';
+        }
+        return 'movie';
+      }
+      // Live stream extensions/protocols (HLS chunks, RTMP, vs.)
+      if (u.contains('.m3u8') || u.contains('.ts')    ||
+          u.startsWith('rtmp') || u.startsWith('rtsp') ||
+          u.startsWith('udp')) {
+        return 'live';
+      }
+    }
+
+    // 4) Kategori fallback (URL belirsiz olduğunda)
+    if (cat.contains('series') || cat.contains('dizi') ||
+        cat.contains('show')   || cat.contains('tv shows')) {
+      return 'series';
+    }
+    if (cat.contains('movie')    || cat.contains('film')    ||
+        cat.contains('vod')      || cat.contains('cinema')  ||
+        cat.contains('sinema')   ||
+        cat.contains('aksiyon')  || cat.contains('action')  ||
+        cat.contains('komedi')   || cat.contains('comedy')  ||
+        cat.contains('drama')    ||
+        cat.contains('belgesel') || cat.contains('document') ||
+        cat.contains('macera')   || cat.contains('adventure') ||
+        cat.contains('korku')    || cat.contains('horror')  ||
+        cat.contains('romantik') || cat.contains('romance') ||
+        cat.contains('bilim kurgu') || cat.contains('sci-fi') ||
+        cat.contains('sci fi')   || cat.contains('fantastic') ||
+        cat.contains('animasyon')|| cat.contains('animation') ||
+        cat.contains('cartoon')  || cat.contains('çizgi')   ||
+        cat.contains('cizgi')    ||
+        cat.contains('yabanci')  || cat.contains('yabancı') ||
+        cat.contains('yerli')    || cat.contains('turkish') ||
+        cat.contains('foreign')  || cat.contains('gerilim') ||
+        cat.contains('thriller') || cat.contains('savaş')   ||
+        cat.contains('savas')    || cat.contains('war')     ||
+        cat.contains('tarih')    || cat.contains('history') ||
+        cat.contains('western')  || cat.contains('müzikal') ||
+        cat.contains('muzikal')  || cat.contains('musical')) {
       return 'movie';
     }
 
-    // 4) Movie — isim sonu yil parantezi: "Film Adi (2024)"
-    // Series check'ten SONRA: yil parantezli dizi olursa series'e
-    // atanmis olur, buraya gelmez.
-    if (RegExp(r'\(\d{4}\)\s*$').hasMatch(nm)) {
-      return 'movie';
-    }
+    // 5) Year parens "Film Adi (2024)"
+    if (RegExp(r'\(\d{4}\)\s*$').hasMatch(nm)) return 'movie';
 
+    // 6) Default
     return 'live';
   }
 

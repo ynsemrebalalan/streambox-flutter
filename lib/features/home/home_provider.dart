@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/providers/app_providers.dart';
 import '../../data/models/channel_model.dart';
+import '../../data/repositories/channel_repository.dart';
 import '../../data/repositories/settings_repository.dart';
 import '../../data/services/cloud_sync_service.dart';
 import 'home_state.dart';
@@ -13,9 +14,12 @@ final homeProvider = AsyncNotifierProvider<HomeNotifier, HomeState>(
 class HomeNotifier extends AsyncNotifier<HomeState> {
   @override
   Future<HomeState> build() async {
+    // ref.watch → activePlaylistProvider değişimi otomatik rebuild tetikler.
+    // 2026-05-11: ref.read kullanılıyordu, add() sonrası invalidate çalışsa
+    // bile snapshot zamanı state stale olabiliyordu. watch ile reactive.
+    final activeId     = ref.watch(activePlaylistProvider);
     final playlistRepo = ref.read(playlistRepoProvider);
     final playlists    = await playlistRepo.getAll();
-    final activeId     = ref.read(activePlaylistProvider);
 
     final id = activeId.isNotEmpty
         ? activeId
@@ -333,6 +337,17 @@ class HomeNotifier extends AsyncNotifier<HomeState> {
             s.activePlaylistId, type, s.selectedCategory);
       } else {
         channels = await repo.getByType(s.activePlaylistId, type);
+      }
+      // 2026-05-11 v4: Kategori adı bazlı tab filter (Dart-side, hızlı).
+      // Provider yanlış metadata savunması — "Aksiyon Filmleri" kategorili
+      // bir kanal Live tab'a düşemez.
+      channels = channels
+          .where((c) => ChannelRepository.isChannelAllowedForTab(c, type))
+          .toList();
+      // Live için Dart-side priority sort (SQL CASE spinner takılmasına
+      // neden oluyordu, sort buraya taşındı).
+      if (type == 'live') {
+        channels = ChannelRepository.sortLiveChannels(channels);
       }
     }
 

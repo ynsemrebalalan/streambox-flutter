@@ -4,6 +4,7 @@ import '../../core/database/app_database.dart';
 import '../../core/utils/device_tier.dart';
 import '../models/channel_model.dart';
 import '../services/cloud_sync_service.dart';
+import '../services/m3u_parser.dart';
 
 class ChannelRepository {
   static const _table     = 'channels';
@@ -11,6 +12,15 @@ class ChannelRepository {
 
   // KULLANICI KURALI: Provider ne isim verdiyse aynen gosterilir.
   // Runtime title parse / reparse / DB UPDATE YAPILMIYOR.
+
+  /// Tek bir kanalı id ile getir. 2026-05-11: Player favorite button için.
+  Future<ChannelModel?> getById(String id) async {
+    final db = await AppDatabase.instance;
+    final rows = await db.query(_table,
+        where: 'id = ?', whereArgs: [id], limit: 1);
+    if (rows.isEmpty) return null;
+    return ChannelModel.fromMap(rows.first);
+  }
 
   Future<List<ChannelModel>> getByPlaylist(String playlistId) async {
     final db   = await AppDatabase.instance;
@@ -36,18 +46,79 @@ class ChannelRepository {
         sortOrder ASC
       ''';
     }
+    // 2026-05-11 v4: Tüm streamType'lar için basit SQL — sort logic Dart'a
+    // taşındı. Live için CASE WHEN spor priority SQL'i 5000+ kanalda spinner
+    // sonsuz dönmesine sebep oluyordu.
     return 'sortOrder ASC, name ASC';
   }
 
+  /// Dart-side sıralama — Live için BeIN + spor + izleme geçmişi öncelikli.
+  /// 2026-05-11: SQL CASE WHEN spinner takılmasına neden oluyordu, Dart'ta.
+  static int _liveChannelPriority(ChannelModel ch) {
+    final lc = ch.name.toLowerCase();
+    final cc = ch.category.toLowerCase();
+    if (ch.lastWatched > 0) return 0;
+    if (lc.contains('bein')) return 1;
+    if (lc.contains('spor') || lc.contains('sport') ||
+        cc.contains('spor') || cc.contains('sport')) return 2;
+    return 3;
+  }
+
+  /// Live kanal listesi için priority sort uygular. Stable, lastWatched DESC.
+  static List<ChannelModel> sortLiveChannels(List<ChannelModel> channels) {
+    final sorted = List<ChannelModel>.from(channels);
+    sorted.sort((a, b) {
+      final pa = _liveChannelPriority(a);
+      final pb = _liveChannelPriority(b);
+      if (pa != pb) return pa.compareTo(pb);
+      // Aynı öncelikte son izlenen önce
+      final lwCmp = b.lastWatched.compareTo(a.lastWatched);
+      if (lwCmp != 0) return lwCmp;
+      return a.sortOrder.compareTo(b.sortOrder);
+    });
+    return sorted;
+  }
+
   Future<List<ChannelModel>> getByType(String playlistId, String streamType) async {
-    final db   = await AppDatabase.instance;
+    final db = await AppDatabase.instance;
+    // 2026-05-11 v4: SQL basitleştirildi — NOT EXISTS junction çok yavaştı
+    // (5000+ kanal × subquery → spinner sonsuz). Limit ile guard, kategori
+    // adı negatif filter Dart tarafında (_loadChannels) uygulanıyor.
     final rows = await db.query(
       _table,
       where:     'playlistId = ? AND streamType = ?',
       whereArgs: [playlistId, streamType],
       orderBy:   _orderFor(streamType),
+      limit:     2000,
     );
     return rows.map(ChannelModel.fromMap).toList();
+  }
+
+  /// Tab'a göre kategori adı filtresi — Dart tarafında, kanal listesini
+  /// daraltır. SQL'de NOT EXISTS yavaş olduğu için buraya taşındı.
+  static bool isChannelAllowedForTab(ChannelModel ch, String streamType) {
+    final cats = ch.categoryIds.isNotEmpty
+        ? ch.categoryIds.map((c) => c.toLowerCase()).toList()
+        : [ch.category.toLowerCase()];
+
+    bool any(List<String> keywords) =>
+        cats.any((c) => keywords.any((k) => c.contains(k)));
+
+    switch (streamType) {
+      case 'live':
+        // Live tab: kategori adı film/dizi içeriyorsa gizle
+        return !any(const ['film', 'movie', 'vod', 'dizi', 'series']);
+      case 'movie':
+        // Movie tab: kategori adı spor/haber/dizi içeriyorsa gizle
+        return !any(const [
+          'spor', 'sport', 'haber', 'news', 'dizi', 'series',
+        ]);
+      case 'series':
+        // Series tab: kategori adı spor/haber içeriyorsa gizle
+        return !any(const ['spor', 'sport', 'haber', 'news']);
+      default:
+        return true;
+    }
   }
 
   Future<List<ChannelModel>> getByCategory(
@@ -73,7 +144,9 @@ class ChannelRepository {
 
   Future<List<String>> getCategories(String playlistId, String streamType) async {
     final db = await AppDatabase.instance;
-    // v6: junction üzerinden DISTINCT — çoklu kategori varsa hepsi görünür.
+    // 2026-05-11 v4: Basit SQL + Dart filter+sort. Önceki versiyonlarda
+    // CASE WHEN priority SQL spinner sonsuz dönmesine neden oluyordu.
+
     final rows = await db.rawQuery('''
       SELECT DISTINCT cc.category FROM $_catTable cc
       INNER JOIN channels c
@@ -81,7 +154,94 @@ class ChannelRepository {
       WHERE cc.playlistId = ? AND c.streamType = ?
       ORDER BY cc.category COLLATE NOCASE ASC
     ''', [playlistId, streamType]);
-    return rows.map((r) => r['category'] as String).toList();
+
+    // Dart filter: kategori adı bazlı negatif filter (yanlış metadata savunması)
+    final allCats = rows.map((r) => r['category'] as String).toList();
+    final filtered = allCats.where((cat) {
+      final lc = cat.toLowerCase();
+      return _isCategoryNameAllowedForTab(lc, streamType);
+    }).toList();
+
+    // Live için Dart-side priority sort: BeIN > spor > diğer (alfabetik)
+    if (streamType == 'live') {
+      filtered.sort((a, b) {
+        final la = a.toLowerCase();
+        final lb = b.toLowerCase();
+        int score(String s) {
+          if (s.contains('bein')) return 0;
+          if (s.contains('spor') || s.contains('sport')) return 1;
+          return 2;
+        }
+        final cmp = score(la).compareTo(score(lb));
+        if (cmp != 0) return cmp;
+        return la.compareTo(lb);
+      });
+    }
+    return filtered;
+  }
+
+  /// Kategori adı tab için uygun mu — kullanıcı görür perspektifi.
+  static bool _isCategoryNameAllowedForTab(String catLower, String streamType) {
+    switch (streamType) {
+      case 'live':
+        return !(catLower.contains('film') ||
+            catLower.contains('movie') ||
+            catLower.contains('vod') ||
+            catLower.contains('dizi') ||
+            catLower.contains('series'));
+      case 'movie':
+        return !(catLower.contains('dizi') ||
+            catLower.contains('series') ||
+            catLower.contains('spor') ||
+            catLower.contains('sport') ||
+            catLower.contains('haber') ||
+            catLower.contains('news'));
+      case 'series':
+        return !(catLower.contains('spor') ||
+            catLower.contains('sport') ||
+            catLower.contains('haber') ||
+            catLower.contains('news'));
+      default:
+        return true;
+    }
+  }
+
+  /// streamType'a göre kategori adı negatif filter — provider yanlış
+  /// metadata'ya karşı UX savunması. Adında "film" geçen bir kategori
+  /// Live tab'da görünmemeli, "spor" geçen Movie tab'da görünmemeli.
+  static String _categoryNameExcludeClause(String streamType) {
+    switch (streamType) {
+      case 'live':
+        return '''
+          AND LOWER(cc.category) NOT LIKE '%film%'
+          AND LOWER(cc.category) NOT LIKE '%movie%'
+          AND LOWER(cc.category) NOT LIKE '%vod%'
+          AND LOWER(cc.category) NOT LIKE '%dizi%'
+          AND LOWER(cc.category) NOT LIKE '%series%'
+        ''';
+      case 'movie':
+        return '''
+          AND LOWER(cc.category) NOT LIKE '%dizi%'
+          AND LOWER(cc.category) NOT LIKE '%series%'
+          AND LOWER(cc.category) NOT LIKE '%spor%'
+          AND LOWER(cc.category) NOT LIKE '%sport%'
+          AND LOWER(cc.category) NOT LIKE '%haber%'
+          AND LOWER(cc.category) NOT LIKE '%news%'
+        ''';
+      case 'series':
+        return '''
+          AND (
+            LOWER(cc.category) NOT LIKE '%film%'
+            OR LOWER(cc.category) LIKE '%dizi%'
+            OR LOWER(cc.category) LIKE '%series%'
+          )
+          AND LOWER(cc.category) NOT LIKE '%spor%'
+          AND LOWER(cc.category) NOT LIKE '%sport%'
+          AND LOWER(cc.category) NOT LIKE '%haber%'
+        ''';
+      default:
+        return '';
+    }
   }
 
   Future<List<ChannelModel>> getFavorites(String playlistId) async {
@@ -130,6 +290,22 @@ class ChannelRepository {
         LIMIT ?
       ''', [playlistId, playlistId, limit]);
       return rows.map(ChannelModel.fromMap).toList();
+    }
+
+    // 2026-05-11 v4: Live için basit SQL + Dart sort (spinner fix).
+    // Önceki versiyonda CASE WHEN sort çok yavaştı.
+    if (streamType == 'live') {
+      // Daha fazla çek (limit × 3), Dart sort ile priority uygula, sonra kes
+      final rows = await db.query(
+        _table,
+        where:     'playlistId = ? AND streamType = ?',
+        whereArgs: [playlistId, 'live'],
+        orderBy:   'rowid DESC',
+        limit:     limit * 3,
+      );
+      final list = rows.map(ChannelModel.fromMap).toList();
+      final sorted = sortLiveChannels(list);
+      return sorted.take(limit).toList();
     }
 
     final rows = await db.query(
@@ -370,6 +546,41 @@ class ChannelRepository {
   }
 
   /// FTS4 indexini channels tablosundan yeniden olusturur.
+  /// Mevcut DB'deki tüm kanalları yeni `_detectStreamType` kuralları ile
+  /// yeniden classify et. App bootstrap'ta bir kere çalışır (one-time
+  /// migration, settings flag ile guard). 2026-05-11: eski yanlış
+  /// classify edilmiş kanallar (film canlı'da görünüyordu) için kritik.
+  /// Performans: chunk'lı transaction, 5000 kanal ~2sn.
+  Future<int> reclassifyAll() async {
+    final db = await AppDatabase.instance;
+    final rows = await db.query(_table,
+        columns: ['id', 'name', 'category', 'streamUrl', 'streamType']);
+    if (rows.isEmpty) return 0;
+    int changed = 0;
+    await db.transaction((txn) async {
+      const batchSize = 200;
+      for (var i = 0; i < rows.length; i += batchSize) {
+        final end = (i + batchSize < rows.length) ? i + batchSize : rows.length;
+        final batch = txn.batch();
+        for (final row in rows.sublist(i, end)) {
+          final name    = (row['name'] as String?) ?? '';
+          final cat     = (row['category'] as String?) ?? '';
+          final url     = (row['streamUrl'] as String?) ?? '';
+          final oldType = (row['streamType'] as String?) ?? 'live';
+          final newType = M3uParser.detectStreamType(cat, name, url);
+          if (newType != oldType) {
+            batch.update(_table, {'streamType': newType},
+                where: 'id = ?', whereArgs: [row['id']]);
+            changed++;
+          }
+        }
+        await batch.commit(noResult: true);
+      }
+    });
+    debugPrint('[ChannelRepo] reclassified $changed/${rows.length} channels');
+    return changed;
+  }
+
   /// replaceAllForPlaylist sonrasi cagirilir.
   Future<void> rebuildFts() async {
     final db = await AppDatabase.instance;

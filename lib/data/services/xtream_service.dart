@@ -142,11 +142,8 @@ class XtreamService {
   static Future<List<ChannelModel>> fetchAll(PlaylistModel p) async {
     final allowed = p.allowedTypes.split(',');
     final parallel = DeviceProfile.parallelFetch;
-
-    if (kDebugMode) {
-      debugPrint('[Xtream] fetchAll: parallel=$parallel, '
-          'allowed=$allowed, tier=${DeviceProfile.tier}');
-    }
+    // ignore: avoid_print
+    print('[Xtream] fetchAll: url=${p.url}, allowed=$allowed, parallel=$parallel');
 
     if (parallel) {
       // Mid/High: 3 endpoint paralel cekilir (3x hizlanma).
@@ -155,13 +152,18 @@ class XtreamService {
       if (allowed.contains('movie'))  futures.add(fetchVod(p));
       if (allowed.contains('series')) futures.add(fetchSeries(p));
       final lists = await Future.wait(futures, eagerError: false);
-      return lists.expand((l) => l).toList(growable: false);
+      final result = lists.expand((l) => l).toList(growable: false);
+      // ignore: avoid_print
+      print('[Xtream] fetchAll done: ${result.length} channels');
+      return result;
     } else {
       // Low: sirayla cek — RAM/eMMC baskisi azalir, donma olmaz.
       final all = <ChannelModel>[];
       if (allowed.contains('live'))   all.addAll(await fetchLive(p));
       if (allowed.contains('movie'))  all.addAll(await fetchVod(p));
       if (allowed.contains('series')) all.addAll(await fetchSeries(p));
+      // ignore: avoid_print
+      print('[Xtream] fetchAll done: ${all.length} channels');
       return all;
     }
   }

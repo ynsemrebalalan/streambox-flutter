@@ -10,6 +10,7 @@ import 'core/router/app_router.dart';
 import 'core/theme/app_theme.dart';
 import 'core/utils/device_tier.dart';
 import 'core/utils/secure_storage.dart';
+import 'data/repositories/channel_repository.dart';
 import 'data/repositories/settings_repository.dart';
 import 'data/services/demo_seed_service.dart';
 import 'features/ads/ads_service.dart';
@@ -90,6 +91,32 @@ Future<void> _bootstrapInBackground() async {
   unawaited(_initAdMob());
 
   unawaited(DemoSeedService.seedIfNeeded());
+
+  // One-time DB migration (2026-05-11): mevcut yanlış classify edilmiş
+  // kanalları yeni _detectStreamType ile yeniden değerlendir. Settings
+  // flag ile bir kere çalışır.
+  unawaited(_runStreamTypeMigration());
+}
+
+Future<void> _runStreamTypeMigration() async {
+  try {
+    final settings = SettingsRepository();
+    // v3 zorla yeniden classify (URL-first mantık ile). Eski v2 flag varsa
+    // bile v3 ayrı kontrol — yeni mantık tüm DB'yi yeniden değerlendirir.
+    final done = await settings.get(SettingsKeys.streamTypeMigratedV3);
+    if (done == 'true') return;
+    final repo = ChannelRepository();
+    // ignore: avoid_print
+    print('[migration] streamType v3 başlıyor...');
+    final changed = await repo.reclassifyAll().timeout(
+        const Duration(seconds: 60));
+    // ignore: avoid_print
+    print('[migration] streamType v3: $changed channels reclassified');
+    await settings.set(SettingsKeys.streamTypeMigratedV3, 'true');
+  } catch (e) {
+    // ignore: avoid_print
+    print('[migration] streamType v3 failed: $e');
+  }
 }
 
 Future<void> _initAdMob() async {

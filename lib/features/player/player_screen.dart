@@ -6,8 +6,10 @@ import 'package:media_kit/media_kit.dart';
 import 'package:media_kit_video/media_kit_video.dart';
 import 'package:screen_brightness/screen_brightness.dart';
 import '../../core/analytics/analytics.dart';
+import '../../core/providers/app_providers.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_tokens.dart';
+import '../../data/models/channel_model.dart';
 import '../../data/repositories/settings_repository.dart';
 import '../../l10n/generated/app_localizations.dart';
 import '../billing/providers/purchases_providers.dart';
@@ -675,6 +677,8 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
                   onFitChange:      (f) => setState(() => _videoFit = f),
                   onPip:            _enterPip,
                   onAirplay:        _showAirplay,
+                  streamType:       widget.streamType,
+                  channelId:        widget.channelId,
                 ),
               ),
             // Swipe gesture feedback overlay — sol yarı parlaklık, sağ yarı ses
@@ -707,6 +711,8 @@ class _ControlsOverlay extends StatefulWidget {
   final ValueChanged<BoxFit> onFitChange;
   final VoidCallback onPip;
   final VoidCallback onAirplay;
+  final String      streamType;       // 'live' | 'movie' | 'series'
+  final String      channelId;        // Favori toggle için (2026-05-11)
 
   const _ControlsOverlay({
     required this.player,
@@ -721,6 +727,8 @@ class _ControlsOverlay extends StatefulWidget {
     required this.onFitChange,
     required this.onPip,
     required this.onAirplay,
+    required this.streamType,
+    required this.channelId,
   });
 
   @override
@@ -796,6 +804,11 @@ class _ControlsOverlayState extends State<_ControlsOverlay> {
                       onTap: widget.onPip,
                     ),
                   ),
+                  // Favori toggle — 2026-05-11 kullanıcı isteği.
+                  FocusTraversalOrder(
+                    order: const NumericFocusOrder(1.9),
+                    child: _FavoriteButton(channelId: widget.channelId),
+                  ),                  // _ControlsOverlay scope — widget.channelId burada available
                   FocusTraversalOrder(
                     order: const NumericFocusOrder(2),
                     child: _TvIconButton(
@@ -861,7 +874,10 @@ class _ControlsOverlayState extends State<_ControlsOverlay> {
               stream: widget.player.stream.duration,
               builder: (ctx, durSnap) {
                 final duration = durSnap.data ?? Duration.zero;
-                final isLive   = duration == Duration.zero;
+                // 'live' stream_type'ı kesin canlıdır. VOD/movie/series'te
+                // duration yüklenmeden 0 olabilir, o durumda "Canlı" badge'i
+                // basmayalım — kullanıcı raporu 2026-05-11.
+                final isLive   = widget.streamType == 'live';
 
                 return Padding(
                   padding: const EdgeInsets.fromLTRB(
@@ -1031,6 +1047,72 @@ class _ControlsOverlayState extends State<_ControlsOverlay> {
     final m  = d.inMinutes.remainder(60).toString().padLeft(2, '0');
     final s  = d.inSeconds.remainder(60).toString().padLeft(2, '0');
     return h > 0 ? '$h:$m:$s' : '$m:$s';
+  }
+}
+
+// ── Favori toggle butonu (player üst bar) ───────────────────────────────────
+//
+// 2026-05-11: Channel ID ile DB'den isFavorite okuyup toggle eder. Player'da
+// oynayan kanal listede ne durumda olursa olsun bağımsız çalışır.
+
+class _FavoriteButton extends ConsumerStatefulWidget {
+  final String channelId;
+  const _FavoriteButton({required this.channelId});
+
+  @override
+  ConsumerState<_FavoriteButton> createState() => _FavoriteButtonState();
+}
+
+class _FavoriteButtonState extends ConsumerState<_FavoriteButton> {
+  bool? _isFavorite;
+  ChannelModel? _channel;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadChannel();
+  }
+
+  Future<void> _loadChannel() async {
+    try {
+      final repo = ref.read(channelRepoProvider);
+      final ch = await repo.getById(widget.channelId);
+      if (mounted) {
+        setState(() {
+          _channel = ch;
+          _isFavorite = ch?.isFavorite ?? false;
+        });
+      }
+    } catch (_) {
+      if (mounted) setState(() => _isFavorite = false);
+    }
+  }
+
+  Future<void> _toggle() async {
+    if (_channel == null || _isFavorite == null) return;
+    final newFav = !_isFavorite!;
+    setState(() => _isFavorite = newFav);
+    try {
+      await ref
+          .read(channelRepoProvider)
+          .toggleFavorite(_channel!.id, newFav);
+      _channel = _channel!.copyWith(isFavorite: newFav);
+      // Home liste cache'i de güncellenmeli
+      ref.invalidate(homeProvider);
+    } catch (_) {
+      // Hata olursa state'i geri al
+      if (mounted) setState(() => _isFavorite = !newFav);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final fav = _isFavorite ?? false;
+    return _TvIconButton(
+      icon: fav ? Icons.star : Icons.star_border,
+      tooltip: fav ? 'Favoriden Çıkar' : 'Favorilere Ekle',
+      onTap: _toggle,
+    );
   }
 }
 

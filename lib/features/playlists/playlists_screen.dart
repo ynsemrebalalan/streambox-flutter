@@ -27,6 +27,10 @@ final playlistsProvider =
 class PlaylistsNotifier extends AsyncNotifier<List<PlaylistModel>> {
   final _syncing = <String>{};
   final _lastError = <String, String>{};
+  // Son sync'in kaç kanal döndürdüğü — UI'da SnackBar ile gösterilir,
+  // logcat erişimi olmadığında teşhis için kritik.
+  int _lastSyncCount = 0;
+  int get lastSyncCount => _lastSyncCount;
 
   bool isSyncing(String id) => _syncing.contains(id);
   String? lastError(String id) => _lastError[id];
@@ -49,11 +53,30 @@ class PlaylistsNotifier extends AsyncNotifier<List<PlaylistModel>> {
     final saved = await repo.insert(p);
     state = AsyncData([...?state.value, saved]);
 
-    // If first playlist → set active and sync
     final active = ref.read(activePlaylistProvider);
     if (active.isEmpty) {
       ref.read(activePlaylistProvider.notifier).set(saved.id);
+    }
+
+    // Auto-sync: 2026-05-11 raporu — daha önce sadece ilk playlist sync
+    // yapılırdı, sonraki playlist'lerde kullanıcı manuel "Yenile" basmak
+    // zorundaydı. Şimdi her eklenenden sonra otomatik fetch tetiklenir,
+    // spinner UI'da gösterilir (_syncing set'i), hata _lastError'a düşer.
+    _syncing.add(saved.id);
+    _lastError.remove(saved.id);
+    if (state.value != null) state = AsyncData(List.of(state.value!));
+    try {
       await _doSync(saved);
+      // Home channel listesi cached — yeni kanallar için rebuild.
+      ref.invalidate(homeProvider);
+    } catch (e) {
+      _lastError[saved.id] = e.toString();
+      // Hata UI'da görünsün: dialog _submit catch'inde yakalanır,
+      // SnackBar gösterilir. 2026-05-11 raporu.
+      rethrow;
+    } finally {
+      _syncing.remove(saved.id);
+      await reload();
     }
   }
 
@@ -103,6 +126,11 @@ class PlaylistsNotifier extends AsyncNotifier<List<PlaylistModel>> {
   }
 
   Future<void> delete(String id) async {
+    // Optimistic UI: state'ten hemen çıkar, kullanıcı silindiğini anında görür.
+    // DB silme arka planda devam eder. 2026-05-11 raporu (ekran donuyor).
+    final filtered = (state.value ?? []).where((p) => p.id != id).toList();
+    state = AsyncData(filtered);
+
     final repo = ref.read(playlistRepoProvider);
     await repo.delete(id);
     await ref.read(channelRepoProvider).deleteByPlaylist(id);
@@ -111,15 +139,21 @@ class PlaylistsNotifier extends AsyncNotifier<List<PlaylistModel>> {
       final all = await repo.getAll();
       ref.read(activePlaylistProvider.notifier).set(all.firstOrNull?.id ?? '');
     }
-    await reload();
+    // Home'daki kanal listesi bu playlist'ten besleniyordu — rebuild.
+    ref.invalidate(homeProvider);
   }
 
   Future<void> _doSync(PlaylistModel p) async {
+    // ignore: avoid_print
+    print('[_doSync] start: id=${p.id} type=${p.type} url=${p.url}');
     // Once fetch+parse yap. Basarisiz olursa throw eder ve DB'ye dokunulmaz,
     // yani eski kanallar olduğu gibi kalır (stale-but-usable cache).
     final channels = p.type == 'xtream'
         ? await XtreamService.fetchAll(p)
         : await M3uParser.fetchAndParse(p);
+    // ignore: avoid_print
+    print('[_doSync] fetched ${channels.length} channels');
+    _lastSyncCount = channels.length;
 
     // Bos cevap geldiyse (provider kismi hata) eski veriyi koruma.
     // Bu mesaj _errorToUserMessage'a dusup playlistsErrorUpdateGeneric'e cevrilir.
@@ -131,6 +165,8 @@ class PlaylistsNotifier extends AsyncNotifier<List<PlaylistModel>> {
     // Transaction icinde, crash'te yarim veri olusmaz.
     final repo = ref.read(channelRepoProvider);
     await repo.replaceAllForPlaylist(p.id, channels);
+    // ignore: avoid_print
+    print('[_doSync] DB write done');
   }
 }
 
@@ -307,7 +343,7 @@ class PlaylistsScreen extends ConsumerWidget {
       if (!allowed || !context.mounted) return;
     }
     if (!context.mounted) return;
-    showDialog(
+    final added = await showDialog<bool>(
       context: context,
       builder: (_) => FocusTraversalGroup(
         policy: OrderedTraversalPolicy(),
@@ -316,6 +352,20 @@ class PlaylistsScreen extends ConsumerWidget {
         ),
       ),
     );
+    // Playlist başarıyla eklendi (sync bitti) → Home'a yönlendir, kullanıcı
+    // kanalları görsün. İptal'de added null/false, playlist screen'de kal.
+    if (added == true && context.mounted) {
+      // Diagnostic: kullanıcıya sync'in kaç kanal döndürdüğünü göster.
+      // Logcat erişimi yoksa bug teşhisi için kritik. 2026-05-11.
+      final count = ref.read(playlistsProvider.notifier).lastSyncCount;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('$count kanal yüklendi'),
+          duration: const Duration(seconds: 4),
+        ),
+      );
+      context.go(AppRoutes.home);
+    }
   }
 
   void _confirmDelete(BuildContext context, WidgetRef ref, PlaylistModel p) {
@@ -568,7 +618,8 @@ class _AddPlaylistDialogState extends State<_AddPlaylistDialog> {
       );
       await widget.onAdd(p);
       Analytics.playlistAdded(type: _type, channelCount: 0);
-      if (mounted) Navigator.pop(context);
+      // pop(context, true) → _showAddDialog awaiter true alır, Home'a yönlendirir.
+      if (mounted) Navigator.pop(context, true);
     } catch (e) {
       setState(() { _loading = false; _error = l.errorWithDetails('$e'); });
     }
