@@ -433,6 +433,16 @@
   "settingsAdsRemoved": "Pro: no ads",
   "settingsAdsFreeNotice": "Free version shows a banner at the bottom. Subscribe to Pro for an ad-free experience.",
 
+  "settingsProSection":     "Pro Features",
+  "settingsContentSection": "Content",
+  "settingsPlayerSection":  "Player",
+  "settingsLegalNotice":    "Legal Notice",
+  "settingsDataDeletion":   "Data Deletion Request",
+  "settingsDataDeletionSubtitle": "Account and data removal request",
+  "settingsTapToSignIn":    "Sign in or create an account",
+  "commonHide":             "Hide",
+  "commonShow":             "Show",
+
   "profileSwitcherTitle": "Profiles",
   "profileDefaultName": "Default",
   "profileAdd": "New Profile",

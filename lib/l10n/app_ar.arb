@@ -433,6 +433,16 @@
   "settingsAdsRemoved": "Pro: بدون إعلانات",
   "settingsAdsFreeNotice": "الإصدار المجاني يعرض إعلانًا في الأسفل. اشترك في Pro لتجربة بدون إعلانات.",
 
+  "settingsProSection":     "مزايا Pro",
+  "settingsContentSection": "المحتوى",
+  "settingsPlayerSection":  "المشغّل",
+  "settingsLegalNotice":    "إشعار قانوني",
+  "settingsDataDeletion":   "طلب حذف البيانات",
+  "settingsDataDeletionSubtitle": "طلب إزالة الحساب والبيانات",
+  "settingsTapToSignIn":    "سجّل الدخول أو أنشئ حسابًا",
+  "commonHide":             "إخفاء",
+  "commonShow":             "إظهار",
+
   "profileSwitcherTitle": "الملفات الشخصية",
   "profileDefaultName": "افتراضي",
   "profileAdd": "ملف جديد",

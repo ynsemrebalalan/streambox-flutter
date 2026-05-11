@@ -1100,6 +1100,33 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsAdsFreeNotice => 'Free version shows a banner at the bottom. Subscribe to Pro for an ad-free experience.';
 
   @override
+  String get settingsProSection => 'Pro Features';
+
+  @override
+  String get settingsContentSection => 'Content';
+
+  @override
+  String get settingsPlayerSection => 'Player';
+
+  @override
+  String get settingsLegalNotice => 'Legal Notice';
+
+  @override
+  String get settingsDataDeletion => 'Data Deletion Request';
+
+  @override
+  String get settingsDataDeletionSubtitle => 'Account and data removal request';
+
+  @override
+  String get settingsTapToSignIn => 'Sign in or create an account';
+
+  @override
+  String get commonHide => 'Hide';
+
+  @override
+  String get commonShow => 'Show';
+
+  @override
   String get profileSwitcherTitle => 'Profiles';
 
   @override

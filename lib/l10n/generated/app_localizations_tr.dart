@@ -1100,6 +1100,33 @@ class AppLocalizationsTr extends AppLocalizations {
   String get settingsAdsFreeNotice => 'Free sürümde alt kısımda banner reklam görüntülenir. Pro abonelikle kalıcı reklamsız.';
 
   @override
+  String get settingsProSection => 'Pro Özellikler';
+
+  @override
+  String get settingsContentSection => 'İçerik';
+
+  @override
+  String get settingsPlayerSection => 'Oynatıcı';
+
+  @override
+  String get settingsLegalNotice => 'Yasal Bildirim';
+
+  @override
+  String get settingsDataDeletion => 'Veri Silme Talebi';
+
+  @override
+  String get settingsDataDeletionSubtitle => 'Hesap ve veri silme talebi';
+
+  @override
+  String get settingsTapToSignIn => 'Giriş yap veya hesap oluştur';
+
+  @override
+  String get commonHide => 'Gizle';
+
+  @override
+  String get commonShow => 'Göster';
+
+  @override
   String get profileSwitcherTitle => 'Profiller';
 
   @override

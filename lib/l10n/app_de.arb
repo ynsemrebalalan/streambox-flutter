@@ -433,6 +433,16 @@
   "settingsAdsRemoved": "Pro: keine Werbung",
   "settingsAdsFreeNotice": "Die Free-Version zeigt unten ein Banner. Mit Pro werbefrei genießen.",
 
+  "settingsProSection":     "Pro-Funktionen",
+  "settingsContentSection": "Inhalt",
+  "settingsPlayerSection":  "Player",
+  "settingsLegalNotice":    "Rechtlicher Hinweis",
+  "settingsDataDeletion":   "Datenlöschung beantragen",
+  "settingsDataDeletionSubtitle": "Konto- und Datenentfernungsanfrage",
+  "settingsTapToSignIn":    "Anmelden oder Konto erstellen",
+  "commonHide":             "Ausblenden",
+  "commonShow":             "Einblenden",
+
   "profileSwitcherTitle": "Profile",
   "profileDefaultName": "Standard",
   "profileAdd": "Neues Profil",

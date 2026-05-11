@@ -460,6 +460,16 @@
   "settingsAdsRemoved": "Pro: reklam yok",
   "settingsAdsFreeNotice": "Free sürümde alt kısımda banner reklam görüntülenir. Pro abonelikle kalıcı reklamsız.",
 
+  "settingsProSection":     "Pro Özellikler",
+  "settingsContentSection": "İçerik",
+  "settingsPlayerSection":  "Oynatıcı",
+  "settingsLegalNotice":    "Yasal Bildirim",
+  "settingsDataDeletion":   "Veri Silme Talebi",
+  "settingsDataDeletionSubtitle": "Hesap ve veri silme talebi",
+  "settingsTapToSignIn":    "Giriş yap veya hesap oluştur",
+  "commonHide":             "Gizle",
+  "commonShow":             "Göster",
+
   "profileSwitcherTitle": "Profiller",
   "profileDefaultName": "Varsayılan",
   "profileAdd": "Yeni Profil",

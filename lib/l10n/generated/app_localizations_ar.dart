@@ -1100,6 +1100,33 @@ class AppLocalizationsAr extends AppLocalizations {
   String get settingsAdsFreeNotice => 'الإصدار المجاني يعرض إعلانًا في الأسفل. اشترك في Pro لتجربة بدون إعلانات.';
 
   @override
+  String get settingsProSection => 'مزايا Pro';
+
+  @override
+  String get settingsContentSection => 'المحتوى';
+
+  @override
+  String get settingsPlayerSection => 'المشغّل';
+
+  @override
+  String get settingsLegalNotice => 'إشعار قانوني';
+
+  @override
+  String get settingsDataDeletion => 'طلب حذف البيانات';
+
+  @override
+  String get settingsDataDeletionSubtitle => 'طلب إزالة الحساب والبيانات';
+
+  @override
+  String get settingsTapToSignIn => 'سجّل الدخول أو أنشئ حسابًا';
+
+  @override
+  String get commonHide => 'إخفاء';
+
+  @override
+  String get commonShow => 'إظهار';
+
+  @override
   String get profileSwitcherTitle => 'الملفات الشخصية';
 
   @override

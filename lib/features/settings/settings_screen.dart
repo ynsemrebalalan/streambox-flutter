@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:package_info_plus/package_info_plus.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../core/providers/app_providers.dart';
 import '../../core/router/app_router.dart';
 import '../../core/theme/app_tokens.dart';
@@ -127,6 +128,19 @@ class SettingsScreenNotifier extends AsyncNotifier<SettingsState> {
 }
 
 // ── Screen ────────────────────────────────────────────────────────────────────
+//
+// Yeniden tasarim notlari (Kotlin paritesi):
+//   - ProfileHeaderCard en uste tasindi (avatar + email + Pro CTA)
+//     ⇒ ayri "Hesap" section'i kaldirildi (duplicate idi)
+//   - 7 sectio renkli ikon dairesi olan SectionHeader ile gruplandi
+//   - Sectionlar collapsible (CollapsibleSection): Pro, Icerik, Gorunum, EPG,
+//     Altyazi, Oynatici, Hakkinda. Kullanici istemedigi alani sakliyor.
+//   - Pro features (Watchlist/Theme/Parental/CloudSync/Profiller) Hakkinda'dan
+//     ayrildi → kendi "Pro Ozellikler" section'i (gold tema)
+//   - Playlist Yonetimi + Kategori Filtresi "Icerik" section'i
+//   - PiP + Reklamsiz bilgi "Oynatici" section'inda birlestirildi
+//   - Hakkinda: sadece versiyon + Yasal Bildirim linki + Veri Silme linki
+// ─────────────────────────────────────────────────────────────────────────────
 
 class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({super.key});
@@ -136,11 +150,7 @@ class SettingsScreen extends ConsumerStatefulWidget {
 }
 
 class _SettingsScreenState extends ConsumerState<SettingsScreen> {
-  final _epgCtrl          = TextEditingController();
-  final _openAiKeyCtrl    = TextEditingController();
-  final _openAiLangCtrl   = TextEditingController();
-  final _groqProxyUrlCtrl = TextEditingController();
-  final _groqSecretCtrl   = TextEditingController();
+  final _epgCtrl = TextEditingController();
   bool _initialized = false;
   String _appVersion = '';
 
@@ -168,11 +178,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           body: Center(child: Text(l.errorWithDetails('$e')))),
       data: (state) {
         if (!_initialized) {
-          _epgCtrl.text          = state.epgUrl;
-          _openAiKeyCtrl.text    = state.openAiApiKey;
-          _openAiLangCtrl.text   = state.openAiLanguage;
-          _groqProxyUrlCtrl.text = state.groqProxyUrl;
-          _groqSecretCtrl.text   = state.groqProxySecret;
+          _epgCtrl.text = state.epgUrl;
           _initialized = true;
         }
         return _buildScaffold(context, state);
@@ -181,8 +187,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   }
 
   Widget _buildScaffold(BuildContext context, SettingsState state) {
-    final cs = Theme.of(context).colorScheme;
-    final themeMode = ref.watch(themeModeProvider);
     final l = AppLocalizations.of(context);
 
     return Scaffold(
@@ -215,326 +219,146 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       body: ResponsiveCenter(
         maxWidth: Responsive.formMaxWidth(context),
         child: ListView(
-        padding: const EdgeInsets.all(Spacing.lg),
-        children: [
-          // ── Appearance ───────────────────────────────────────────────────
-          _SectionHeader(title: l.settingsAppearanceSection),
-          Card(
-            child: Column(
-              children: [
-                RadioListTile<ThemeMode>(
-                  title:   Text(l.settingsThemeDark),
-                  value:   ThemeMode.dark,
-                  groupValue: themeMode,
-                  onChanged: (v) =>
-                      ref.read(themeModeProvider.notifier).setMode(v!),
-                ),
-                RadioListTile<ThemeMode>(
-                  title:   Text(l.settingsThemeLight),
-                  value:   ThemeMode.light,
-                  groupValue: themeMode,
-                  onChanged: (v) =>
-                      ref.read(themeModeProvider.notifier).setMode(v!),
-                ),
-                RadioListTile<ThemeMode>(
-                  title:   Text(l.settingsThemeSystem),
-                  value:   ThemeMode.system,
-                  groupValue: themeMode,
-                  onChanged: (v) =>
-                      ref.read(themeModeProvider.notifier).setMode(v!),
-                ),
-              ],
+          padding: const EdgeInsets.all(Spacing.lg),
+          children: [
+            // ── Profile Header (Hesap section'i bunla replace edildi) ─────
+            const _ProfileHeaderCard(),
+            const SizedBox(height: Spacing.xl),
+
+            // ── Pro Features (gold) ────────────────────────────────────
+            _SectionHeader(
+              title: l.settingsProSection,
+              icon:  Icons.workspace_premium,
+              color: const Color(0xFFFFB300),
             ),
-          ),
-
-          const SizedBox(height: Spacing.xl),
-
-          // ── Dil / Language ───────────────────────────────────────────────
-          // Önceki sürümde Görünüm Card'ı içinde Theme radio'larından sonra
-          // Divider altında yer alıyordu → kullanıcı geri bildirimi: "yok
-          // gibi görünüyor". Kendi başlıklı Card olarak ayrı bölüm yapıldı.
-          _SectionHeader(title: l.language),
-          Card(
-            child: ListTile(
-              leading:  const Icon(Icons.language),
-              title:    Text(l.language),
-              subtitle: Text(_localeLabel(l, ref.watch(localeProvider))),
-              trailing: const Icon(Icons.arrow_drop_down),
-              onTap:    () => _showLanguagePicker(context, ref, l),
-            ),
-          ),
-
-          const SizedBox(height: Spacing.xl),
-
-          // ── EPG ──────────────────────────────────────────────────────────
-          _SectionHeader(title: l.settingsEpgSection),
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(Spacing.lg),
-              child: Column(
-                children: [
-                  TextField(
-                    controller: _epgCtrl,
-                    decoration: InputDecoration(
-                      labelText: l.settingsEpgUrlLabel,
-                      hintText:  'https://epg.example.com/epg.xml.gz',
-                      border:    const OutlineInputBorder(),
-                      prefixIcon: const Icon(Icons.rss_feed),
+            _CollapsibleSection(
+              storageKey: 'sec_pro',
+              child: Card(
+                child: Column(
+                  children: [
+                    ListTile(
+                      leading: const Icon(Icons.bookmark_outline),
+                      title:   Text(l.watchlistTitle),
+                      trailing: const Icon(Icons.chevron_right),
+                      onTap:   () => context.push(AppRoutes.watchlist),
                     ),
-                    onChanged: (v) =>
-                        ref.read(settingsScreenProvider.notifier).setEpgUrl(v),
-                  ),
-                  const SizedBox(height: Spacing.md),
-                  // Hazır kaynaklar — Türkiye XMLTV listesi tek tıkla doldurulur
-                  Align(
-                    alignment: AlignmentDirectional.centerStart,
-                    child: Text(
-                      '${l.settingsEpgPresetsTitle}:',
-                      style: TextStyle(
-                        color: cs.onSurfaceVariant,
-                        fontSize: TextSize.caption,
-                      ),
+                    ListTile(
+                      leading: const Icon(Icons.color_lens_outlined),
+                      title:   Text(l.themePickerTitle),
+                      trailing: const Icon(Icons.chevron_right),
+                      onTap:   () => context.push(AppRoutes.themePicker),
                     ),
-                  ),
-                  const SizedBox(height: Spacing.sm),
-                  Wrap(
-                    spacing:    Spacing.sm,
-                    runSpacing: Spacing.sm,
-                    children: [
-                      for (final p in kTurkishEpgPresets)
-                        _EpgPresetChip(
-                          label:    p.label,
-                          selected: state.epgUrl == p.url,
-                          onTap: () {
-                            _epgCtrl.text = p.url;
-                            ref
-                                .read(settingsScreenProvider.notifier)
-                                .setEpgUrl(p.url);
-                          },
-                        ),
-                    ],
-                  ),
-                  const SizedBox(height: Spacing.md),
-                  SizedBox(
-                    width: double.infinity,
-                    child: OutlinedButton.icon(
-                      icon:  const Icon(Icons.sync),
-                      label: Text(l.settingsEpgRefreshNow),
-                      onPressed: () async {
-                        // Save first
-                        await ref
-                            .read(settingsScreenProvider.notifier)
-                            .save();
-                        final activeId = ref.read(activePlaylistProvider);
-                        if (activeId.isEmpty) {
-                          if (context.mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                  content: Text(l.settingsSelectPlaylistFirst)),
-                            );
-                          }
-                          return;
-                        }
-                        try {
-                          await ref
-                              .read(epgServiceProvider)
-                              .syncEpg(activeId);
-                          if (context.mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                  content: Text(l.settingsEpgUpdated)),
-                            );
-                          }
-                        } catch (e) {
-                          if (context.mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(content: Text(l.settingsEpgError('$e'))),
-                            );
-                          }
-                        }
-                      },
+                    ListTile(
+                      leading: const Icon(Icons.lock_outline),
+                      title:   Text(l.parentalLockTitle),
+                      trailing: const Icon(Icons.chevron_right),
+                      onTap:   () => context.push(AppRoutes.parentalLock),
                     ),
-                  ),
-                ],
+                    const CloudSyncTile(),
+                    ListTile(
+                      leading: const Icon(Icons.switch_account),
+                      title:   Text(l.profileSwitcherTitle),
+                      trailing: const Icon(Icons.chevron_right),
+                      onTap:   () => context.push(AppRoutes.profiles),
+                    ),
+                  ],
+                ),
               ),
             ),
-          ),
+            const SizedBox(height: Spacing.xl),
 
-          // EPG Pro extras: Guide + Auto-refresh
-          Card(
-            child: Column(
-              children: [
-                ListTile(
-                  leading: const Icon(Icons.live_tv),
-                  title:   Text(l.epgGuideTitle),
-                  trailing: const Icon(Icons.chevron_right),
-                  onTap:   () => context.push(AppRoutes.epgGuide),
-                ),
-                const EpgAutoRefreshTile(),
-              ],
+            // ── İçerik (blue) ──────────────────────────────────────────
+            _SectionHeader(
+              title: l.settingsContentSection,
+              icon:  Icons.playlist_play,
+              color: const Color(0xFF2196F3),
             ),
-          ),
-
-          const SizedBox(height: Spacing.xl),
-
-          // AI altyazı (Whisper) ayarları artık görünür değil — Groq proxy
-          // URL/Secret build-time gömülü (lib/core/utils/build_config.dart).
-          // SettingsState alanları geriye dönük uyum için duruyor; geliştirici
-          // SecureStorage'a manuel yazarak override edebilir.
-
-          // ── Subtitle Styling ────────────────────────────────────────────
-          _SectionHeader(title: l.settingsSubtitleSection),
-          Card(
-            child: Column(
-              children: [
-                ListTile(
-                  leading: const Icon(Icons.format_size),
-                  title: Text(l.settingsSubtitleFontSize),
-                  trailing: DropdownButton<String>(
-                    value: state.subtitleFontSize,
-                    underline: const SizedBox.shrink(),
-                    items: [
-                      DropdownMenuItem(value: '14', child: Text(l.subtitleSizeSmall)),
-                      DropdownMenuItem(value: '16', child: Text(l.subtitleSizeNormal)),
-                      DropdownMenuItem(value: '20', child: Text(l.subtitleSizeLarge)),
-                      DropdownMenuItem(value: '24', child: Text(l.subtitleSizeExtraLarge)),
-                    ],
-                    onChanged: (v) {
-                      if (v != null) {
-                        ref.read(settingsScreenProvider.notifier)
-                            .setSubtitleFontSize(v);
-                      }
-                    },
-                  ),
+            _CollapsibleSection(
+              storageKey: 'sec_content',
+              child: Card(
+                child: Column(
+                  children: [
+                    ListTile(
+                      leading: const Icon(Icons.playlist_add),
+                      title:   Text(l.settingsPlaylistManagement),
+                      trailing: const Icon(Icons.chevron_right),
+                      onTap:   () => context.push(AppRoutes.playlists),
+                    ),
+                    ListTile(
+                      leading: const Icon(Icons.filter_list),
+                      title:   Text(l.categoryFilterTitle),
+                      subtitle: Text(l.settingsCategoryFilterSubtitle),
+                      trailing: const Icon(Icons.chevron_right),
+                      onTap:   () => context.push(AppRoutes.categoryFilter),
+                    ),
+                  ],
                 ),
-                ListTile(
-                  leading: const Icon(Icons.color_lens),
-                  title: Text(l.settingsSubtitleTextColor),
-                  trailing: DropdownButton<String>(
-                    value: state.subtitleTextColor,
-                    underline: const SizedBox.shrink(),
-                    items: [
-                      DropdownMenuItem(value: 'white', child: Text(l.subtitleColorWhite)),
-                      DropdownMenuItem(value: 'yellow', child: Text(l.subtitleColorYellow)),
-                      DropdownMenuItem(value: 'green', child: Text(l.subtitleColorGreen)),
-                      DropdownMenuItem(value: 'cyan', child: Text(l.subtitleColorCyan)),
-                    ],
-                    onChanged: (v) {
-                      if (v != null) {
-                        ref.read(settingsScreenProvider.notifier)
-                            .setSubtitleTextColor(v);
-                      }
-                    },
-                  ),
-                ),
-                ListTile(
-                  leading: const Icon(Icons.format_color_fill),
-                  title: Text(l.settingsSubtitleBgColor),
-                  trailing: DropdownButton<String>(
-                    value: state.subtitleBgColor,
-                    underline: const SizedBox.shrink(),
-                    items: [
-                      DropdownMenuItem(value: 'semi', child: Text(l.subtitleBgSemi)),
-                      DropdownMenuItem(value: 'opaque', child: Text(l.subtitleBgOpaque)),
-                      DropdownMenuItem(value: 'none', child: Text(l.subtitleBgNone)),
-                    ],
-                    onChanged: (v) {
-                      if (v != null) {
-                        ref.read(settingsScreenProvider.notifier)
-                            .setSubtitleBgColor(v);
-                      }
-                    },
-                  ),
-                ),
-              ],
-            ),
-          ),
-
-          const SizedBox(height: Spacing.xl),
-
-          // ── Hesap ────────────────────────────────────────────────────────
-          // Phase B'de eklendi (Adım 22). Anon ise "Giriş yap" CTA, login ise
-          // email + plan göster. Pro kullanıcı dışında "Pro'ya Geç" satırı.
-          _SectionHeader(title: l.authAccountSection),
-          _AccountCard(),
-
-          const SizedBox(height: Spacing.xl),
-
-          // ── About ────────────────────────────────────────────────────────
-          _SectionHeader(title: l.settingsAboutSection),
-          Card(
-            child: Column(
-              children: [
-                ListTile(
-                  leading: const Icon(Icons.info_outline),
-                  title:   Text(l.homeAppTitle),
-                  subtitle: Text(l.settingsAppVersion(_appVersion.isEmpty ? '…' : _appVersion),
-                      style: TextStyle(color: cs.onSurfaceVariant)),
-                ),
-                ListTile(
-                  leading: const Icon(Icons.playlist_add),
-                  title:   Text(l.settingsPlaylistManagement),
-                  onTap:   () => context.push(AppRoutes.playlists),
-                ),
-                ListTile(
-                  leading: const Icon(Icons.filter_list),
-                  title:   Text(l.categoryFilterTitle),
-                  subtitle: Text(l.settingsCategoryFilterSubtitle),
-                  onTap:   () => context.push(AppRoutes.categoryFilter),
-                ),
-                // Phase 1 — Pro features
-                ListTile(
-                  leading: const Icon(Icons.bookmark_outline),
-                  title:   Text(l.watchlistTitle),
-                  onTap:   () => context.push(AppRoutes.watchlist),
-                ),
-                ListTile(
-                  leading: const Icon(Icons.color_lens_outlined),
-                  title:   Text(l.themePickerTitle),
-                  onTap:   () => context.push(AppRoutes.themePicker),
-                ),
-                ListTile(
-                  leading: const Icon(Icons.lock_outline),
-                  title:   Text(l.parentalLockTitle),
-                  onTap:   () => context.push(AppRoutes.parentalLock),
-                ),
-                // Phase 2 — Cloud Sync (Pro)
-                const CloudSyncTile(),
-                // Phase 6 — Multi-profile (Pro)
-                ListTile(
-                  leading: const Icon(Icons.switch_account),
-                  title:   Text(l.profileSwitcherTitle),
-                  onTap:   () => context.push(AppRoutes.profiles),
-                ),
-              ],
-            ),
-          ),
-
-          const SizedBox(height: Spacing.xl),
-
-          // ── PiP (Phase 4) ────────────────────────────────────────────────
-          _SectionHeader(title: l.settingsPipSection),
-          const Card(child: _PipAutoTile()),
-
-          const SizedBox(height: Spacing.xl),
-
-          // ── Reklamsız notice (Phase 5) ───────────────────────────────────
-          _SectionHeader(title: l.settingsAdsSection),
-          Card(
-            child: ListTile(
-              leading: Icon(
-                ref.watch(isProProvider) ? Icons.block : Icons.campaign,
-                color: ref.watch(isProProvider) ? Colors.green : null,
               ),
-              title: Text(ref.watch(isProProvider)
-                  ? l.settingsAdsRemoved
-                  : l.settingsAdsFreeNotice),
             ),
-          ),
+            const SizedBox(height: Spacing.xl),
 
-          const SizedBox(height: Spacing.xxl),
-        ],
-      ),
+            // ── Görünüm (purple): Tema + Dil ───────────────────────────
+            _SectionHeader(
+              title: l.settingsAppearanceSection,
+              icon:  Icons.palette_outlined,
+              color: const Color(0xFF9C27B0),
+            ),
+            _CollapsibleSection(
+              storageKey: 'sec_appearance',
+              child: const _AppearanceCard(),
+            ),
+            const SizedBox(height: Spacing.xl),
+
+            // ── EPG (green) ────────────────────────────────────────────
+            _SectionHeader(
+              title: l.settingsEpgSection,
+              icon:  Icons.schedule,
+              color: const Color(0xFF4CAF50),
+            ),
+            _CollapsibleSection(
+              storageKey: 'sec_epg',
+              child: _EpgCard(epgCtrl: _epgCtrl, state: state),
+            ),
+            const SizedBox(height: Spacing.xl),
+
+            // ── Altyazı (orange) ───────────────────────────────────────
+            _SectionHeader(
+              title: l.settingsSubtitleSection,
+              icon:  Icons.subtitles_outlined,
+              color: const Color(0xFFFF9800),
+            ),
+            _CollapsibleSection(
+              storageKey: 'sec_subtitle',
+              child: _SubtitleCard(state: state),
+            ),
+            const SizedBox(height: Spacing.xl),
+
+            // ── Oynatıcı (red): PiP + Reklamsız bilgi ──────────────────
+            _SectionHeader(
+              title: l.settingsPlayerSection,
+              icon:  Icons.play_circle_outline,
+              color: const Color(0xFFE53935),
+            ),
+            _CollapsibleSection(
+              storageKey: 'sec_player',
+              child: const _PlayerCard(),
+            ),
+            const SizedBox(height: Spacing.xl),
+
+            // ── Hakkında (gray) ────────────────────────────────────────
+            _SectionHeader(
+              title: l.settingsAboutSection,
+              icon:  Icons.info_outline,
+              color: const Color(0xFF607D8B),
+            ),
+            _CollapsibleSection(
+              storageKey: 'sec_about',
+              child: _AboutCard(appVersion: _appVersion),
+            ),
+
+            const SizedBox(height: Spacing.xxl),
+          ],
+        ),
       ),
     );
   }
@@ -542,36 +366,15 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   @override
   void dispose() {
     _epgCtrl.dispose();
-    _openAiKeyCtrl.dispose();
-    _openAiLangCtrl.dispose();
-    _groqProxyUrlCtrl.dispose();
-    _groqSecretCtrl.dispose();
     super.dispose();
   }
 }
 
-class _SectionHeader extends StatelessWidget {
-  final String title;
-  const _SectionHeader({required this.title});
+// ── Profile Header (Kotlin'deki ProfileHeaderCard'a paralel) ────────────────
 
-  @override
-  Widget build(BuildContext context) => Padding(
-        padding: const EdgeInsets.only(
-            left: Spacing.sm, bottom: Spacing.sm),
-        child: Text(
-          title.toUpperCase(),
-          style: TextStyle(
-              fontSize:    TextSize.caption,
-              fontWeight:  FontWeight.w700,
-              letterSpacing: 1.2,
-              color: Theme.of(context).colorScheme.onSurfaceVariant),
-        ),
-      );
-}
+class _ProfileHeaderCard extends ConsumerWidget {
+  const _ProfileHeaderCard();
 
-// ── Account card (Adım 22 Phase B) ──────────────────────────────────────────
-
-class _AccountCard extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final l = AppLocalizations.of(context);
@@ -581,43 +384,568 @@ class _AccountCard extends ConsumerWidget {
 
     final isAuth = auth is AuthAuthenticated;
     final email = isAuth ? auth.email : null;
+    final initial = (email != null && email.isNotEmpty)
+        ? email.substring(0, 1).toUpperCase()
+        : '?';
 
     return Card(
-      child: Column(
-        children: [
-          ListTile(
-            leading: const Icon(Icons.account_circle),
-            title: Text(email ?? l.authNotSignedIn),
-            subtitle: Text(isPro ? l.authProActive : l.authFreeTier,
-                style: TextStyle(color: cs.onSurfaceVariant)),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: () {
-              if (isAuth) {
-                context.push(AppRoutes.account);
-              } else {
-                context.push(AppRoutes.login);
-              }
-            },
-          ),
-          if (!isPro)
-            ListTile(
-              leading: Icon(Icons.workspace_premium, color: cs.primary),
-              title: Text(l.authUpgradeToPro,
-                  style: TextStyle(
-                      color: cs.primary, fontWeight: FontWeight.w600)),
-              trailing: Icon(Icons.chevron_right, color: cs.primary),
-              onTap: () => context.push(
-                AppRoutes.paywall,
-                extra: <String, dynamic>{'trigger': 'settingsCta'},
+      elevation: 2,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(16),
+        onTap: () {
+          if (isAuth) {
+            context.push(AppRoutes.account);
+          } else {
+            context.push(AppRoutes.login);
+          }
+        },
+        child: Padding(
+          padding: const EdgeInsets.all(Spacing.lg),
+          child: Row(
+            children: [
+              // Avatar
+              Container(
+                width: 56, height: 56,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end:   Alignment.bottomRight,
+                    colors: isPro
+                        ? const [Color(0xFFFFB300), Color(0xFFFF8F00)]
+                        : [cs.primary, cs.primaryContainer],
+                  ),
+                ),
+                alignment: Alignment.center,
+                child: isAuth
+                    ? Text(initial,
+                        style: const TextStyle(
+                            fontSize: 24,
+                            fontWeight: FontWeight.w700,
+                            color: Colors.white))
+                    : const Icon(Icons.person_outline,
+                        size: 28, color: Colors.white),
               ),
+              const SizedBox(width: Spacing.md),
+              // Email + status
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      email ?? l.settingsTapToSignIn,
+                      style: const TextStyle(
+                          fontSize: 16, fontWeight: FontWeight.w600),
+                      maxLines: 1, overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 4),
+                    Row(
+                      children: [
+                        if (isPro) ...[
+                          const Icon(Icons.workspace_premium,
+                              size: 14, color: Color(0xFFFFB300)),
+                          const SizedBox(width: 4),
+                          Text(l.authProActive,
+                              style: const TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                  color: Color(0xFFFFB300))),
+                        ] else
+                          Text(
+                            isAuth ? l.authFreeTier : l.authNotSignedIn,
+                            style: TextStyle(
+                                fontSize: 12,
+                                color: cs.onSurfaceVariant),
+                          ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              // Pro CTA chip (Free user)
+              if (!isPro)
+                Padding(
+                  padding: const EdgeInsets.only(left: Spacing.sm),
+                  child: FilledButton.tonal(
+                    style: FilledButton.styleFrom(
+                      visualDensity: VisualDensity.compact,
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 6),
+                    ),
+                    onPressed: () => context.push(
+                      AppRoutes.paywall,
+                      extra: <String, dynamic>{'trigger': 'settingsCta'},
+                    ),
+                    child: Text(l.authUpgradeToPro,
+                        style: const TextStyle(
+                            fontSize: 12, fontWeight: FontWeight.w600)),
+                  ),
+                )
+              else
+                Icon(Icons.chevron_right, color: cs.onSurfaceVariant),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ── Section header (renkli ikon dairesi + baslik) ───────────────────────────
+
+class _SectionHeader extends StatelessWidget {
+  final String title;
+  final IconData icon;
+  final Color color;
+  const _SectionHeader({
+    required this.title,
+    required this.icon,
+    required this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return Padding(
+      padding: const EdgeInsets.only(left: 4, bottom: Spacing.sm),
+      child: Row(
+        children: [
+          Container(
+            width: 28, height: 28,
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.15),
+              shape: BoxShape.circle,
             ),
+            alignment: Alignment.center,
+            child: Icon(icon, size: 16, color: color),
+          ),
+          const SizedBox(width: Spacing.sm),
+          Text(
+            title.toUpperCase(),
+            style: TextStyle(
+                fontSize:      TextSize.caption,
+                fontWeight:    FontWeight.w700,
+                letterSpacing: 1.2,
+                color:         cs.onSurface),
+          ),
         ],
       ),
     );
   }
 }
 
-// ── Phase 4: PiP auto-mode tile (Pro gating) ────────────────────────────────
+// ── Collapsible section (animasyonlu expand/collapse) ───────────────────────
+//
+// `storageKey` ile her section'in acik/kapali state'i SettingsRepository'de
+// saklanir. Boylece kullanici acik biraktigi alan tekrar geldiginde acik kalir.
+// Default: TUM section'lar acik (ilk acilisla overwhelm olmasin diye degil,
+// daha kullanici-dostu ki herseyi gorsun; ileride default kapali yapabiliriz).
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _CollapsibleSection extends StatefulWidget {
+  final String storageKey;
+  final Widget child;
+  const _CollapsibleSection({
+    required this.storageKey,
+    required this.child,
+  });
+
+  @override
+  State<_CollapsibleSection> createState() => _CollapsibleSectionState();
+}
+
+class _CollapsibleSectionState extends State<_CollapsibleSection> {
+  bool _expanded = true;
+  bool _loaded = false;
+  static const _prefix = 'settings_expand_';
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    final v = await SettingsRepository().get('$_prefix${widget.storageKey}');
+    if (!mounted) return;
+    setState(() {
+      _expanded = v != 'false';  // default ACIK
+      _loaded = true;
+    });
+  }
+
+  Future<void> _toggle() async {
+    setState(() => _expanded = !_expanded);
+    await SettingsRepository()
+        .set('$_prefix${widget.storageKey}', _expanded ? 'true' : 'false');
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (!_loaded) return widget.child;
+    return Column(
+      children: [
+        // Tap header'i kart'in ustune koymak yerine kartin disinda
+        // gizli bir gesture detector koyacaktik; ama daha sezgisel cozum:
+        // header sag'inda kucuk chevron, kartin uzerinde InkWell.
+        AnimatedSize(
+          duration: const Duration(milliseconds: 220),
+          curve: Curves.easeInOut,
+          alignment: Alignment.topCenter,
+          child: ConstrainedBox(
+            constraints: _expanded
+                ? const BoxConstraints()
+                : const BoxConstraints(maxHeight: 0),
+            child: widget.child,
+          ),
+        ),
+        // Toggle butonu kartin altinda (compact)
+        Align(
+          alignment: AlignmentDirectional.centerEnd,
+          child: TextButton.icon(
+            onPressed: _toggle,
+            icon: AnimatedRotation(
+              turns: _expanded ? 0.5 : 0.0,
+              duration: const Duration(milliseconds: 220),
+              child: const Icon(Icons.keyboard_arrow_down, size: 18),
+            ),
+            label: Text(
+              _expanded
+                  ? AppLocalizations.of(context).commonHide
+                  : AppLocalizations.of(context).commonShow,
+              style: const TextStyle(fontSize: 12),
+            ),
+            style: TextButton.styleFrom(
+              visualDensity: VisualDensity.compact,
+              padding: const EdgeInsets.symmetric(horizontal: 8),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+// ── Appearance: Tema + Dil ──────────────────────────────────────────────────
+
+class _AppearanceCard extends ConsumerWidget {
+  const _AppearanceCard();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l = AppLocalizations.of(context);
+    final themeMode = ref.watch(themeModeProvider);
+
+    return Card(
+      child: Column(
+        children: [
+          RadioListTile<ThemeMode>(
+            title:   Text(l.settingsThemeDark),
+            value:   ThemeMode.dark,
+            groupValue: themeMode,
+            onChanged: (v) =>
+                ref.read(themeModeProvider.notifier).setMode(v!),
+          ),
+          RadioListTile<ThemeMode>(
+            title:   Text(l.settingsThemeLight),
+            value:   ThemeMode.light,
+            groupValue: themeMode,
+            onChanged: (v) =>
+                ref.read(themeModeProvider.notifier).setMode(v!),
+          ),
+          RadioListTile<ThemeMode>(
+            title:   Text(l.settingsThemeSystem),
+            value:   ThemeMode.system,
+            groupValue: themeMode,
+            onChanged: (v) =>
+                ref.read(themeModeProvider.notifier).setMode(v!),
+          ),
+          const Divider(height: 1),
+          ListTile(
+            leading:  const Icon(Icons.language),
+            title:    Text(l.language),
+            subtitle: Text(_localeLabel(l, ref.watch(localeProvider))),
+            trailing: const Icon(Icons.arrow_drop_down),
+            onTap:    () => _showLanguagePicker(context, ref, l),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ── EPG ─────────────────────────────────────────────────────────────────────
+
+class _EpgCard extends ConsumerWidget {
+  final TextEditingController epgCtrl;
+  final SettingsState state;
+  const _EpgCard({required this.epgCtrl, required this.state});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l = AppLocalizations.of(context);
+    final cs = Theme.of(context).colorScheme;
+
+    return Column(
+      children: [
+        Card(
+          child: Padding(
+            padding: const EdgeInsets.all(Spacing.lg),
+            child: Column(
+              children: [
+                TextField(
+                  controller: epgCtrl,
+                  decoration: InputDecoration(
+                    labelText: l.settingsEpgUrlLabel,
+                    hintText:  'https://epg.example.com/epg.xml.gz',
+                    border:    const OutlineInputBorder(),
+                    prefixIcon: const Icon(Icons.rss_feed),
+                  ),
+                  onChanged: (v) =>
+                      ref.read(settingsScreenProvider.notifier).setEpgUrl(v),
+                ),
+                const SizedBox(height: Spacing.md),
+                Align(
+                  alignment: AlignmentDirectional.centerStart,
+                  child: Text(
+                    '${l.settingsEpgPresetsTitle}:',
+                    style: TextStyle(
+                      color: cs.onSurfaceVariant,
+                      fontSize: TextSize.caption,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: Spacing.sm),
+                Wrap(
+                  spacing: Spacing.sm,
+                  runSpacing: Spacing.sm,
+                  children: [
+                    for (final p in kTurkishEpgPresets)
+                      _EpgPresetChip(
+                        label:    p.label,
+                        selected: state.epgUrl == p.url,
+                        onTap: () {
+                          epgCtrl.text = p.url;
+                          ref.read(settingsScreenProvider.notifier).setEpgUrl(p.url);
+                        },
+                      ),
+                  ],
+                ),
+                const SizedBox(height: Spacing.md),
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    icon:  const Icon(Icons.sync),
+                    label: Text(l.settingsEpgRefreshNow),
+                    onPressed: () async {
+                      await ref.read(settingsScreenProvider.notifier).save();
+                      final activeId = ref.read(activePlaylistProvider);
+                      if (activeId.isEmpty) {
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text(l.settingsSelectPlaylistFirst)),
+                          );
+                        }
+                        return;
+                      }
+                      try {
+                        await ref.read(epgServiceProvider).syncEpg(activeId);
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text(l.settingsEpgUpdated)),
+                          );
+                        }
+                      } catch (e) {
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text(l.settingsEpgError('$e'))),
+                          );
+                        }
+                      }
+                    },
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        // EPG Pro: Guide + Auto-refresh
+        Card(
+          child: Column(
+            children: [
+              ListTile(
+                leading: const Icon(Icons.live_tv),
+                title:   Text(l.epgGuideTitle),
+                trailing: const Icon(Icons.chevron_right),
+                onTap:   () => context.push(AppRoutes.epgGuide),
+              ),
+              const EpgAutoRefreshTile(),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+// ── Subtitle ────────────────────────────────────────────────────────────────
+
+class _SubtitleCard extends ConsumerWidget {
+  final SettingsState state;
+  const _SubtitleCard({required this.state});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l = AppLocalizations.of(context);
+
+    return Card(
+      child: Column(
+        children: [
+          ListTile(
+            leading: const Icon(Icons.format_size),
+            title: Text(l.settingsSubtitleFontSize),
+            trailing: DropdownButton<String>(
+              value: state.subtitleFontSize,
+              underline: const SizedBox.shrink(),
+              items: [
+                DropdownMenuItem(value: '14', child: Text(l.subtitleSizeSmall)),
+                DropdownMenuItem(value: '16', child: Text(l.subtitleSizeNormal)),
+                DropdownMenuItem(value: '20', child: Text(l.subtitleSizeLarge)),
+                DropdownMenuItem(value: '24', child: Text(l.subtitleSizeExtraLarge)),
+              ],
+              onChanged: (v) {
+                if (v != null) {
+                  ref.read(settingsScreenProvider.notifier).setSubtitleFontSize(v);
+                }
+              },
+            ),
+          ),
+          ListTile(
+            leading: const Icon(Icons.color_lens),
+            title: Text(l.settingsSubtitleTextColor),
+            trailing: DropdownButton<String>(
+              value: state.subtitleTextColor,
+              underline: const SizedBox.shrink(),
+              items: [
+                DropdownMenuItem(value: 'white',  child: Text(l.subtitleColorWhite)),
+                DropdownMenuItem(value: 'yellow', child: Text(l.subtitleColorYellow)),
+                DropdownMenuItem(value: 'green',  child: Text(l.subtitleColorGreen)),
+                DropdownMenuItem(value: 'cyan',   child: Text(l.subtitleColorCyan)),
+              ],
+              onChanged: (v) {
+                if (v != null) {
+                  ref.read(settingsScreenProvider.notifier).setSubtitleTextColor(v);
+                }
+              },
+            ),
+          ),
+          ListTile(
+            leading: const Icon(Icons.format_color_fill),
+            title: Text(l.settingsSubtitleBgColor),
+            trailing: DropdownButton<String>(
+              value: state.subtitleBgColor,
+              underline: const SizedBox.shrink(),
+              items: [
+                DropdownMenuItem(value: 'semi',   child: Text(l.subtitleBgSemi)),
+                DropdownMenuItem(value: 'opaque', child: Text(l.subtitleBgOpaque)),
+                DropdownMenuItem(value: 'none',   child: Text(l.subtitleBgNone)),
+              ],
+              onChanged: (v) {
+                if (v != null) {
+                  ref.read(settingsScreenProvider.notifier).setSubtitleBgColor(v);
+                }
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ── Player: PiP + Reklamsız bilgi ───────────────────────────────────────────
+
+class _PlayerCard extends ConsumerWidget {
+  const _PlayerCard();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l = AppLocalizations.of(context);
+    final isPro = ref.watch(isProProvider);
+    final cs = Theme.of(context).colorScheme;
+
+    return Card(
+      child: Column(
+        children: [
+          const _PipAutoTile(),
+          const Divider(height: 1),
+          ListTile(
+            leading: Icon(
+              isPro ? Icons.block : Icons.campaign,
+              color: isPro ? Colors.green : cs.onSurfaceVariant,
+            ),
+            title: Text(
+                isPro ? l.settingsAdsRemoved : l.settingsAdsFreeNotice,
+                style: TextStyle(
+                    fontSize: isPro ? 14 : 12,
+                    color: isPro ? null : cs.onSurfaceVariant)),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ── About: versiyon + legal + veri silme ────────────────────────────────────
+
+class _AboutCard extends StatelessWidget {
+  final String appVersion;
+  const _AboutCard({required this.appVersion});
+
+  @override
+  Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context);
+
+    return Card(
+      child: Column(
+        children: [
+          ListTile(
+            leading: const Icon(Icons.info_outline),
+            title:    Text(l.homeAppTitle),
+            subtitle: Text(l.settingsAppVersion(
+                appVersion.isEmpty ? '…' : appVersion)),
+          ),
+          const Divider(height: 1),
+          ListTile(
+            leading: const Icon(Icons.gavel_outlined),
+            title:   Text(l.settingsLegalNotice),
+            trailing: const Icon(Icons.open_in_new, size: 18),
+            onTap:   () => _launchUrl(
+                'https://iptvaiplayer.com.tr/Ekran/index.php'),
+          ),
+          ListTile(
+            leading: const Icon(Icons.delete_outline),
+            title:    Text(l.settingsDataDeletion),
+            subtitle: Text(l.settingsDataDeletionSubtitle),
+            trailing: const Icon(Icons.open_in_new, size: 18),
+            onTap:   () => _launchUrl(
+                'https://iptvaiplayer.com.tr/Ekran/verisilme.php'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _launchUrl(String url) async {
+    final uri = Uri.parse(url);
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    }
+  }
+}
+
+// ── PiP auto-mode tile (Pro gating) — eski yapidan korundu ──────────────────
 
 class _PipAutoTile extends ConsumerStatefulWidget {
   const _PipAutoTile();
@@ -739,7 +1067,6 @@ Future<void> _showLanguagePicker(
   AppLocalizations l,
 ) async {
   final current = ref.read(localeProvider);
-  // null = system; non-null = explicit override
   final entries = <(Locale?, String)>[
     (null,                 l.languageSystem),
     (const Locale('tr'),   l.languageTurkish),

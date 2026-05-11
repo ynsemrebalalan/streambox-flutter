@@ -1100,6 +1100,33 @@ class AppLocalizationsDe extends AppLocalizations {
   String get settingsAdsFreeNotice => 'Die Free-Version zeigt unten ein Banner. Mit Pro werbefrei genießen.';
 
   @override
+  String get settingsProSection => 'Pro-Funktionen';
+
+  @override
+  String get settingsContentSection => 'Inhalt';
+
+  @override
+  String get settingsPlayerSection => 'Player';
+
+  @override
+  String get settingsLegalNotice => 'Rechtlicher Hinweis';
+
+  @override
+  String get settingsDataDeletion => 'Datenlöschung beantragen';
+
+  @override
+  String get settingsDataDeletionSubtitle => 'Konto- und Datenentfernungsanfrage';
+
+  @override
+  String get settingsTapToSignIn => 'Anmelden oder Konto erstellen';
+
+  @override
+  String get commonHide => 'Ausblenden';
+
+  @override
+  String get commonShow => 'Einblenden';
+
+  @override
   String get profileSwitcherTitle => 'Profile';
 
   @override

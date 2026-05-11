@@ -2193,6 +2193,60 @@ abstract class AppLocalizations {
   /// **'Free sürümde alt kısımda banner reklam görüntülenir. Pro abonelikle kalıcı reklamsız.'**
   String get settingsAdsFreeNotice;
 
+  /// No description provided for @settingsProSection.
+  ///
+  /// In tr, this message translates to:
+  /// **'Pro Özellikler'**
+  String get settingsProSection;
+
+  /// No description provided for @settingsContentSection.
+  ///
+  /// In tr, this message translates to:
+  /// **'İçerik'**
+  String get settingsContentSection;
+
+  /// No description provided for @settingsPlayerSection.
+  ///
+  /// In tr, this message translates to:
+  /// **'Oynatıcı'**
+  String get settingsPlayerSection;
+
+  /// No description provided for @settingsLegalNotice.
+  ///
+  /// In tr, this message translates to:
+  /// **'Yasal Bildirim'**
+  String get settingsLegalNotice;
+
+  /// No description provided for @settingsDataDeletion.
+  ///
+  /// In tr, this message translates to:
+  /// **'Veri Silme Talebi'**
+  String get settingsDataDeletion;
+
+  /// No description provided for @settingsDataDeletionSubtitle.
+  ///
+  /// In tr, this message translates to:
+  /// **'Hesap ve veri silme talebi'**
+  String get settingsDataDeletionSubtitle;
+
+  /// No description provided for @settingsTapToSignIn.
+  ///
+  /// In tr, this message translates to:
+  /// **'Giriş yap veya hesap oluştur'**
+  String get settingsTapToSignIn;
+
+  /// No description provided for @commonHide.
+  ///
+  /// In tr, this message translates to:
+  /// **'Gizle'**
+  String get commonHide;
+
+  /// No description provided for @commonShow.
+  ///
+  /// In tr, this message translates to:
+  /// **'Göster'**
+  String get commonShow;
+
   /// No description provided for @profileSwitcherTitle.
   ///
   /// In tr, this message translates to:
