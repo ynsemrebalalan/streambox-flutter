@@ -446,47 +446,66 @@ class ChannelRepository {
   /// - Low:  500'luk chunk'lar (eMMC/RAM dostu, donma yok)
   Future<void> replaceAllForPlaylist(
     String playlistId,
-    List<ChannelModel> channels,
-  ) async {
+    List<ChannelModel> channels, {
+    void Function(int written, int total)? onProgress,
+  }) async {
     if (channels.isEmpty) return;
     final db = await AppDatabase.instance;
     final batchSize = DeviceProfile.dbBatchSize;
+    final total = channels.length;
 
     if (kDebugMode) {
-      debugPrint('[ChannelRepo] replaceAll: ${channels.length} channels, '
+      debugPrint('[ChannelRepo] replaceAll: $total channels, '
           'batchSize=$batchSize, tier=${DeviceProfile.tier}');
     }
 
-    // Tek transaction icinde: once sil, sonra chunk'li yaz.
-    // Transaction butunlugu korunur — crash'te eski veri kalir.
     await db.transaction((txn) async {
       await txn.delete(_table,
           where: 'playlistId = ?', whereArgs: [playlistId]);
-      // v6: junction da sil — yeni veri ile yeniden seed edilecek.
       await txn.delete(_catTable,
           where: 'playlistId = ?', whereArgs: [playlistId]);
 
-      // Chunk'li batch: her chunk ayri batch.commit ile yazilir
-      // ama hepsi ayni transaction icinde → atomik.
-      for (var i = 0; i < channels.length; i += batchSize) {
-        final end = (i + batchSize < channels.length) ? i + batchSize : channels.length;
+      for (var i = 0; i < total; i += batchSize) {
+        final end = (i + batchSize < total) ? i + batchSize : total;
         final chunk = channels.sublist(i, end);
         final batch = txn.batch();
         for (final ch in chunk) {
           batch.insert(_table, ch.toMap(),
               conflictAlgorithm: ConflictAlgorithm.replace);
-          // v6: junction satırları (1..N kategori per kanal).
           for (final c in _categoryRows(ch)) {
             batch.insert(_catTable, c,
                 conflictAlgorithm: ConflictAlgorithm.ignore);
           }
         }
         await batch.commit(noResult: true);
+        // Progress emit — kullanıcı UI'da "X/Y" görsün (2026-05-11)
+        onProgress?.call(end, total);
       }
     });
 
-    // FTS indexini guncelle (transaction disinda, non-blocking).
-    rebuildFts();
+    rebuildFtsForPlaylist(playlistId);
+  }
+
+  /// Tek bir playlist için FTS partial rebuild.
+  /// rebuildFts (full) yerine sadece etkilenen rowid'leri günceller.
+  Future<void> rebuildFtsForPlaylist(String playlistId) async {
+    final db = await AppDatabase.instance;
+    try {
+      // Bu playlist'in mevcut FTS satırlarını sil
+      await db.execute('''
+        DELETE FROM channel_fts WHERE rowid IN (
+          SELECT rowid FROM $_table WHERE playlistId = ?
+        )
+      ''', [playlistId]);
+      // Yeniden ekle
+      await db.execute('''
+        INSERT INTO channel_fts(rowid, name, category)
+        SELECT rowid, name, category FROM $_table
+        WHERE playlistId = ?
+      ''', [playlistId]);
+    } catch (e) {
+      debugPrint('[ChannelRepo] FTS partial rebuild failed: $e');
+    }
   }
 
   Future<void> toggleFavorite(String id, bool isFavorite) async {

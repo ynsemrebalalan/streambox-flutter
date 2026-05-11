@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -27,10 +28,13 @@ final playlistsProvider =
 class PlaylistsNotifier extends AsyncNotifier<List<PlaylistModel>> {
   final _syncing = <String>{};
   final _lastError = <String, String>{};
-  // Son sync'in kaç kanal döndürdüğü — UI'da SnackBar ile gösterilir,
-  // logcat erişimi olmadığında teşhis için kritik.
+  // Son sync'in kaç kanal döndürdüğü — UI'da SnackBar ile gösterilir.
   int _lastSyncCount = 0;
   int get lastSyncCount => _lastSyncCount;
+
+  // Progress notifiers (2026-05-11 perf) — UI bunu izleyerek "X/Y" gösterir.
+  final ValueNotifier<String> _progressMessage = ValueNotifier('');
+  ValueListenable<String> get progressMessage => _progressMessage;
 
   bool isSyncing(String id) => _syncing.contains(id);
   String? lastError(String id) => _lastError[id];
@@ -58,22 +62,26 @@ class PlaylistsNotifier extends AsyncNotifier<List<PlaylistModel>> {
       ref.read(activePlaylistProvider.notifier).set(saved.id);
     }
 
-    // Auto-sync: 2026-05-11 raporu — daha önce sadece ilk playlist sync
-    // yapılırdı, sonraki playlist'lerde kullanıcı manuel "Yenile" basmak
-    // zorundaydı. Şimdi her eklenenden sonra otomatik fetch tetiklenir,
-    // spinner UI'da gösterilir (_syncing set'i), hata _lastError'a düşer.
+    // Background sync pattern (2026-05-11 Kotlin paritesi):
+    // add() sync'i beklemez → dialog ANINDA kapanır → kullanıcı Home'a
+    // yönlendirilir → kanallar arka planda gelir. UI playlist row'da
+    // spinner + Home'da sync progress mesajı gösterir.
     _syncing.add(saved.id);
     _lastError.remove(saved.id);
     if (state.value != null) state = AsyncData(List.of(state.value!));
+    // Fire-and-forget: kullanıcı 30sn dialog'da beklemiyor.
+    // ignore: unawaited_futures
+    _doSyncInBackground(saved);
+  }
+
+  /// Background sync wrapper — UI bloklamadan kanal yükler.
+  /// Hata _lastError'a düşer, kullanıcı yenile butonuna bastığında görür.
+  Future<void> _doSyncInBackground(PlaylistModel saved) async {
     try {
       await _doSync(saved);
-      // Home channel listesi cached — yeni kanallar için rebuild.
       ref.invalidate(homeProvider);
     } catch (e) {
       _lastError[saved.id] = e.toString();
-      // Hata UI'da görünsün: dialog _submit catch'inde yakalanır,
-      // SnackBar gösterilir. 2026-05-11 raporu.
-      rethrow;
     } finally {
       _syncing.remove(saved.id);
       await reload();
@@ -126,47 +134,67 @@ class PlaylistsNotifier extends AsyncNotifier<List<PlaylistModel>> {
   }
 
   Future<void> delete(String id) async {
-    // Optimistic UI: state'ten hemen çıkar, kullanıcı silindiğini anında görür.
-    // DB silme arka planda devam eder. 2026-05-11 raporu (ekran donuyor).
+    // Optimistic UI: state'ten hemen çıkar.
     final filtered = (state.value ?? []).where((p) => p.id != id).toList();
     state = AsyncData(filtered);
 
     final repo = ref.read(playlistRepoProvider);
     await repo.delete(id);
     await ref.read(channelRepoProvider).deleteByPlaylist(id);
+
+    // Active playlist'i güncelle. 2026-05-11: Silinen active'di VEYA
+    // tek playlist'ti (filtered boş kaldı) → active'i sıfırla/değiştir.
     final active = ref.read(activePlaylistProvider);
-    if (active == id) {
-      final all = await repo.getAll();
-      ref.read(activePlaylistProvider.notifier).set(all.firstOrNull?.id ?? '');
+    if (active == id || filtered.isEmpty) {
+      ref.read(activePlaylistProvider.notifier).set(
+            filtered.isEmpty ? '' : filtered.first.id,
+          );
     }
     // Home'daki kanal listesi bu playlist'ten besleniyordu — rebuild.
     ref.invalidate(homeProvider);
   }
 
+  /// Tek playlist'te maksimum kanal sayısı. Üstünde truncate edilir,
+  /// OOM/UI donmasından korur. 2026-05-11 perf guard.
+  static const int _maxChannelsPerPlaylist = 50000;
+
   Future<void> _doSync(PlaylistModel p) async {
     // ignore: avoid_print
     print('[_doSync] start: id=${p.id} type=${p.type} url=${p.url}');
-    // Once fetch+parse yap. Basarisiz olursa throw eder ve DB'ye dokunulmaz,
-    // yani eski kanallar olduğu gibi kalır (stale-but-usable cache).
-    final channels = p.type == 'xtream'
+    _progressMessage.value = 'Kanallar indiriliyor...';
+
+    var channels = p.type == 'xtream'
         ? await XtreamService.fetchAll(p)
         : await M3uParser.fetchAndParse(p);
     // ignore: avoid_print
     print('[_doSync] fetched ${channels.length} channels');
-    _lastSyncCount = channels.length;
 
-    // Bos cevap geldiyse (provider kismi hata) eski veriyi koruma.
-    // Bu mesaj _errorToUserMessage'a dusup playlistsErrorUpdateGeneric'e cevrilir.
+    // Limit guard: çok büyük playlist OOM riski, kullanıcıyı uyar + kes.
+    if (channels.length > _maxChannelsPerPlaylist) {
+      // ignore: avoid_print
+      print('[_doSync] playlist çok büyük (${channels.length}), '
+          '$_maxChannelsPerPlaylist ile sınırlandı');
+      _progressMessage.value =
+          'Playlist çok büyük — ilk $_maxChannelsPerPlaylist kanal alındı';
+      channels = channels.take(_maxChannelsPerPlaylist).toList();
+    }
+
+    _lastSyncCount = channels.length;
+    _progressMessage.value = '${channels.length} kanal işleniyor...';
+
     if (channels.isEmpty) {
       throw const _EmptyPlaylistException();
     }
 
     // Fetch basarili → atomik olarak eski kanallari sil + yenilerini yaz.
-    // Transaction icinde, crash'te yarim veri olusmaz.
+    // Progress callback ile UI'da "1500/5234 kanal yazıldı" canlı sayı.
     final repo = ref.read(channelRepoProvider);
-    await repo.replaceAllForPlaylist(p.id, channels);
+    await repo.replaceAllForPlaylist(p.id, channels, onProgress: (w, t) {
+      _progressMessage.value = '$w / $t kanal yazıldı';
+    });
     // ignore: avoid_print
     print('[_doSync] DB write done');
+    _progressMessage.value = '';
   }
 }
 
@@ -384,9 +412,17 @@ class PlaylistsScreen extends ConsumerWidget {
           FilledButton(
             style: FilledButton.styleFrom(
                 backgroundColor: Theme.of(context).colorScheme.error),
-            onPressed: () {
+            onPressed: () async {
               Navigator.pop(ctx);
-              ref.read(playlistsProvider.notifier).delete(p.id);
+              await ref.read(playlistsProvider.notifier).delete(p.id);
+              // 2026-05-11: Son playlist silindiyse boş Home'a yönlendir,
+              // kullanıcı eski playlist içeriğini görmeye devam etmesin.
+              if (!context.mounted) return;
+              final remaining =
+                  ref.read(playlistsProvider).valueOrNull ?? const [];
+              if (remaining.isEmpty) {
+                context.go(AppRoutes.home);
+              }
             },
             child: Text(l.delete),
           ),
@@ -581,6 +617,26 @@ class _AddPlaylistDialogState extends State<_AddPlaylistDialog> {
           onPressed: _loading ? null : () => Navigator.pop(context),
           child: Text(l.cancel),
         ),
+        // Progress message — sync sırasında "X kanal işleniyor..." gösterir
+        if (_loading)
+          Consumer(
+            builder: (ctx, ref, _) {
+              final notifier = ref.read(playlistsProvider.notifier);
+              return ValueListenableBuilder<String>(
+                valueListenable: notifier.progressMessage,
+                builder: (_, msg, __) => Padding(
+                  padding: const EdgeInsets.only(right: 8),
+                  child: Text(
+                    msg.isEmpty ? '...' : msg,
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ),
+              );
+            },
+          ),
         FilledButton(
           onPressed: _loading ? null : () => _submit(l),
           child: _loading

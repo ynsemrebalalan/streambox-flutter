@@ -63,4 +63,5 @@ abstract final class SettingsKeys {
   static const String activeProfileId = 'active_profile_id'; // Phase 6 (default 'default')
   static const String streamTypeMigratedV2 = 'streamtype_migrated_v2'; // 2026-05-11 reclassify migration flag
   static const String streamTypeMigratedV3 = 'streamtype_migrated_v3'; // 2026-05-11 URL-first reclassify (yeni mantık)
+  static const String demoPlaylistCleaned = 'demo_playlist_cleaned'; // 2026-05-11 demo playlist DB'den temizleme migration
 }

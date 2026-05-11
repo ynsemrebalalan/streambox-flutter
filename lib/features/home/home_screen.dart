@@ -15,6 +15,7 @@ import '../../core/utils/tv_focus.dart';
 import '../../data/models/channel_model.dart';
 import '../../l10n/generated/app_localizations.dart';
 import '../ads/widgets/ads_banner.dart';
+import '../playlists/playlists_screen.dart';
 import 'home_provider.dart';
 import 'home_state.dart';
 import 'widgets/channel_list_item.dart';
@@ -121,6 +122,29 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           // ince ilerleyen progress + opsiyonel status mesajı.
           if (state.isBackgroundLoading)
             _BackgroundLoadingBar(message: state.loadingMessage),
+          // Playlist arka plan sync bilgi banner'ı (2026-05-11):
+          // add() background sync yapıyor, kullanıcı dialog beklemiyor.
+          // Active playlist'in sync durumunu bildiri olarak göster.
+          Consumer(
+            builder: (ctx, ref, _) {
+              final notifier = ref.read(playlistsProvider.notifier);
+              final activeId = state.activePlaylistId;
+              if (activeId.isEmpty) return const SizedBox.shrink();
+              final syncing = notifier.isSyncing(activeId);
+              if (!syncing) return const SizedBox.shrink();
+              return ValueListenableBuilder<String>(
+                valueListenable: notifier.progressMessage,
+                builder: (_, msg, __) {
+                  if (msg.isEmpty && !syncing) return const SizedBox.shrink();
+                  return _BackgroundLoadingBar(
+                    message: msg.isEmpty
+                        ? 'Playlist senkronize ediliyor...'
+                        : msg,
+                  );
+                },
+              );
+            },
+          ),
           if (!_showSearch) _TabBar(state: state),
           if (!_showSearch && state.activeTab == 'favorites')
             _FavoritesTypeBar(state: state),
@@ -980,6 +1004,23 @@ class _FeaturedCard extends StatelessWidget {
 
 enum _HomeCardStyle { poster, logo }
 
+/// Long press ile favori toggle + SnackBar feedback. _LogoCard ve
+/// _PosterCard'tan çağrılır. 2026-05-11 kullanıcı isteği.
+void _toggleFavoriteWithFeedback(
+    BuildContext context, WidgetRef ref, ChannelModel channel) {
+  final newFav = !channel.isFavorite;
+  ref.read(homeProvider.notifier).toggleFavorite(channel);
+  ScaffoldMessenger.of(context).showSnackBar(
+    SnackBar(
+      content: Text(newFav
+          ? '${channel.name} favorilere eklendi'
+          : '${channel.name} favorilerden çıkarıldı'),
+      duration: const Duration(seconds: 2),
+      behavior: SnackBarBehavior.floating,
+    ),
+  );
+}
+
 class _HomeRow extends StatelessWidget {
   final String             title;
   final List<ChannelModel> items;
@@ -1037,12 +1078,12 @@ class _HomeRow extends StatelessWidget {
 }
 
 /// Canlı TV kanalları için landscape kart (logo + isim).
-class _LogoCard extends StatelessWidget {
+class _LogoCard extends ConsumerWidget {
   final ChannelModel channel;
   const _LogoCard({required this.channel});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final cs = Theme.of(context).colorScheme;
     return TvFocusableScale(
       borderRadius: BorderRadius.circular(Radius.card + 3),
@@ -1056,6 +1097,7 @@ class _LogoCard extends StatelessWidget {
           'streamType':      channel.streamType,
         },
       ),
+      onLongPress: () => _toggleFavoriteWithFeedback(context, ref, channel),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -1208,6 +1250,7 @@ class _PosterCard extends ConsumerWidget {
           'streamType':      channel.streamType,
         },
       ),
+      onLongPress: () => _toggleFavoriteWithFeedback(context, ref, channel),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [

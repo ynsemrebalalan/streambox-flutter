@@ -92,6 +92,7 @@ class _TvFocusableState extends State<TvFocusable> {
 class TvFocusableScale extends StatefulWidget {
   final Widget child;
   final VoidCallback onTap;
+  final VoidCallback? onLongPress;
   final bool autofocus;
   final BorderRadius? borderRadius;
   final double scale;
@@ -100,6 +101,7 @@ class TvFocusableScale extends StatefulWidget {
     super.key,
     required this.child,
     required this.onTap,
+    this.onLongPress,
     this.autofocus = false,
     this.borderRadius,
     this.scale = 1.08,
@@ -132,6 +134,7 @@ class _TvFocusableScaleState extends State<TvFocusableScale> {
       },
       child: GestureDetector(
         onTap: widget.onTap,
+        onLongPress: widget.onLongPress,
         child: AnimatedScale(
           scale: _focused ? widget.scale : 1.0,
           duration: const Duration(milliseconds: 150),

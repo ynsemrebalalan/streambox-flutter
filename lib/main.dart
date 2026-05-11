@@ -11,6 +11,7 @@ import 'core/theme/app_theme.dart';
 import 'core/utils/device_tier.dart';
 import 'core/utils/secure_storage.dart';
 import 'data/repositories/channel_repository.dart';
+import 'data/repositories/playlist_repository.dart';
 import 'data/repositories/settings_repository.dart';
 import 'data/services/demo_seed_service.dart';
 import 'features/ads/ads_service.dart';
@@ -90,12 +91,46 @@ Future<void> _bootstrapInBackground() async {
   // yuklenmez ama init yine yapilir (Pro -> Free downgrade'de gecikme yok).
   unawaited(_initAdMob());
 
-  unawaited(DemoSeedService.seedIfNeeded());
+  // 2026-05-11: Demo seed kaldırıldı (kullanıcı raporu — production'da
+  // demo playlist yanıltıyor). Cleanup migration mevcut DB'lerden temizler.
+  // Apple App Review için ileride feature flag arkasında açılabilir.
+  // unawaited(DemoSeedService.seedIfNeeded());
 
   // One-time DB migration (2026-05-11): mevcut yanlış classify edilmiş
-  // kanalları yeni _detectStreamType ile yeniden değerlendir. Settings
-  // flag ile bir kere çalışır.
+  // kanalları yeni _detectStreamType ile yeniden değerlendir.
   unawaited(_runStreamTypeMigration());
+
+  // Demo playlist temizleme migration (2026-05-11). Bir kere çalışır.
+  unawaited(_cleanupDemoPlaylist());
+}
+
+Future<void> _cleanupDemoPlaylist() async {
+  try {
+    final settings = SettingsRepository();
+    final done = await settings.get(SettingsKeys.demoPlaylistCleaned);
+    if (done == 'true') return;
+
+    final playlistRepo = PlaylistRepository();
+    final channelRepo = ChannelRepository();
+    final demo = await playlistRepo.getById(DemoSeedService.demoPlaylistId);
+    if (demo != null) {
+      await channelRepo.deleteByPlaylist(DemoSeedService.demoPlaylistId);
+      await playlistRepo.delete(DemoSeedService.demoPlaylistId);
+      // Eğer demo aktifti, kullanıcının başka playlist'i varsa onu yap
+      final activeId = await settings.get(SettingsKeys.activePlaylistId);
+      if (activeId == DemoSeedService.demoPlaylistId) {
+        final all = await playlistRepo.getAll();
+        await settings.set(
+            SettingsKeys.activePlaylistId, all.firstOrNull?.id ?? '');
+      }
+      // ignore: avoid_print
+      print('[migration] demo playlist DB\'den temizlendi');
+    }
+    await settings.set(SettingsKeys.demoPlaylistCleaned, 'true');
+  } catch (e) {
+    // ignore: avoid_print
+    print('[migration] demo cleanup failed: $e');
+  }
 }
 
 Future<void> _runStreamTypeMigration() async {

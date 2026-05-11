@@ -199,6 +199,9 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
     _watchdog?.cancel();
     _watchdog = Timer.periodic(const Duration(seconds: 2), (_) {
       if (!mounted || _isReconnecting) return;
+      // 2026-05-11: Pause sırasında stall sayma. Kullanıcı bilerek pause
+      // yaptıysa watchdog reconnect tetiklemesin (yanlış pozitif).
+      if (!_player.state.playing) return;
       final since = DateTime.now().difference(_lastProgress);
       final threshold =
           _isBuffering ? _bufferingStallThreshold : _stallThreshold;
@@ -211,12 +214,13 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
 
   Future<void> _scheduleReconnect({required String reason}) async {
     if (_isReconnecting || !mounted) return;
-    _isReconnecting = true;
+    // 2026-05-11: setState ile UI'a yansıyor — reconnect banner görünür.
+    setState(() => _isReconnecting = true);
     _reconnectAttempts++;
     debugPrint('[Player] reconnect #$_reconnectAttempts → $reason');
 
     if (_reconnectAttempts > _maxReconnectAttempts) {
-      _isReconnecting = false;
+      if (mounted) setState(() => _isReconnecting = false);
       if (mounted) {
         final l = AppLocalizations.of(context);
         ScaffoldMessenger.of(context).showSnackBar(
@@ -242,7 +246,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
     } catch (e) {
       debugPrint('[Player] reconnect failed: $e');
     } finally {
-      _isReconnecting = false;
+      if (mounted) setState(() => _isReconnecting = false);
     }
   }
 
@@ -844,7 +848,16 @@ class _ControlsOverlayState extends State<_ControlsOverlay> {
                       final playing = snap.data ?? false;
                       return _PlayPauseButton(
                         playing: playing,
-                        onTap: widget.player.playOrPause,
+                        // 2026-05-11: Explicit play/pause — playOrPause toggle
+                        // bazen state race'inde ters atıyor. Mevcut state'e
+                        // göre kesin komut.
+                        onTap: () {
+                          if (widget.player.state.playing) {
+                            widget.player.pause();
+                          } else {
+                            widget.player.play();
+                          }
+                        },
                       );
                     },
                   ),
@@ -1193,6 +1206,35 @@ class _PlayPauseButton extends StatefulWidget {
 
 class _PlayPauseButtonState extends State<_PlayPauseButton> {
   bool _focused = false;
+  // 2026-05-11: Optimistic state — basıldığında stream event beklemeden
+  // ikon değişir, kullanıcı tepki alır. Stream event geldiğinde widget.playing
+  // ile teyit edilir.
+  bool? _optimisticPlaying;
+  DateTime? _lastTapAt;
+
+  bool get _displayPlaying => _optimisticPlaying ?? widget.playing;
+
+  @override
+  void didUpdateWidget(_PlayPauseButton old) {
+    super.didUpdateWidget(old);
+    // Stream gerçek değeri optimistic'le eşleşirse temizle (state teyit edildi)
+    if (_optimisticPlaying != null && widget.playing == _optimisticPlaying) {
+      _optimisticPlaying = null;
+    }
+  }
+
+  void _handleTap() {
+    // Debounce: 300ms içinde ikinci basışı yut (toggle çakışmasını önler)
+    final now = DateTime.now();
+    if (_lastTapAt != null &&
+        now.difference(_lastTapAt!) < const Duration(milliseconds: 300)) {
+      return;
+    }
+    _lastTapAt = now;
+    // Optimistic toggle — UI hemen değişir
+    setState(() => _optimisticPlaying = !_displayPlaying);
+    widget.onTap();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -1204,13 +1246,13 @@ class _PlayPauseButtonState extends State<_PlayPauseButton> {
         if (event.logicalKey == LogicalKeyboardKey.select ||
             event.logicalKey == LogicalKeyboardKey.enter ||
             event.logicalKey == LogicalKeyboardKey.space) {
-          widget.onTap();
+          _handleTap();
           return KeyEventResult.handled;
         }
         return KeyEventResult.ignored;
       },
       child: GestureDetector(
-        onTap: widget.onTap,
+        onTap: _handleTap,
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 150),
           decoration: BoxDecoration(
@@ -1225,7 +1267,7 @@ class _PlayPauseButtonState extends State<_PlayPauseButton> {
           ),
           padding: EdgeInsets.all(_focused ? 24 : 20),
           child: Icon(
-            widget.playing ? Icons.pause : Icons.play_arrow,
+            _displayPlaying ? Icons.pause : Icons.play_arrow,
             color: Colors.white,
             size: 44,
           ),

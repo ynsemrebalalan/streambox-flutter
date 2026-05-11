@@ -31,48 +31,76 @@ class HomeNotifier extends AsyncNotifier<HomeState> {
     );
 
     if (id.isNotEmpty) {
-      state = await _loadHomeRows(state);
+      // 2026-05-11 lazy load: önce kritik 3 satır (fast ~500ms),
+      // detaylı satırlar background'da yüklenir (Future.microtask).
+      state = await _loadHomeRowsFast(state);
       state = state.copyWith(isLoading: false, clearError: true);
+
+      // Background yüklemesi — UI hemen ilk içeriği gösterir,
+      // diğer satırlar 1-2sn sonra otomatik düşer.
+      Future.microtask(() async {
+        try {
+          final detailed = await _loadHomeRowsDetailed(state);
+          this.state = AsyncData(detailed);
+        } catch (_) {
+          // Detailed yükleme hatası kritik değil, fast state korunur.
+        }
+      });
     }
 
     return state;
   }
 
-  /// Ana Sayfa row'larını yeniden yükler — `build()` ve `selectTab('home')` /
-  /// `refreshVisibility()` tek noktadan beslenir, copy-paste edilmiş fetch
-  /// listesi yok. 7 paralel sorgu + Popüler dilim hesaplaması burada.
-  Future<HomeState> _loadHomeRows(HomeState s) async {
+  /// FAST: ilk render için kritik 3 satır.
+  /// continueWatching (kullanıcı son izlediği), latestLive (canlı), recentlyWatched.
+  /// ~500ms — Home anında görünür.
+  Future<HomeState> _loadHomeRowsFast(HomeState s) async {
     if (s.activePlaylistId.isEmpty) return s;
     final repo = ref.read(channelRepoProvider);
     final results = await Future.wait<dynamic>([
-      repo.getRecentlyWatched(s.activePlaylistId),                         // 0
-      repo.getContinueWatching(s.activePlaylistId),                         // 1
-      repo.getLatestByType(s.activePlaylistId, 'movie',  limit: 20),        // 2
-      repo.getLatestByType(s.activePlaylistId, 'series', limit: 20),        // 3
-      repo.getLatestByType(s.activePlaylistId, 'live',   limit: 20),        // 4
-      repo.getWatchedMovies(s.activePlaylistId),                            // 5
-      repo.getWatchedSeriesEpisodes(s.activePlaylistId),                    // 6
+      repo.getRecentlyWatched(s.activePlaylistId),
+      repo.getContinueWatching(s.activePlaylistId),
+      repo.getLatestByType(s.activePlaylistId, 'live', limit: 20),
     ]);
-    final newMovies = results[2] as List<ChannelModel>;
-    final newSeries = results[3] as List<ChannelModel>;
-    final newLive   = results[4] as List<ChannelModel>;
-    // Featured banner SADECE film+dizi — Android HomeViewModel paritesi.
-    // (Adım 10'da live eklenmişti, kullanıcı "üst slider'da canlı görünmesin"
-    // dedi; Adım 19'da live geri çıkarıldı.)
+    return s.copyWith(
+      recentlyWatched:  results[0] as List<ChannelModel>,
+      continueWatching: results[1] as List<ChannelModel>,
+      latestLive:       results[2] as List<ChannelModel>,
+    );
+  }
+
+  /// DETAILED: alt satırlar background'da. movie/series/watched/popular.
+  /// ~1-2sn — kullanıcı zaten Home'da scroll etmeden tetiklenir.
+  Future<HomeState> _loadHomeRowsDetailed(HomeState s) async {
+    if (s.activePlaylistId.isEmpty) return s;
+    final repo = ref.read(channelRepoProvider);
+    final results = await Future.wait<dynamic>([
+      repo.getLatestByType(s.activePlaylistId, 'movie',  limit: 20),
+      repo.getLatestByType(s.activePlaylistId, 'series', limit: 20),
+      repo.getWatchedMovies(s.activePlaylistId),
+      repo.getWatchedSeriesEpisodes(s.activePlaylistId),
+    ]);
+    final newMovies = results[0] as List<ChannelModel>;
+    final newSeries = results[1] as List<ChannelModel>;
     final deduped = _dedupNew(newMovies, newSeries);
     return s.copyWith(
-      recentlyWatched:        results[0] as List<ChannelModel>,
-      continueWatching:       results[1] as List<ChannelModel>,
       newlyAddedMovies:       newMovies,
       newlyAddedSeries:       newSeries,
-      latestLive:             newLive,
-      watchedMovies:          results[5] as List<ChannelModel>,
-      watchedSeriesEpisodes:  results[6] as List<ChannelModel>,
+      watchedMovies:          results[2] as List<ChannelModel>,
+      watchedSeriesEpisodes:  results[3] as List<ChannelModel>,
       featuredVodItems:       deduped.take(10).toList(),
       popularVodItems:        deduped.length > 10
           ? deduped.skip(10).take(10).toList()
           : const [],
     );
+  }
+
+  /// Geriye uyumluluk wrapper — selectTab('home'), refreshVisibility, markWatched
+  /// gibi yerler tek seferlik tam reload bekliyor. Fast + detailed sırayla.
+  Future<HomeState> _loadHomeRows(HomeState s) async {
+    final fast = await _loadHomeRowsFast(s);
+    final detailed = await _loadHomeRowsDetailed(fast);
+    return detailed;
   }
 
   /// Yeni eklenen film + dizi karışımını dedup'lar (live BANNER DIŞINDA —
