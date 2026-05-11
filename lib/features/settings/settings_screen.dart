@@ -90,11 +90,7 @@ class SettingsScreenNotifier extends AsyncNotifier<SettingsState> {
     );
   }
 
-  void setEpgUrl(String v)          => _update((s) => s.copyWith(epgUrl: v));
-  void setOpenAiApiKey(String v)    => _update((s) => s.copyWith(openAiApiKey: v));
-  void setOpenAiLanguage(String v)  => _update((s) => s.copyWith(openAiLanguage: v));
-  void setGroqProxyUrl(String v)    => _update((s) => s.copyWith(groqProxyUrl: v));
-  void setGroqProxySecret(String v) => _update((s) => s.copyWith(groqProxySecret: v));
+  void setEpgUrl(String v) => _update((s) => s.copyWith(epgUrl: v));
   void setSubtitleFontSize(String v) {
     _update((s) => s.copyWith(subtitleFontSize: v));
     ref.read(settingsRepoProvider).set(SettingsKeys.subtitleFontSize, v);
@@ -113,11 +109,7 @@ class SettingsScreenNotifier extends AsyncNotifier<SettingsState> {
     if (s == null) return;
     _update((st) => st.copyWith(isSaving: true));
     final repo = ref.read(settingsRepoProvider);
-    await repo.set(SettingsKeys.epgUrl,          s.epgUrl);
-    await repo.set(SettingsKeys.openAiApiKey,    s.openAiApiKey);
-    await repo.set(SettingsKeys.openAiLanguage,  s.openAiLanguage);
-    await repo.set(SettingsKeys.groqProxyUrl,    s.groqProxyUrl);
-    await repo.set(SettingsKeys.groqProxySecret, s.groqProxySecret);
+    await repo.set(SettingsKeys.epgUrl, s.epgUrl);
     _update((st) => st.copyWith(isSaving: false));
   }
 
@@ -129,17 +121,14 @@ class SettingsScreenNotifier extends AsyncNotifier<SettingsState> {
 
 // ── Screen ────────────────────────────────────────────────────────────────────
 //
-// Yeniden tasarim notlari (Kotlin paritesi):
-//   - ProfileHeaderCard en uste tasindi (avatar + email + Pro CTA)
-//     ⇒ ayri "Hesap" section'i kaldirildi (duplicate idi)
-//   - 7 sectio renkli ikon dairesi olan SectionHeader ile gruplandi
-//   - Sectionlar collapsible (CollapsibleSection): Pro, Icerik, Gorunum, EPG,
-//     Altyazi, Oynatici, Hakkinda. Kullanici istemedigi alani sakliyor.
-//   - Pro features (Watchlist/Theme/Parental/CloudSync/Profiller) Hakkinda'dan
-//     ayrildi → kendi "Pro Ozellikler" section'i (gold tema)
-//   - Playlist Yonetimi + Kategori Filtresi "Icerik" section'i
-//   - PiP + Reklamsiz bilgi "Oynatici" section'inda birlestirildi
-//   - Hakkinda: sadece versiyon + Yasal Bildirim linki + Veri Silme linki
+// Tasarim felsefesi: iOS Settings + Spotify mobil sadelik.
+//   - Tek ListView, section'lar bos baslik (caps, gri) + tek Card grup.
+//   - Card icinde ListTile + 1px Divider — clutter yok, hiyerarsi temiz.
+//   - Hicbir bolum collapsible degil; kullanici scroll eder, tum ozellikler
+//     ayni anda kesfedilebilir.
+//   - Pro section'da basligin yaninda "PRO" gold chip ipucu verir.
+//   - Profile header en uste — gradient avatar + email + status. Auth ise
+//     chevron, anon ise "Giris Yap" CTA chip.
 // ─────────────────────────────────────────────────────────────────────────────
 
 class SettingsScreen extends ConsumerStatefulWidget {
@@ -159,9 +148,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     super.initState();
     PackageInfo.fromPlatform().then((info) {
       if (mounted) {
-        setState(() {
-          _appVersion = '${info.version} (${info.buildNumber})';
-        });
+        setState(() => _appVersion = '${info.version} (${info.buildNumber})');
       }
     });
   }
@@ -174,7 +161,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     return async.when(
       loading: () => const Scaffold(
           body: Center(child: CircularProgressIndicator())),
-      error:   (e, _) => Scaffold(
+      error: (e, _) => Scaffold(
           body: Center(child: Text(l.errorWithDetails('$e')))),
       data: (state) {
         if (!_initialized) {
@@ -197,7 +184,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           if (state.isSaving)
             const Padding(
               padding: EdgeInsets.all(14),
-              child:   SizedBox(
+              child: SizedBox(
                   width: 20, height: 20,
                   child: CircularProgressIndicator(strokeWidth: 2)),
             )
@@ -219,144 +206,32 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       body: ResponsiveCenter(
         maxWidth: Responsive.formMaxWidth(context),
         child: ListView(
-          padding: const EdgeInsets.all(Spacing.lg),
+          padding: const EdgeInsets.fromLTRB(
+              Spacing.lg, Spacing.md, Spacing.lg, Spacing.xxl),
           children: [
-            // ── Profile Header (Hesap section'i bunla replace edildi) ─────
             const _ProfileHeaderCard(),
-            const SizedBox(height: Spacing.xl),
 
-            // ── Pro Features (gold) ────────────────────────────────────
-            _SectionHeader(
-              title: l.settingsProSection,
-              icon:  Icons.workspace_premium,
-              color: const Color(0xFFFFB300),
-            ),
-            _CollapsibleSection(
-              storageKey: 'sec_pro',
-              child: Card(
-                child: Column(
-                  children: [
-                    ListTile(
-                      leading: const Icon(Icons.bookmark_outline),
-                      title:   Text(l.watchlistTitle),
-                      trailing: const Icon(Icons.chevron_right),
-                      onTap:   () => context.push(AppRoutes.watchlist),
-                    ),
-                    ListTile(
-                      leading: const Icon(Icons.color_lens_outlined),
-                      title:   Text(l.themePickerTitle),
-                      trailing: const Icon(Icons.chevron_right),
-                      onTap:   () => context.push(AppRoutes.themePicker),
-                    ),
-                    ListTile(
-                      leading: const Icon(Icons.lock_outline),
-                      title:   Text(l.parentalLockTitle),
-                      trailing: const Icon(Icons.chevron_right),
-                      onTap:   () => context.push(AppRoutes.parentalLock),
-                    ),
-                    const CloudSyncTile(),
-                    ListTile(
-                      leading: const Icon(Icons.switch_account),
-                      title:   Text(l.profileSwitcherTitle),
-                      trailing: const Icon(Icons.chevron_right),
-                      onTap:   () => context.push(AppRoutes.profiles),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            const SizedBox(height: Spacing.xl),
+            _SectionLabel(text: l.settingsProSection, isPro: true),
+            _GroupedCard(children: const [_ProSection()]),
 
-            // ── İçerik (blue) ──────────────────────────────────────────
-            _SectionHeader(
-              title: l.settingsContentSection,
-              icon:  Icons.playlist_play,
-              color: const Color(0xFF2196F3),
-            ),
-            _CollapsibleSection(
-              storageKey: 'sec_content',
-              child: Card(
-                child: Column(
-                  children: [
-                    ListTile(
-                      leading: const Icon(Icons.playlist_add),
-                      title:   Text(l.settingsPlaylistManagement),
-                      trailing: const Icon(Icons.chevron_right),
-                      onTap:   () => context.push(AppRoutes.playlists),
-                    ),
-                    ListTile(
-                      leading: const Icon(Icons.filter_list),
-                      title:   Text(l.categoryFilterTitle),
-                      subtitle: Text(l.settingsCategoryFilterSubtitle),
-                      trailing: const Icon(Icons.chevron_right),
-                      onTap:   () => context.push(AppRoutes.categoryFilter),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            const SizedBox(height: Spacing.xl),
+            _SectionLabel(text: l.settingsContentSection),
+            _GroupedCard(children: const [_ContentSection()]),
 
-            // ── Görünüm (purple): Tema + Dil ───────────────────────────
-            _SectionHeader(
-              title: l.settingsAppearanceSection,
-              icon:  Icons.palette_outlined,
-              color: const Color(0xFF9C27B0),
-            ),
-            _CollapsibleSection(
-              storageKey: 'sec_appearance',
-              child: const _AppearanceCard(),
-            ),
-            const SizedBox(height: Spacing.xl),
+            _SectionLabel(text: l.settingsAppearanceSection),
+            _GroupedCard(children: const [_AppearanceSection()]),
 
-            // ── EPG (green) ────────────────────────────────────────────
-            _SectionHeader(
-              title: l.settingsEpgSection,
-              icon:  Icons.schedule,
-              color: const Color(0xFF4CAF50),
-            ),
-            _CollapsibleSection(
-              storageKey: 'sec_epg',
-              child: _EpgCard(epgCtrl: _epgCtrl, state: state),
-            ),
-            const SizedBox(height: Spacing.xl),
+            _SectionLabel(text: l.settingsEpgSection),
+            _GroupedCard(
+                children: [_EpgSection(epgCtrl: _epgCtrl, state: state)]),
 
-            // ── Altyazı (orange) ───────────────────────────────────────
-            _SectionHeader(
-              title: l.settingsSubtitleSection,
-              icon:  Icons.subtitles_outlined,
-              color: const Color(0xFFFF9800),
-            ),
-            _CollapsibleSection(
-              storageKey: 'sec_subtitle',
-              child: _SubtitleCard(state: state),
-            ),
-            const SizedBox(height: Spacing.xl),
+            _SectionLabel(text: l.settingsSubtitleSection),
+            _GroupedCard(children: [_SubtitleSection(state: state)]),
 
-            // ── Oynatıcı (red): PiP + Reklamsız bilgi ──────────────────
-            _SectionHeader(
-              title: l.settingsPlayerSection,
-              icon:  Icons.play_circle_outline,
-              color: const Color(0xFFE53935),
-            ),
-            _CollapsibleSection(
-              storageKey: 'sec_player',
-              child: const _PlayerCard(),
-            ),
-            const SizedBox(height: Spacing.xl),
+            _SectionLabel(text: l.settingsPlayerSection),
+            _GroupedCard(children: const [_PlayerSection()]),
 
-            // ── Hakkında (gray) ────────────────────────────────────────
-            _SectionHeader(
-              title: l.settingsAboutSection,
-              icon:  Icons.info_outline,
-              color: const Color(0xFF607D8B),
-            ),
-            _CollapsibleSection(
-              storageKey: 'sec_about',
-              child: _AboutCard(appVersion: _appVersion),
-            ),
-
-            const SizedBox(height: Spacing.xxl),
+            _SectionLabel(text: l.settingsAboutSection),
+            _GroupedCard(children: [_AboutSection(appVersion: _appVersion)]),
           ],
         ),
       ),
@@ -370,7 +245,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   }
 }
 
-// ── Profile Header (Kotlin'deki ProfileHeaderCard'a paralel) ────────────────
+// ── Profile Header ──────────────────────────────────────────────────────────
 
 class _ProfileHeaderCard extends ConsumerWidget {
   const _ProfileHeaderCard();
@@ -381,106 +256,98 @@ class _ProfileHeaderCard extends ConsumerWidget {
     final auth = ref.watch(authStateProvider).valueOrNull;
     final isPro = ref.watch(isProProvider);
     final cs = Theme.of(context).colorScheme;
-
     final isAuth = auth is AuthAuthenticated;
     final email = isAuth ? auth.email : null;
     final initial = (email != null && email.isNotEmpty)
         ? email.substring(0, 1).toUpperCase()
-        : '?';
+        : null;
 
     return Card(
-      elevation: 2,
+      elevation: 0,
+      color: cs.surfaceContainerHigh,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: InkWell(
         borderRadius: BorderRadius.circular(16),
-        onTap: () {
-          if (isAuth) {
-            context.push(AppRoutes.account);
-          } else {
-            context.push(AppRoutes.login);
-          }
-        },
+        onTap: () => context.push(isAuth ? AppRoutes.account : AppRoutes.login),
         child: Padding(
-          padding: const EdgeInsets.all(Spacing.lg),
+          padding: const EdgeInsets.symmetric(
+              horizontal: Spacing.lg, vertical: Spacing.md + 2),
           child: Row(
             children: [
-              // Avatar
               Container(
-                width: 56, height: 56,
+                width: 52, height: 52,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   gradient: LinearGradient(
                     begin: Alignment.topLeft,
                     end:   Alignment.bottomRight,
                     colors: isPro
-                        ? const [Color(0xFFFFB300), Color(0xFFFF8F00)]
-                        : [cs.primary, cs.primaryContainer],
+                        ? const [Color(0xFFFFD54F), Color(0xFFFF8F00)]
+                        : [cs.primary, cs.tertiary],
                   ),
                 ),
                 alignment: Alignment.center,
-                child: isAuth
+                child: initial != null
                     ? Text(initial,
                         style: const TextStyle(
-                            fontSize: 24,
+                            fontSize: 22,
                             fontWeight: FontWeight.w700,
                             color: Colors.white))
                     : const Icon(Icons.person_outline,
-                        size: 28, color: Colors.white),
+                        size: 26, color: Colors.white),
               ),
               const SizedBox(width: Spacing.md),
-              // Email + status
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      email ?? l.settingsTapToSignIn,
+                      email ?? l.authNotSignedIn,
                       style: const TextStyle(
                           fontSize: 16, fontWeight: FontWeight.w600),
                       maxLines: 1, overflow: TextOverflow.ellipsis,
                     ),
-                    const SizedBox(height: 4),
-                    Row(
-                      children: [
-                        if (isPro) ...[
-                          const Icon(Icons.workspace_premium,
-                              size: 14, color: Color(0xFFFFB300)),
-                          const SizedBox(width: 4),
-                          Text(l.authProActive,
-                              style: const TextStyle(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w600,
-                                  color: Color(0xFFFFB300))),
-                        ] else
-                          Text(
-                            isAuth ? l.authFreeTier : l.authNotSignedIn,
-                            style: TextStyle(
-                                fontSize: 12,
-                                color: cs.onSurfaceVariant),
-                          ),
-                      ],
+                    const SizedBox(height: 2),
+                    Text(
+                      isPro
+                          ? l.authProActive
+                          : (isAuth ? l.authFreeTier : l.settingsTapToSignIn),
+                      style: TextStyle(
+                          fontSize: 13,
+                          color: isPro
+                              ? const Color(0xFFFF8F00)
+                              : cs.onSurfaceVariant,
+                          fontWeight: isPro ? FontWeight.w600 : null),
                     ),
                   ],
                 ),
               ),
-              // Pro CTA chip (Free user)
-              if (!isPro)
-                Padding(
-                  padding: const EdgeInsets.only(left: Spacing.sm),
-                  child: FilledButton.tonal(
-                    style: FilledButton.styleFrom(
-                      visualDensity: VisualDensity.compact,
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 12, vertical: 6),
-                    ),
-                    onPressed: () => context.push(
-                      AppRoutes.paywall,
-                      extra: <String, dynamic>{'trigger': 'settingsCta'},
-                    ),
-                    child: Text(l.authUpgradeToPro,
-                        style: const TextStyle(
-                            fontSize: 12, fontWeight: FontWeight.w600)),
+              if (!isPro && isAuth)
+                FilledButton.tonal(
+                  style: FilledButton.styleFrom(
+                    visualDensity: VisualDensity.compact,
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 14, vertical: 8),
                   ),
+                  onPressed: () => context.push(
+                    AppRoutes.paywall,
+                    extra: <String, dynamic>{'trigger': 'settingsCta'},
+                  ),
+                  child: Text(l.authUpgradeToPro,
+                      style: const TextStyle(
+                          fontSize: 12, fontWeight: FontWeight.w600)),
+                )
+              else if (!isAuth)
+                FilledButton(
+                  style: FilledButton.styleFrom(
+                    visualDensity: VisualDensity.compact,
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 16, vertical: 8),
+                  ),
+                  onPressed: () => context.push(AppRoutes.login),
+                  child: Text(l.authSignInButton,
+                      style: const TextStyle(
+                          fontSize: 12, fontWeight: FontWeight.w600)),
                 )
               else
                 Icon(Icons.chevron_right, color: cs.onSurfaceVariant),
@@ -492,195 +359,201 @@ class _ProfileHeaderCard extends ConsumerWidget {
   }
 }
 
-// ── Section header (renkli ikon dairesi + baslik) ───────────────────────────
+// ── Section header (sade, sade, sade) ───────────────────────────────────────
 
-class _SectionHeader extends StatelessWidget {
-  final String title;
-  final IconData icon;
-  final Color color;
-  const _SectionHeader({
-    required this.title,
-    required this.icon,
-    required this.color,
-  });
+class _SectionLabel extends StatelessWidget {
+  final String text;
+  final bool isPro;
+  const _SectionLabel({required this.text, this.isPro = false});
 
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     return Padding(
-      padding: const EdgeInsets.only(left: 4, bottom: Spacing.sm),
+      padding: const EdgeInsets.fromLTRB(
+          Spacing.md, Spacing.xl + 4, Spacing.md, Spacing.xs + 2),
       child: Row(
         children: [
-          Container(
-            width: 28, height: 28,
-            decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.15),
-              shape: BoxShape.circle,
-            ),
-            alignment: Alignment.center,
-            child: Icon(icon, size: 16, color: color),
-          ),
-          const SizedBox(width: Spacing.sm),
           Text(
-            title.toUpperCase(),
+            text.toUpperCase(),
             style: TextStyle(
-                fontSize:      TextSize.caption,
-                fontWeight:    FontWeight.w700,
-                letterSpacing: 1.2,
-                color:         cs.onSurface),
+                fontSize: 11,
+                fontWeight: FontWeight.w700,
+                letterSpacing: 1.4,
+                color: cs.onSurfaceVariant),
           ),
+          if (isPro) ...[
+            const SizedBox(width: 8),
+            Container(
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFFB300).withValues(alpha: 0.18),
+                borderRadius: BorderRadius.circular(4),
+              ),
+              child: const Text(
+                'PRO',
+                style: TextStyle(
+                    fontSize: 9,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 0.6,
+                    color: Color(0xFFFF8F00)),
+              ),
+            ),
+          ],
         ],
       ),
     );
   }
 }
 
-// ── Collapsible section (animasyonlu expand/collapse) ───────────────────────
-//
-// `storageKey` ile her section'in acik/kapali state'i SettingsRepository'de
-// saklanir. Boylece kullanici acik biraktigi alan tekrar geldiginde acik kalir.
-// Default: TUM section'lar acik (ilk acilisla overwhelm olmasin diye degil,
-// daha kullanici-dostu ki herseyi gorsun; ileride default kapali yapabiliriz).
-// ─────────────────────────────────────────────────────────────────────────────
+// ── Grouped card wrapper (single Card per section) ──────────────────────────
 
-class _CollapsibleSection extends StatefulWidget {
-  final String storageKey;
-  final Widget child;
-  const _CollapsibleSection({
-    required this.storageKey,
-    required this.child,
-  });
-
-  @override
-  State<_CollapsibleSection> createState() => _CollapsibleSectionState();
-}
-
-class _CollapsibleSectionState extends State<_CollapsibleSection> {
-  bool _expanded = true;
-  bool _loaded = false;
-  static const _prefix = 'settings_expand_';
-
-  @override
-  void initState() {
-    super.initState();
-    _load();
-  }
-
-  Future<void> _load() async {
-    final v = await SettingsRepository().get('$_prefix${widget.storageKey}');
-    if (!mounted) return;
-    setState(() {
-      _expanded = v != 'false';  // default ACIK
-      _loaded = true;
-    });
-  }
-
-  Future<void> _toggle() async {
-    setState(() => _expanded = !_expanded);
-    await SettingsRepository()
-        .set('$_prefix${widget.storageKey}', _expanded ? 'true' : 'false');
-  }
+class _GroupedCard extends StatelessWidget {
+  final List<Widget> children;
+  const _GroupedCard({required this.children});
 
   @override
   Widget build(BuildContext context) {
-    if (!_loaded) return widget.child;
+    final cs = Theme.of(context).colorScheme;
+    return Card(
+      elevation: 0,
+      color: cs.surfaceContainerHigh,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+      margin: EdgeInsets.zero,
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(14),
+        child: Column(children: children),
+      ),
+    );
+  }
+}
+
+// Internal divider between tiles — Card grup hissini bozmadan satir ayraci.
+class _TileDivider extends StatelessWidget {
+  const _TileDivider();
+  @override
+  Widget build(BuildContext context) => Padding(
+        padding: const EdgeInsetsDirectional.only(start: 56),
+        child: Divider(
+            height: 1,
+            thickness: 0.5,
+            color: Theme.of(context).colorScheme.outlineVariant),
+      );
+}
+
+// ── Pro section ─────────────────────────────────────────────────────────────
+
+class _ProSection extends ConsumerWidget {
+  const _ProSection();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l = AppLocalizations.of(context);
     return Column(
       children: [
-        // Tap header'i kart'in ustune koymak yerine kartin disinda
-        // gizli bir gesture detector koyacaktik; ama daha sezgisel cozum:
-        // header sag'inda kucuk chevron, kartin uzerinde InkWell.
-        AnimatedSize(
-          duration: const Duration(milliseconds: 220),
-          curve: Curves.easeInOut,
-          alignment: Alignment.topCenter,
-          child: ConstrainedBox(
-            constraints: _expanded
-                ? const BoxConstraints()
-                : const BoxConstraints(maxHeight: 0),
-            child: widget.child,
-          ),
+        _NavTile(
+          icon: Icons.bookmark_outline,
+          title: l.watchlistTitle,
+          onTap: () => context.push(AppRoutes.watchlist),
         ),
-        // Toggle butonu kartin altinda (compact)
-        Align(
-          alignment: AlignmentDirectional.centerEnd,
-          child: TextButton.icon(
-            onPressed: _toggle,
-            icon: AnimatedRotation(
-              turns: _expanded ? 0.5 : 0.0,
-              duration: const Duration(milliseconds: 220),
-              child: const Icon(Icons.keyboard_arrow_down, size: 18),
-            ),
-            label: Text(
-              _expanded
-                  ? AppLocalizations.of(context).commonHide
-                  : AppLocalizations.of(context).commonShow,
-              style: const TextStyle(fontSize: 12),
-            ),
-            style: TextButton.styleFrom(
-              visualDensity: VisualDensity.compact,
-              padding: const EdgeInsets.symmetric(horizontal: 8),
-            ),
-          ),
+        const _TileDivider(),
+        _NavTile(
+          icon: Icons.color_lens_outlined,
+          title: l.themePickerTitle,
+          onTap: () => context.push(AppRoutes.themePicker),
+        ),
+        const _TileDivider(),
+        _NavTile(
+          icon: Icons.lock_outline,
+          title: l.parentalLockTitle,
+          onTap: () => context.push(AppRoutes.parentalLock),
+        ),
+        const _TileDivider(),
+        const CloudSyncTile(),
+        const _TileDivider(),
+        _NavTile(
+          icon: Icons.switch_account,
+          title: l.profileSwitcherTitle,
+          onTap: () => context.push(AppRoutes.profiles),
         ),
       ],
     );
   }
 }
 
-// ── Appearance: Tema + Dil ──────────────────────────────────────────────────
+// ── Content section ─────────────────────────────────────────────────────────
 
-class _AppearanceCard extends ConsumerWidget {
-  const _AppearanceCard();
+class _ContentSection extends ConsumerWidget {
+  const _ContentSection();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l = AppLocalizations.of(context);
+    return Column(
+      children: [
+        _NavTile(
+          icon: Icons.playlist_play_outlined,
+          title: l.settingsPlaylistManagement,
+          onTap: () => context.push(AppRoutes.playlists),
+        ),
+        const _TileDivider(),
+        _NavTile(
+          icon: Icons.filter_list,
+          title: l.categoryFilterTitle,
+          subtitle: l.settingsCategoryFilterSubtitle,
+          onTap: () => context.push(AppRoutes.categoryFilter),
+        ),
+      ],
+    );
+  }
+}
+
+// ── Appearance section (Theme + Language) ───────────────────────────────────
+
+class _AppearanceSection extends ConsumerWidget {
+  const _AppearanceSection();
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final l = AppLocalizations.of(context);
     final themeMode = ref.watch(themeModeProvider);
+    final modeLabel = switch (themeMode) {
+      ThemeMode.dark   => l.settingsThemeDark,
+      ThemeMode.light  => l.settingsThemeLight,
+      ThemeMode.system => l.settingsThemeSystem,
+    };
 
-    return Card(
-      child: Column(
-        children: [
-          RadioListTile<ThemeMode>(
-            title:   Text(l.settingsThemeDark),
-            value:   ThemeMode.dark,
-            groupValue: themeMode,
-            onChanged: (v) =>
-                ref.read(themeModeProvider.notifier).setMode(v!),
-          ),
-          RadioListTile<ThemeMode>(
-            title:   Text(l.settingsThemeLight),
-            value:   ThemeMode.light,
-            groupValue: themeMode,
-            onChanged: (v) =>
-                ref.read(themeModeProvider.notifier).setMode(v!),
-          ),
-          RadioListTile<ThemeMode>(
-            title:   Text(l.settingsThemeSystem),
-            value:   ThemeMode.system,
-            groupValue: themeMode,
-            onChanged: (v) =>
-                ref.read(themeModeProvider.notifier).setMode(v!),
-          ),
-          const Divider(height: 1),
-          ListTile(
-            leading:  const Icon(Icons.language),
-            title:    Text(l.language),
-            subtitle: Text(_localeLabel(l, ref.watch(localeProvider))),
-            trailing: const Icon(Icons.arrow_drop_down),
-            onTap:    () => _showLanguagePicker(context, ref, l),
-          ),
-        ],
-      ),
+    return Column(
+      children: [
+        _NavTile(
+          icon: themeMode == ThemeMode.dark
+              ? Icons.dark_mode_outlined
+              : themeMode == ThemeMode.light
+                  ? Icons.light_mode_outlined
+                  : Icons.brightness_auto_outlined,
+          title: l.settingsAppearanceSection,
+          trailingText: modeLabel,
+          onTap: () => _showThemePicker(context, ref, l),
+        ),
+        const _TileDivider(),
+        _NavTile(
+          icon: Icons.language,
+          title: l.language,
+          trailingText: _localeLabel(l, ref.watch(localeProvider)),
+          onTap: () => _showLanguagePicker(context, ref, l),
+        ),
+      ],
     );
   }
 }
 
-// ── EPG ─────────────────────────────────────────────────────────────────────
+// ── EPG section ─────────────────────────────────────────────────────────────
 
-class _EpgCard extends ConsumerWidget {
+class _EpgSection extends ConsumerWidget {
   final TextEditingController epgCtrl;
   final SettingsState state;
-  const _EpgCard({required this.epgCtrl, required this.state});
+  const _EpgSection({required this.epgCtrl, required this.state});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -689,185 +562,161 @@ class _EpgCard extends ConsumerWidget {
 
     return Column(
       children: [
-        Card(
-          child: Padding(
-            padding: const EdgeInsets.all(Spacing.lg),
-            child: Column(
-              children: [
-                TextField(
-                  controller: epgCtrl,
-                  decoration: InputDecoration(
-                    labelText: l.settingsEpgUrlLabel,
-                    hintText:  'https://epg.example.com/epg.xml.gz',
-                    border:    const OutlineInputBorder(),
-                    prefixIcon: const Icon(Icons.rss_feed),
-                  ),
-                  onChanged: (v) =>
-                      ref.read(settingsScreenProvider.notifier).setEpgUrl(v),
-                ),
-                const SizedBox(height: Spacing.md),
-                Align(
-                  alignment: AlignmentDirectional.centerStart,
-                  child: Text(
-                    '${l.settingsEpgPresetsTitle}:',
-                    style: TextStyle(
-                      color: cs.onSurfaceVariant,
-                      fontSize: TextSize.caption,
-                    ),
-                  ),
-                ),
-                const SizedBox(height: Spacing.sm),
-                Wrap(
-                  spacing: Spacing.sm,
-                  runSpacing: Spacing.sm,
-                  children: [
-                    for (final p in kTurkishEpgPresets)
-                      _EpgPresetChip(
-                        label:    p.label,
-                        selected: state.epgUrl == p.url,
-                        onTap: () {
-                          epgCtrl.text = p.url;
-                          ref.read(settingsScreenProvider.notifier).setEpgUrl(p.url);
-                        },
-                      ),
-                  ],
-                ),
-                const SizedBox(height: Spacing.md),
-                SizedBox(
-                  width: double.infinity,
-                  child: OutlinedButton.icon(
-                    icon:  const Icon(Icons.sync),
-                    label: Text(l.settingsEpgRefreshNow),
-                    onPressed: () async {
-                      await ref.read(settingsScreenProvider.notifier).save();
-                      final activeId = ref.read(activePlaylistProvider);
-                      if (activeId.isEmpty) {
-                        if (context.mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text(l.settingsSelectPlaylistFirst)),
-                          );
-                        }
-                        return;
-                      }
-                      try {
-                        await ref.read(epgServiceProvider).syncEpg(activeId);
-                        if (context.mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text(l.settingsEpgUpdated)),
-                          );
-                        }
-                      } catch (e) {
-                        if (context.mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text(l.settingsEpgError('$e'))),
-                          );
-                        }
-                      }
-                    },
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-        // EPG Pro: Guide + Auto-refresh
-        Card(
+        Padding(
+          padding: const EdgeInsets.fromLTRB(
+              Spacing.lg, Spacing.md, Spacing.lg, Spacing.md),
           child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              ListTile(
-                leading: const Icon(Icons.live_tv),
-                title:   Text(l.epgGuideTitle),
-                trailing: const Icon(Icons.chevron_right),
-                onTap:   () => context.push(AppRoutes.epgGuide),
+              TextField(
+                controller: epgCtrl,
+                decoration: InputDecoration(
+                  labelText: l.settingsEpgUrlLabel,
+                  hintText:  'https://epg.example.com/epg.xml.gz',
+                  isDense: true,
+                  border:    const OutlineInputBorder(),
+                  prefixIcon: const Icon(Icons.rss_feed, size: 20),
+                ),
+                onChanged: (v) =>
+                    ref.read(settingsScreenProvider.notifier).setEpgUrl(v),
               ),
-              const EpgAutoRefreshTile(),
+              const SizedBox(height: Spacing.sm),
+              Wrap(
+                spacing:    Spacing.sm,
+                runSpacing: Spacing.sm,
+                children: [
+                  for (final p in kTurkishEpgPresets)
+                    _EpgPresetChip(
+                      label:    p.label,
+                      selected: state.epgUrl == p.url,
+                      onTap: () {
+                        epgCtrl.text = p.url;
+                        ref.read(settingsScreenProvider.notifier).setEpgUrl(p.url);
+                      },
+                    ),
+                ],
+              ),
+              const SizedBox(height: Spacing.sm),
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  icon:  const Icon(Icons.sync, size: 18),
+                  label: Text(l.settingsEpgRefreshNow),
+                  style: OutlinedButton.styleFrom(
+                    visualDensity: VisualDensity.compact,
+                  ),
+                  onPressed: () async {
+                    await ref.read(settingsScreenProvider.notifier).save();
+                    final activeId = ref.read(activePlaylistProvider);
+                    if (activeId.isEmpty) {
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text(l.settingsSelectPlaylistFirst)),
+                        );
+                      }
+                      return;
+                    }
+                    try {
+                      await ref.read(epgServiceProvider).syncEpg(activeId);
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text(l.settingsEpgUpdated)),
+                        );
+                      }
+                    } catch (e) {
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text(l.settingsEpgError('$e'))),
+                        );
+                      }
+                    }
+                  },
+                ),
+              ),
             ],
           ),
+        ),
+        const _TileDivider(),
+        _NavTile(
+          icon: Icons.live_tv,
+          title: l.epgGuideTitle,
+          onTap: () => context.push(AppRoutes.epgGuide),
+        ),
+        const _TileDivider(),
+        // Subtle background tint so Pro tile siniri belirgin olsun
+        Container(
+          color: cs.surface.withValues(alpha: 0.0),
+          child: const EpgAutoRefreshTile(),
         ),
       ],
     );
   }
 }
 
-// ── Subtitle ────────────────────────────────────────────────────────────────
+// ── Subtitle section ────────────────────────────────────────────────────────
 
-class _SubtitleCard extends ConsumerWidget {
+class _SubtitleSection extends ConsumerWidget {
   final SettingsState state;
-  const _SubtitleCard({required this.state});
+  const _SubtitleSection({required this.state});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final l = AppLocalizations.of(context);
 
-    return Card(
-      child: Column(
-        children: [
-          ListTile(
-            leading: const Icon(Icons.format_size),
-            title: Text(l.settingsSubtitleFontSize),
-            trailing: DropdownButton<String>(
-              value: state.subtitleFontSize,
-              underline: const SizedBox.shrink(),
-              items: [
-                DropdownMenuItem(value: '14', child: Text(l.subtitleSizeSmall)),
-                DropdownMenuItem(value: '16', child: Text(l.subtitleSizeNormal)),
-                DropdownMenuItem(value: '20', child: Text(l.subtitleSizeLarge)),
-                DropdownMenuItem(value: '24', child: Text(l.subtitleSizeExtraLarge)),
-              ],
-              onChanged: (v) {
-                if (v != null) {
-                  ref.read(settingsScreenProvider.notifier).setSubtitleFontSize(v);
-                }
-              },
-            ),
-          ),
-          ListTile(
-            leading: const Icon(Icons.color_lens),
-            title: Text(l.settingsSubtitleTextColor),
-            trailing: DropdownButton<String>(
-              value: state.subtitleTextColor,
-              underline: const SizedBox.shrink(),
-              items: [
-                DropdownMenuItem(value: 'white',  child: Text(l.subtitleColorWhite)),
-                DropdownMenuItem(value: 'yellow', child: Text(l.subtitleColorYellow)),
-                DropdownMenuItem(value: 'green',  child: Text(l.subtitleColorGreen)),
-                DropdownMenuItem(value: 'cyan',   child: Text(l.subtitleColorCyan)),
-              ],
-              onChanged: (v) {
-                if (v != null) {
-                  ref.read(settingsScreenProvider.notifier).setSubtitleTextColor(v);
-                }
-              },
-            ),
-          ),
-          ListTile(
-            leading: const Icon(Icons.format_color_fill),
-            title: Text(l.settingsSubtitleBgColor),
-            trailing: DropdownButton<String>(
-              value: state.subtitleBgColor,
-              underline: const SizedBox.shrink(),
-              items: [
-                DropdownMenuItem(value: 'semi',   child: Text(l.subtitleBgSemi)),
-                DropdownMenuItem(value: 'opaque', child: Text(l.subtitleBgOpaque)),
-                DropdownMenuItem(value: 'none',   child: Text(l.subtitleBgNone)),
-              ],
-              onChanged: (v) {
-                if (v != null) {
-                  ref.read(settingsScreenProvider.notifier).setSubtitleBgColor(v);
-                }
-              },
-            ),
-          ),
-        ],
-      ),
+    return Column(
+      children: [
+        _DropdownTile(
+          icon: Icons.format_size,
+          title: l.settingsSubtitleFontSize,
+          value: state.subtitleFontSize,
+          items: {
+            '14': l.subtitleSizeSmall,
+            '16': l.subtitleSizeNormal,
+            '20': l.subtitleSizeLarge,
+            '24': l.subtitleSizeExtraLarge,
+          },
+          onChanged: (v) => ref
+              .read(settingsScreenProvider.notifier)
+              .setSubtitleFontSize(v),
+        ),
+        const _TileDivider(),
+        _DropdownTile(
+          icon: Icons.color_lens,
+          title: l.settingsSubtitleTextColor,
+          value: state.subtitleTextColor,
+          items: {
+            'white':  l.subtitleColorWhite,
+            'yellow': l.subtitleColorYellow,
+            'green':  l.subtitleColorGreen,
+            'cyan':   l.subtitleColorCyan,
+          },
+          onChanged: (v) => ref
+              .read(settingsScreenProvider.notifier)
+              .setSubtitleTextColor(v),
+        ),
+        const _TileDivider(),
+        _DropdownTile(
+          icon: Icons.format_color_fill,
+          title: l.settingsSubtitleBgColor,
+          value: state.subtitleBgColor,
+          items: {
+            'semi':   l.subtitleBgSemi,
+            'opaque': l.subtitleBgOpaque,
+            'none':   l.subtitleBgNone,
+          },
+          onChanged: (v) => ref
+              .read(settingsScreenProvider.notifier)
+              .setSubtitleBgColor(v),
+        ),
+      ],
     );
   }
 }
 
-// ── Player: PiP + Reklamsız bilgi ───────────────────────────────────────────
+// ── Player section: PiP + Ads notice ────────────────────────────────────────
 
-class _PlayerCard extends ConsumerWidget {
-  const _PlayerCard();
+class _PlayerSection extends ConsumerWidget {
+  const _PlayerSection();
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -875,65 +724,63 @@ class _PlayerCard extends ConsumerWidget {
     final isPro = ref.watch(isProProvider);
     final cs = Theme.of(context).colorScheme;
 
-    return Card(
-      child: Column(
-        children: [
-          const _PipAutoTile(),
-          const Divider(height: 1),
-          ListTile(
-            leading: Icon(
-              isPro ? Icons.block : Icons.campaign,
-              color: isPro ? Colors.green : cs.onSurfaceVariant,
-            ),
-            title: Text(
-                isPro ? l.settingsAdsRemoved : l.settingsAdsFreeNotice,
-                style: TextStyle(
-                    fontSize: isPro ? 14 : 12,
-                    color: isPro ? null : cs.onSurfaceVariant)),
+    return Column(
+      children: [
+        const _PipAutoTile(),
+        const _TileDivider(),
+        ListTile(
+          dense: true,
+          leading: Icon(
+            isPro ? Icons.block : Icons.campaign_outlined,
+            size: 22,
+            color: isPro ? Colors.green : cs.onSurfaceVariant,
           ),
-        ],
-      ),
+          title: Text(
+              isPro ? l.settingsAdsRemoved : l.settingsAdsFreeNotice,
+              style: TextStyle(
+                  fontSize: 13,
+                  color: isPro ? null : cs.onSurfaceVariant)),
+        ),
+      ],
     );
   }
 }
 
-// ── About: versiyon + legal + veri silme ────────────────────────────────────
+// ── About section ───────────────────────────────────────────────────────────
 
-class _AboutCard extends StatelessWidget {
+class _AboutSection extends StatelessWidget {
   final String appVersion;
-  const _AboutCard({required this.appVersion});
+  const _AboutSection({required this.appVersion});
 
   @override
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context);
+    final cs = Theme.of(context).colorScheme;
 
-    return Card(
-      child: Column(
-        children: [
-          ListTile(
-            leading: const Icon(Icons.info_outline),
-            title:    Text(l.homeAppTitle),
-            subtitle: Text(l.settingsAppVersion(
-                appVersion.isEmpty ? '…' : appVersion)),
-          ),
-          const Divider(height: 1),
-          ListTile(
-            leading: const Icon(Icons.gavel_outlined),
-            title:   Text(l.settingsLegalNotice),
-            trailing: const Icon(Icons.open_in_new, size: 18),
-            onTap:   () => _launchUrl(
-                'https://iptvaiplayer.com.tr/Ekran/index.php'),
-          ),
-          ListTile(
-            leading: const Icon(Icons.delete_outline),
-            title:    Text(l.settingsDataDeletion),
-            subtitle: Text(l.settingsDataDeletionSubtitle),
-            trailing: const Icon(Icons.open_in_new, size: 18),
-            onTap:   () => _launchUrl(
-                'https://iptvaiplayer.com.tr/Ekran/verisilme.php'),
-          ),
-        ],
-      ),
+    return Column(
+      children: [
+        ListTile(
+          leading: Icon(Icons.info_outline, size: 22, color: cs.primary),
+          title:    Text(l.homeAppTitle),
+          subtitle: Text(
+              l.settingsAppVersion(appVersion.isEmpty ? '…' : appVersion)),
+        ),
+        const _TileDivider(),
+        _NavTile(
+          icon: Icons.gavel_outlined,
+          title: l.settingsLegalNotice,
+          onTap: () =>
+              _launchUrl('https://iptvaiplayer.com.tr/Ekran/index.php'),
+        ),
+        const _TileDivider(),
+        _NavTile(
+          icon: Icons.delete_outline,
+          title: l.settingsDataDeletion,
+          subtitle: l.settingsDataDeletionSubtitle,
+          onTap: () =>
+              _launchUrl('https://iptvaiplayer.com.tr/Ekran/verisilme.php'),
+        ),
+      ],
     );
   }
 
@@ -945,7 +792,82 @@ class _AboutCard extends StatelessWidget {
   }
 }
 
-// ── PiP auto-mode tile (Pro gating) — eski yapidan korundu ──────────────────
+// ── Tile primitives ─────────────────────────────────────────────────────────
+
+class _NavTile extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final String? subtitle;
+  final String? trailingText;
+  final VoidCallback onTap;
+  const _NavTile({
+    required this.icon,
+    required this.title,
+    required this.onTap,
+    this.subtitle,
+    this.trailingText,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return ListTile(
+      leading: Icon(icon, size: 22, color: cs.primary),
+      title:    Text(title),
+      subtitle: subtitle == null ? null : Text(subtitle!),
+      trailing: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (trailingText != null) ...[
+            Text(trailingText!,
+                style: TextStyle(
+                    fontSize: 13, color: cs.onSurfaceVariant)),
+            const SizedBox(width: 4),
+          ],
+          Icon(Icons.chevron_right, color: cs.onSurfaceVariant),
+        ],
+      ),
+      onTap: onTap,
+    );
+  }
+}
+
+class _DropdownTile<T> extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final T value;
+  final Map<T, String> items;
+  final ValueChanged<T> onChanged;
+  const _DropdownTile({
+    required this.icon,
+    required this.title,
+    required this.value,
+    required this.items,
+    required this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return ListTile(
+      leading: Icon(icon, size: 22, color: cs.primary),
+      title:   Text(title),
+      trailing: DropdownButton<T>(
+        value: value,
+        underline: const SizedBox.shrink(),
+        icon: Icon(Icons.arrow_drop_down, color: cs.onSurfaceVariant),
+        items: items.entries
+            .map((e) => DropdownMenuItem(value: e.key, child: Text(e.value)))
+            .toList(),
+        onChanged: (v) {
+          if (v != null) onChanged(v);
+        },
+      ),
+    );
+  }
+}
+
+// ── PiP auto-mode tile (Pro gating) ─────────────────────────────────────────
 
 class _PipAutoTile extends ConsumerStatefulWidget {
   const _PipAutoTile();
@@ -987,13 +909,16 @@ class _PipAutoTileState extends ConsumerState<_PipAutoTile> {
   @override
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context);
+    final cs = Theme.of(context).colorScheme;
     if (!_loaded) {
       return const ListTile(title: SizedBox(height: 24));
     }
     return SwitchListTile(
-      secondary: const Icon(Icons.picture_in_picture_alt),
-      title: Text(l.settingsPipAuto),
-      subtitle: Text(l.settingsPipAutoSubtitle),
+      secondary: Icon(Icons.picture_in_picture_alt,
+          size: 22, color: cs.primary),
+      title:    Text(l.settingsPipAuto),
+      subtitle: Text(l.settingsPipAutoSubtitle,
+          style: TextStyle(fontSize: 12, color: cs.onSurfaceVariant)),
       value: _enabled,
       onChanged: _toggle,
     );
@@ -1006,7 +931,6 @@ class _EpgPresetChip extends StatelessWidget {
   final String label;
   final bool   selected;
   final VoidCallback onTap;
-
   const _EpgPresetChip({
     required this.label,
     required this.selected,
@@ -1023,24 +947,23 @@ class _EpgPresetChip extends StatelessWidget {
         onTap: onTap,
         borderRadius: BorderRadius.circular(8),
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
               if (selected) ...[
-                Icon(Icons.check_circle, size: 16, color: cs.primary),
-                const SizedBox(width: 6),
+                Icon(Icons.check_circle, size: 14, color: cs.primary),
+                const SizedBox(width: 4),
               ],
-              Text(
-                label,
-                style: TextStyle(
-                  fontSize:   TextSize.caption,
-                  fontWeight: selected ? FontWeight.bold : FontWeight.normal,
-                  color: selected
-                      ? cs.onPrimaryContainer
-                      : cs.onSurfaceVariant,
-                ),
-              ),
+              Text(label,
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight:
+                        selected ? FontWeight.bold : FontWeight.normal,
+                    color: selected
+                        ? cs.onPrimaryContainer
+                        : cs.onSurfaceVariant,
+                  )),
             ],
           ),
         ),
@@ -1049,7 +972,7 @@ class _EpgPresetChip extends StatelessWidget {
   }
 }
 
-// ── Language picker helpers ──────────────────────────────────────────────────
+// ── Picker helpers ──────────────────────────────────────────────────────────
 
 String _localeLabel(AppLocalizations l, Locale? locale) {
   switch (locale?.languageCode) {
@@ -1059,6 +982,49 @@ String _localeLabel(AppLocalizations l, Locale? locale) {
     case 'ar': return l.languageArabic;
     default:   return l.languageSystem;
   }
+}
+
+Future<void> _showThemePicker(
+  BuildContext context,
+  WidgetRef ref,
+  AppLocalizations l,
+) async {
+  final current = ref.read(themeModeProvider);
+  await showDialog<void>(
+    context: context,
+    builder: (ctx) => SimpleDialog(
+      title: Text(l.settingsAppearanceSection),
+      children: [
+        RadioListTile<ThemeMode>(
+          title: Text(l.settingsThemeDark),
+          value: ThemeMode.dark,
+          groupValue: current,
+          onChanged: (v) {
+            ref.read(themeModeProvider.notifier).setMode(v!);
+            Navigator.of(ctx).pop();
+          },
+        ),
+        RadioListTile<ThemeMode>(
+          title: Text(l.settingsThemeLight),
+          value: ThemeMode.light,
+          groupValue: current,
+          onChanged: (v) {
+            ref.read(themeModeProvider.notifier).setMode(v!);
+            Navigator.of(ctx).pop();
+          },
+        ),
+        RadioListTile<ThemeMode>(
+          title: Text(l.settingsThemeSystem),
+          value: ThemeMode.system,
+          groupValue: current,
+          onChanged: (v) {
+            ref.read(themeModeProvider.notifier).setMode(v!);
+            Navigator.of(ctx).pop();
+          },
+        ),
+      ],
+    ),
+  );
 }
 
 Future<void> _showLanguagePicker(
@@ -1074,7 +1040,6 @@ Future<void> _showLanguagePicker(
     (const Locale('de'),   l.languageGerman),
     (const Locale('ar'),   l.languageArabic),
   ];
-
   await showDialog<void>(
     context: context,
     builder: (ctx) => SimpleDialog(
@@ -1082,8 +1047,8 @@ Future<void> _showLanguagePicker(
       children: [
         for (final (loc, label) in entries)
           RadioListTile<String?>(
-            title:      Text(label),
-            value:      loc?.languageCode,
+            title: Text(label),
+            value: loc?.languageCode,
             groupValue: current?.languageCode,
             onChanged: (_) {
               ref.read(localeProvider.notifier).setLocale(loc);
