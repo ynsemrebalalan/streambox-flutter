@@ -770,7 +770,7 @@ class _AboutSection extends StatelessWidget {
           icon: Icons.gavel_outlined,
           title: l.settingsLegalNotice,
           onTap: () =>
-              _launchUrl('https://iptvaiplayer.com.tr/Ekran/index.php'),
+              _launchUrl('https://iptvaiplayer.com.tr/index.php'),
         ),
         const _TileDivider(),
         _NavTile(
@@ -778,7 +778,7 @@ class _AboutSection extends StatelessWidget {
           title: l.settingsDataDeletion,
           subtitle: l.settingsDataDeletionSubtitle,
           onTap: () =>
-              _launchUrl('https://iptvaiplayer.com.tr/Ekran/verisilme.php'),
+              _launchUrl('https://iptvaiplayer.com.tr/verisilme.php'),
         ),
       ],
     );
