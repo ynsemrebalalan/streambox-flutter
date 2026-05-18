@@ -90,10 +90,22 @@ class EpgRepository {
     // Programmes keyed by channelId (tvgId) — need join through epg_channels
     final db       = await AppDatabase.instance;
     final channels = await getChannels(playlistId);
-    if (channels.isEmpty) return;
-    final ids = channels.map((c) => "'${c.tvgId}'").join(',');
-    await db.rawDelete(
-        'DELETE FROM $_prTable WHERE channelId IN ($ids)');
+    if (channels.isEmpty) {
+      await deleteChannelsByPlaylist(playlistId);
+      return;
+    }
+    // GUVENLIK: tvgId, IPTV/XMLTV saglayicisinin kontrolundeki <channel id="...">
+    // attribute'undan gelir — guvenilmez. SQL'e ham gomme = SQL injection.
+    // Placeholder + args ile parametrele, SQLite IN limiti icin batch'le
+    // (getProgrammesForChannelsInWindow ile ayni desen).
+    final ids = channels.map((c) => c.tvgId).toList();
+    const batchSize = 400;
+    for (var i = 0; i < ids.length; i += batchSize) {
+      final batch = ids.sublist(i, (i + batchSize).clamp(0, ids.length));
+      final placeholders = List.filled(batch.length, '?').join(',');
+      await db.rawDelete(
+          'DELETE FROM $_prTable WHERE channelId IN ($placeholders)', batch);
+    }
     await deleteChannelsByPlaylist(playlistId);
   }
 
