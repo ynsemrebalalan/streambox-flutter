@@ -64,7 +64,6 @@ workflows:
 
     environment:
       flutter: 3.41.5
-      groovy: default
 
       android_signing:
         - streambox_keystore
