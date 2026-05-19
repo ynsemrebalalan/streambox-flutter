@@ -115,13 +115,35 @@ class AuthRepository {
     final rawNonce = _randomNonce();
     final nonceHash = sha256.convert(utf8.encode(rawNonce)).toString();
 
-    final apple = await SignInWithApple.getAppleIDCredential(
-      scopes: const [
-        AppleIDAuthorizationScopes.email,
-        AppleIDAuthorizationScopes.fullName,
-      ],
-      nonce: nonceHash,
-    );
+    // Native Apple akışı (ASAuthorizationController). Buradaki hatalar
+    // FirebaseAuthException DEĞİL: App ID'de "Sign in with Apple" capability'si
+    // veya provisioning profile eksikse `unknown` (error 1000) fırlar. UI tek
+    // tip işleyebilsin + teşhis netleşsin diye FirebaseAuthException'a çeviriyoruz:
+    //   code `apple-native-*`  → sorun cihaz/Apple Developer tarafında
+    //   code `operation-not-allowed` / `invalid-credential` → sorun Firebase tarafında
+    final AuthorizationCredentialAppleID apple;
+    try {
+      apple = await SignInWithApple.getAppleIDCredential(
+        scopes: const [
+          AppleIDAuthorizationScopes.email,
+          AppleIDAuthorizationScopes.fullName,
+        ],
+        nonce: nonceHash,
+      );
+    } on SignInWithAppleAuthorizationException catch (e) {
+      debugPrint('[Auth] Apple native error: ${e.code.name} — ${e.message}');
+      if (e.code == AuthorizationErrorCode.canceled) {
+        // Kullanıcı Apple sayfasını kapattı — hata değil, sessiz geç.
+        throw FirebaseAuthException(
+          code: 'cancelled',
+          message: 'Apple ile giriş iptal edildi.',
+        );
+      }
+      throw FirebaseAuthException(
+        code: 'apple-native-error',
+        message: 'Apple (native) hata [${e.code.name}]: ${e.message}',
+      );
+    }
 
     final cred = OAuthProvider('apple.com').credential(
       idToken: apple.identityToken,
