@@ -43,23 +43,29 @@ workflows:
       # static String constant'lara donusur, kullaniciya gorunmez.
 
     scripts:
+      # KATMAN 1 — Swift Package Manager'i KAPAT (her seyden ONCE calismali).
+      # google_mobile_ads CocoaPods-only; webview_flutter_wkwebview (onun transitive
+      # bagimliligi) SPM destekli. Flutter 3.41'de SPM varsayilan ACIK -> ikisi
+      # cakisir -> "dependency conflict" -> pod install fail. SPM kapaliyken her
+      # iki plugin de CocoaPods kullanir (Flutter'in resmi cozumu).
+      # Echo, build log'unda ayarin GERCEKTEN uygulandigini dogrular.
+      - name: Swift Package Manager kapat
+        script: |
+          flutter config --no-enable-swift-package-manager
+          echo "=== SPM ayari (false olmali) ==="
+          flutter config --list | grep -i "swift-package-manager" || echo "(satir yok)"
+
       - name: Flutter version (log)
         script: flutter --version
 
-      # Swift Package Manager'i kapat. google_mobile_ads hala CocoaPods-only,
-      # webview_flutter_wkwebview SPM'e gecti; Flutter 3.41'de SPM varsayilan
-      # ACIK oldugu icin ikisi yan yana olunca "dependency conflict" -> pod
-      # install fail. Bu, Flutter'in hata mesajinda onerdigi resmi cozum.
-      # pubspec.lock CI'da silindigi icin webview yeni (SPM'li) surume cikinca
-      # tetiklendi. google_mobile_ads SPM destegi gelince bu adim kaldirilabilir.
-      - name: Swift Package Manager kapat
-        script: flutter config --no-enable-swift-package-manager
-
+      # KATMAN 2 — pubspec.lock KASTEN SILINMIYOR. Silinince her build
+      # bagimliliklari en yeni surume cozuyordu; webview_flutter_wkwebview yeni
+      # (SPM'li) surume ciktigi an build patliyor. Commit'li lock (webview 3.23.0)
+      # = reproducible + stabil build.
       - name: Temiz ortam
         script: |
           flutter clean
           rm -rf ios/Pods ios/Podfile.lock ios/.symlinks
-          rm -f pubspec.lock
 
       - name: Flutter pub get
         script: flutter pub get
@@ -176,10 +182,9 @@ workflows:
       - name: Flutter version
         script: flutter --version
 
+      # pubspec.lock silinmiyor — reproducible build (bkz. ios-release notu).
       - name: Temiz ortam
-        script: |
-          flutter clean
-          rm -f pubspec.lock
+        script: flutter clean
 
       - name: Flutter pub get
         script: flutter pub get
