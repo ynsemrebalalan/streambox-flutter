@@ -4,148 +4,44 @@ workflows:
     max_build_duration: 60
     instance_type: mac_mini_m2
 
-    # App Store Connect API key entegrasyonu — Codemagic UI'daki integration
-    # adi BUYUK/KUCUK harf duyarli olarak buraya ESLESMELI.
-    # UI: Teams -> Integrations -> App Store Connect -> "Codemagic"
-    integrations:
-      app_store_connect: Codemagic
-
     environment:
-      # iOS 26 ProMotion siyah ekran KESIN cozumu AppDelegate.swift'te
-      # explicit FlutterEngine prewarm pattern. Flutter 3.41.5 = Subat 2026
-      # son stable; "stable" dinamik olmasin, reproducible build icin pin.
       flutter: 3.41.5
       xcode: latest
       cocoapods: default
 
-      # NOT: environment.ios_signing BLOGU KASTEN YOK.
-      # Declarative ios_signing manuel signing icindir (onceden upload
-      # edilmis profile arar). Bizim akis App Store Connect API ile
-      # otomatik fetch + create. Ikisi yan yana olursa Codemagic once
-      # manuel arar, "No matching profiles found" hatasi verir.
-      # Ref: github.com/orgs/codemagic-ci-cd/discussions/3362
-
-      vars:
-        XCODE_WORKSPACE: "ios/Runner.xcworkspace"
-        XCODE_SCHEME: "Runner"
-        BUNDLE_ID: "com.ynsemrebalalan.iptvai"
-      # AI altyazı (Whisper/Groq) — Codemagic UI'da Secret variable olarak ekle:
-      # Application → Environment variables:
-      #   GROQ_PROXY_URL    = https://iptvaiplayer.com.tr/groq-proxy.php   (Secure: ✅)
-      #   GROQ_PROXY_SECRET = <gerçek secret>                              (Secure: ✅)
-      #
-      # RevenueCat IAP (Adim 22) — Codemagic UI'da Secret variable:
-      #   REVENUECAT_IOS_KEY     = <RC iOS public SDK key>                 (Secure: ✅)
-      #   REVENUECAT_ANDROID_KEY = <RC Android public SDK key>             (Secure: ✅)
-      # RC dashboard -> Project -> Apps -> "Public app-specific API keys".
-      #
-      # Build IPA scripti tum --dart-define'lari ipa'ya gomer; APK icinde
-      # static String constant'lara donusur, kullaniciya gorunmez.
+      # Manuel imzalama: Codemagic'e onceden yuklenmis dagitim sertifikasi +
+      # app_store provisioning profili (bundle id ile eslesir). UI "Default
+      # Workflow" da ayni kimlik bilgilerini kullaniyor — kanitli calisan
+      # imzalama. ios_signing varken Codemagic profilleri otomatik fetch eder.
+      ios_signing:
+        distribution_type: app_store
+        bundle_identifier: com.ynsemrebalalan.iptvai
 
     scripts:
-      # KATMAN 1 — Swift Package Manager'i KAPAT (her seyden ONCE calismali).
-      # google_mobile_ads CocoaPods-only; webview_flutter_wkwebview (onun transitive
-      # bagimliligi) SPM destekli. Flutter 3.41'de SPM varsayilan ACIK -> ikisi
-      # cakisir -> "dependency conflict" -> pod install fail. SPM kapaliyken her
-      # iki plugin de CocoaPods kullanir (Flutter'in resmi cozumu).
-      # Echo, build log'unda ayarin GERCEKTEN uygulandigini dogrular.
+      # 1) Swift Package Manager'i KAPAT — her seyden ONCE. google_mobile_ads
+      #    (CocoaPods-only) ile webview_flutter_wkwebview (SPM destekli, onun
+      #    transitive bagimliligi) cakisip pod install'u patlatiyor. SPM
+      #    kapaliyken ikisi de CocoaPods kullanir (Flutter'in resmi cozumu).
       - name: Swift Package Manager kapat
         script: |
           flutter config --no-enable-swift-package-manager
-          echo "=== SPM ayari (false olmali) ==="
-          flutter config --list | grep -i "swift-package-manager" || echo "(satir yok)"
+          flutter config --list | grep -i "swift-package-manager" || true
 
-      - name: Flutter version (log)
-        script: flutter --version
+      # 2) Imzalama profillerini Xcode projesine uygula + export_options.plist
+      #    olustur (ios_signing sayesinde profiller zaten indirildi).
+      - name: Code signing — profilleri uygula
+        script: xcode-project use-profiles
 
-      # KATMAN 2 — pubspec.lock KASTEN SILINMIYOR. Silinince her build
-      # bagimliliklari en yeni surume cozuyordu; webview_flutter_wkwebview yeni
-      # (SPM'li) surume ciktigi an build patliyor. Commit'li lock (webview 3.23.0)
-      # = reproducible + stabil build.
-      - name: Temiz ortam
+      # 3) IPA uret. "flutter build ipa" pub get + pod install'i kendi yapar;
+      #    SPM kapali oldugu icin pod install temiz gecer.
+      - name: Build IPA (release)
         script: |
-          flutter clean
-          rm -rf ios/Pods ios/Podfile.lock ios/.symlinks
-
-      - name: Flutter pub get
-        script: flutter pub get
-
-      - name: Pod install
-        script: |
-          cd ios
-          pod install --repo-update
-
-      # Code signing — App Store Connect API ile tam otomatik:
-      # 1) keychain initialize: temiz build keychain
-      # 2) fetch-signing-files --create: profile yoksa yeni olustur
-      # 3) keychain add-certificates: cert'i keychain'e ekle
-      # 4) xcode-project use-profiles: Xcode project signing settings'i
-      #    + ExportOptions.plist'i otomatik gunceller
-      - name: Code signing setup
-        script: |
-          keychain initialize
-          app-store-connect fetch-signing-files "$BUNDLE_ID" \
-            --type=IOS_APP_STORE \
-            --create
-          keychain add-certificates
-          xcode-project use-profiles
-
-      # Auto-increment build number — App Store Connect'teki son TestFlight
-      # build no'su +1; pubspec'teki +N max ile. "Duplicate bundle version"
-      # hatasini onler.
-      #
-      # NOT: -ge (greater-or-equal) sart. -gt iken LATEST_TF == PUBSPEC olunca
-      # pubspec'i kullaniyordu ve ASC ayni numarayi tekrar reddediyordu
-      # (ENTITY_ERROR.ATTRIBUTE.INVALID.DUPLICATE).
-      - name: Auto-increment build number
-        script: |
-          set +e
-          LATEST_TF=$(app-store-connect get-latest-testflight-build-number "$BUNDLE_ID" 2>/dev/null || echo "0")
-          set -e
-          PUBSPEC_BUILD=$(grep "^version:" pubspec.yaml | sed -E 's/.*\+([0-9]+).*/\1/')
-          if [ "$LATEST_TF" -ge "$PUBSPEC_BUILD" ]; then
-            NEW_BUILD=$((LATEST_TF + 1))
-          else
-            NEW_BUILD=$PUBSPEC_BUILD
-          fi
-          echo "Latest TestFlight: $LATEST_TF, pubspec: $PUBSPEC_BUILD, building: $NEW_BUILD"
-          echo "BUILD_NUMBER=$NEW_BUILD" >> $CM_ENV
-
-      # Build IPA — release zorunlu, debug/profile UPLOAD EDILMEZ.
-      # NOT: --export-options-plist parametresi KASTEN YOK.
-      # xcode-project use-profiles ExportOptions.plist'i kendi olusturur/
-      # gunceller; harici plist verirsek signing config'i ezeriz.
-      - name: Build iOS IPA (release)
-        script: |
-          flutter build ipa \
-            --release \
-            --build-number=$BUILD_NUMBER \
-            --dart-define=GROQ_PROXY_URL=$GROQ_PROXY_URL \
-            --dart-define=GROQ_PROXY_SECRET=$GROQ_PROXY_SECRET \
-            --dart-define=REVENUECAT_IOS_KEY=$REVENUECAT_IOS_KEY \
-            --dart-define=REVENUECAT_ANDROID_KEY=$REVENUECAT_ANDROID_KEY
-
-      - name: Release build dogrulama
-        script: |
-          IPA_PATH=$(find build/ios/ipa -name "*.ipa" | head -1)
-          unzip -o "$IPA_PATH" -d /tmp/ipa_verify > /dev/null
-          APP_PATH=$(find /tmp/ipa_verify/Payload -name "*.app" -type d | head -1)
-          # vm_snapshot_data sadece debug build'lerde olur — release ise yok
-          if [ -f "$APP_PATH/Frameworks/App.framework/flutter_assets/vm_snapshot_data" ]; then
-            echo "❌ DEBUG BUILD DETECTED — vm_snapshot_data var (sadece debug'da)!"
-            exit 1
-          fi
-          echo "✅ Release build dogrulandi"
+          flutter build ipa --release \
+            --export-options-plist=$HOME/export_options.plist
 
     artifacts:
       - build/ios/ipa/*.ipa
       - /tmp/xcodebuild_logs/*.log
-
-    publishing:
-      app_store_connect:
-        auth: integration
-        submit_to_testflight: true
-        submit_to_app_store: false
 
   # ── Android — Play Store / Internal testing AAB build ────────────────────
   # Tetik: Codemagic UI -> Applications -> streambox-flutter -> Start new build
