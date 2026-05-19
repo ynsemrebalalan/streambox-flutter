@@ -46,6 +46,15 @@ workflows:
       - name: Flutter version (log)
         script: flutter --version
 
+      # Swift Package Manager'i kapat. google_mobile_ads hala CocoaPods-only,
+      # webview_flutter_wkwebview SPM'e gecti; Flutter 3.41'de SPM varsayilan
+      # ACIK oldugu icin ikisi yan yana olunca "dependency conflict" -> pod
+      # install fail. Bu, Flutter'in hata mesajinda onerdigi resmi cozum.
+      # pubspec.lock CI'da silindigi icin webview yeni (SPM'li) surume cikinca
+      # tetiklendi. google_mobile_ads SPM destegi gelince bu adim kaldirilabilir.
+      - name: Swift Package Manager kapat
+        script: flutter config --no-enable-swift-package-manager
+
       - name: Temiz ortam
         script: |
           flutter clean
