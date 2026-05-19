@@ -4,6 +4,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:media_kit/media_kit.dart';
+import 'firebase_options.dart';
 import 'core/analytics/analytics.dart';
 import 'core/providers/app_providers.dart';
 import 'core/router/app_router.dart';
@@ -179,7 +180,12 @@ Future<void> _initRevenueCat() async {
 
 Future<void> _initFirebaseAndAnalytics() async {
   try {
-    await Firebase.initializeApp().timeout(const Duration(seconds: 5));
+    // options ZORUNLU: GoogleService-Info.plist Xcode bundle'ında yok;
+    // opsiyonsuz initializeApp() iOS'ta config bulamayıp "[core/no-app]"
+    // patlatıyordu. firebase_options.dart config'i Dart'a gömüyor.
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    ).timeout(const Duration(seconds: 5));
     await Analytics.init().timeout(const Duration(seconds: 3));
   } catch (e) {
     debugPrint('Firebase/Analytics init failed or timed out: $e');
