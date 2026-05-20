@@ -37,9 +37,14 @@ class BuildConfig {
   static const bool aiSubtitlesAlwaysOn = true;
 
   /// RevenueCat iOS public SDK key (App Store apps).
-  /// Codemagic Secret variable: `REVENUECAT_IOS_KEY`.
+  /// `appl_...` ile başlayan "public app-specific" anahtar — uygulamaya
+  /// gömülmek üzere tasarlanmış, gizli değil. `--dart-define` ile override
+  /// edilebilir; lokal/CI'da bu defaultValue kullanılır.
   static const String revenueCatIosKey =
-      String.fromEnvironment('REVENUECAT_IOS_KEY', defaultValue: '');
+      String.fromEnvironment(
+    'REVENUECAT_IOS_KEY',
+    defaultValue: 'appl_gamVSrKeflhAGVYRgqwMqJJfiPW',
+  );
 
   /// RevenueCat Android public SDK key (Play Store apps).
   /// Codemagic Secret variable: `REVENUECAT_ANDROID_KEY`.
