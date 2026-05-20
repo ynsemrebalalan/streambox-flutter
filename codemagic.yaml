@@ -47,14 +47,40 @@ workflows:
           keychain add-certificates
           xcode-project use-profiles
 
-      # 3) IPA uret. "flutter build ipa" pub get + pod install'i kendi de yapar;
+      # 3) Build no'yu otomatik artir. ASC'deki son TestFlight build'inden +1,
+      #    pubspec'tekiyle max al. "Duplicate bundle version" hatasini onler.
+      #    integrations.app_store_connect kimlik bilgilerini env'e enjekte eder.
+      - name: Auto-increment build number
+        script: |
+          set +e
+          LATEST_TF=$(app-store-connect get-latest-testflight-build-number "$BUNDLE_ID" 2>/dev/null || echo "0")
+          set -e
+          PUBSPEC_BUILD=$(grep "^version:" pubspec.yaml | sed -E 's/.*\+([0-9]+).*/\1/')
+          if [ "$LATEST_TF" -ge "$PUBSPEC_BUILD" ]; then
+            NEW_BUILD=$((LATEST_TF + 1))
+          else
+            NEW_BUILD=$PUBSPEC_BUILD
+          fi
+          echo "Latest TestFlight: $LATEST_TF, pubspec: $PUBSPEC_BUILD, building: $NEW_BUILD"
+          echo "BUILD_NUMBER=$NEW_BUILD" >> $CM_ENV
+
+      # 4) IPA uret. "flutter build ipa" pub get + pod install'i kendi de yapar;
       #    SPM kapali oldugu icin pod install temiz gecer.
       - name: Build iOS IPA (release)
-        script: flutter build ipa --release
+        script: flutter build ipa --release --build-number=$BUILD_NUMBER
 
     artifacts:
       - build/ios/ipa/*.ipa
       - /tmp/xcodebuild_logs/*.log
+
+    # TestFlight'a otomatik yukleme. Ayni "Codemagic" ASC API entegrasyonu
+    # kullanilir (integrations bloku). submit_to_app_store: false — App Store
+    # gonderimi manuel (review'a yollarken karar).
+    publishing:
+      app_store_connect:
+        auth: integration
+        submit_to_testflight: true
+        submit_to_app_store: false
 
   # ── Android — Play Store / Internal testing AAB build ────────────────────
   # Tetik: Codemagic UI -> Applications -> streambox-flutter -> Start new build
