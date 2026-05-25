@@ -286,6 +286,30 @@
       "n": { "type": "int" }
     }
   },
+  "seriesEpisodeCount": "{count} bölüm",
+  "@seriesEpisodeCount": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "homeRemoveFromHistoryTitle": "İzleme geçmişinden çıkar",
+  "homeRemoveFromHistoryMessage": "{name} izleme geçmişinden silinecek. Onaylıyor musun?",
+  "@homeRemoveFromHistoryMessage": {
+    "placeholders": { "name": { "type": "String" } }
+  },
+  "homeRemoveFromHistoryAction": "Kaldır",
+  "homeRemoveFromHistorySnack": "{name} izleme geçmişinden kaldırıldı",
+  "@homeRemoveFromHistorySnack": {
+    "placeholders": { "name": { "type": "String" } }
+  },
+  "homeFavoriteAdded": "{name} favorilere eklendi",
+  "@homeFavoriteAdded": {
+    "placeholders": { "name": { "type": "String" } }
+  },
+  "homeFavoriteRemoved": "{name} favorilerden çıkarıldı",
+  "@homeFavoriteRemoved": {
+    "placeholders": { "name": { "type": "String" } }
+  },
 
   "homeRowPopular": "Popüler",
   "homeRowWatchedMovies": "İzlediğin Filmler",
@@ -330,6 +354,8 @@
   "authErrorGeneric": "Bir şeyler ters gitti: {message}",
   "@authErrorGeneric": { "placeholders": { "message": { "type": "String" } } },
   "authVerifyEmailHint": "E-posta adresine doğrulama bağlantısı gönderdik.",
+  "authAppleHiddenEmail": "Apple Kullanıcısı",
+  "authAppleHiddenEmailHint": "E-posta Apple üzerinden gizli — paylaşılmadı",
   "authResendVerification": "Doğrulama tekrar gönder",
   "authChangePassword": "Şifreyi değiştir",
   "authDeleteAccount": "Hesabı sil",

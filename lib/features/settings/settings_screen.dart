@@ -5,6 +5,7 @@ import 'package:package_info_plus/package_info_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../core/providers/app_providers.dart';
 import '../../core/router/app_router.dart';
+import '../../core/theme/app_theme.dart';
 import '../../core/theme/app_tokens.dart';
 import '../../core/utils/responsive.dart';
 import '../../data/repositories/settings_repository.dart';
@@ -457,12 +458,7 @@ class _ProSection extends ConsumerWidget {
           title: l.watchlistTitle,
           onTap: () => context.push(AppRoutes.watchlist),
         ),
-        const _TileDivider(),
-        _NavTile(
-          icon: Icons.color_lens_outlined,
-          title: l.themePickerTitle,
-          onTap: () => context.push(AppRoutes.themePicker),
-        ),
+        // Tema tile'i `_AppearanceSection` icinde — burada duplicate'a son.
         const _TileDivider(),
         _NavTile(
           icon: Icons.lock_outline,
@@ -510,6 +506,11 @@ class _ContentSection extends ConsumerWidget {
 }
 
 // ── Appearance section (Theme + Language) ───────────────────────────────────
+//
+// 2026-05-25: Tema secimi tek source-of-truth oldu (themeVariantProvider).
+// Eskiden burada ayri "Gorunum (light/dark/system)" dialog'u vardi ve tam
+// sayfa ThemePicker ile catisiyordu — "tema gecisleri pasif" raporunun
+// koku buydu. Artik tek "Tema" tile'i dogrudan ThemePicker'a yonlendirir.
 
 class _AppearanceSection extends ConsumerWidget {
   const _AppearanceSection();
@@ -517,24 +518,16 @@ class _AppearanceSection extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final l = AppLocalizations.of(context);
-    final themeMode = ref.watch(themeModeProvider);
-    final modeLabel = switch (themeMode) {
-      ThemeMode.dark   => l.settingsThemeDark,
-      ThemeMode.light  => l.settingsThemeLight,
-      ThemeMode.system => l.settingsThemeSystem,
-    };
+    final variant = ref.watch(themeVariantProvider);
+    final variantLabel = _themeVariantLabel(l, variant);
 
     return Column(
       children: [
         _NavTile(
-          icon: themeMode == ThemeMode.dark
-              ? Icons.dark_mode_outlined
-              : themeMode == ThemeMode.light
-                  ? Icons.light_mode_outlined
-                  : Icons.brightness_auto_outlined,
-          title: l.settingsAppearanceSection,
-          trailingText: modeLabel,
-          onTap: () => _showThemePicker(context, ref, l),
+          icon: _themeVariantIcon(variant),
+          title: l.themePickerTitle,
+          trailingText: variantLabel,
+          onTap: () => context.push(AppRoutes.themePicker),
         ),
         const _TileDivider(),
         _NavTile(
@@ -546,6 +539,24 @@ class _AppearanceSection extends ConsumerWidget {
       ],
     );
   }
+
+  static IconData _themeVariantIcon(PremiumTheme v) => switch (v) {
+    PremiumTheme.defaultSystem => Icons.brightness_auto_outlined,
+    PremiumTheme.defaultLight  => Icons.light_mode_outlined,
+    PremiumTheme.defaultDark   => Icons.dark_mode_outlined,
+    _                          => Icons.color_lens_outlined,
+  };
+
+  static String _themeVariantLabel(AppLocalizations l, PremiumTheme v) =>
+      switch (v) {
+    PremiumTheme.defaultSystem => l.settingsThemeSystem,
+    PremiumTheme.defaultLight  => l.themeDefaultLight,
+    PremiumTheme.defaultDark   => l.themeDefaultDark,
+    PremiumTheme.crimson       => l.themeCrimson,
+    PremiumTheme.royal         => l.themeRoyal,
+    PremiumTheme.forest        => l.themeForest,
+    PremiumTheme.ocean         => l.themeOcean,
+  };
 }
 
 // ── EPG section ─────────────────────────────────────────────────────────────
@@ -982,49 +993,6 @@ String _localeLabel(AppLocalizations l, Locale? locale) {
     case 'ar': return l.languageArabic;
     default:   return l.languageSystem;
   }
-}
-
-Future<void> _showThemePicker(
-  BuildContext context,
-  WidgetRef ref,
-  AppLocalizations l,
-) async {
-  final current = ref.read(themeModeProvider);
-  await showDialog<void>(
-    context: context,
-    builder: (ctx) => SimpleDialog(
-      title: Text(l.settingsAppearanceSection),
-      children: [
-        RadioListTile<ThemeMode>(
-          title: Text(l.settingsThemeDark),
-          value: ThemeMode.dark,
-          groupValue: current,
-          onChanged: (v) {
-            ref.read(themeModeProvider.notifier).setMode(v!);
-            Navigator.of(ctx).pop();
-          },
-        ),
-        RadioListTile<ThemeMode>(
-          title: Text(l.settingsThemeLight),
-          value: ThemeMode.light,
-          groupValue: current,
-          onChanged: (v) {
-            ref.read(themeModeProvider.notifier).setMode(v!);
-            Navigator.of(ctx).pop();
-          },
-        ),
-        RadioListTile<ThemeMode>(
-          title: Text(l.settingsThemeSystem),
-          value: ThemeMode.system,
-          groupValue: current,
-          onChanged: (v) {
-            ref.read(themeModeProvider.notifier).setMode(v!);
-            Navigator.of(ctx).pop();
-          },
-        ),
-      ],
-    ),
-  );
 }
 
 Future<void> _showLanguagePicker(

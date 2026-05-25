@@ -628,6 +628,37 @@ class AppLocalizationsTr extends AppLocalizations {
   }
 
   @override
+  String seriesEpisodeCount(int count) {
+    return '$count bölüm';
+  }
+
+  @override
+  String get homeRemoveFromHistoryTitle => 'İzleme geçmişinden çıkar';
+
+  @override
+  String homeRemoveFromHistoryMessage(String name) {
+    return '$name izleme geçmişinden silinecek. Onaylıyor musun?';
+  }
+
+  @override
+  String get homeRemoveFromHistoryAction => 'Kaldır';
+
+  @override
+  String homeRemoveFromHistorySnack(String name) {
+    return '$name izleme geçmişinden kaldırıldı';
+  }
+
+  @override
+  String homeFavoriteAdded(String name) {
+    return '$name favorilere eklendi';
+  }
+
+  @override
+  String homeFavoriteRemoved(String name) {
+    return '$name favorilerden çıkarıldı';
+  }
+
+  @override
   String get homeRowPopular => 'Popüler';
 
   @override
@@ -745,6 +776,12 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String get authVerifyEmailHint => 'E-posta adresine doğrulama bağlantısı gönderdik.';
+
+  @override
+  String get authAppleHiddenEmail => 'Apple Kullanıcısı';
+
+  @override
+  String get authAppleHiddenEmailHint => 'E-posta Apple üzerinden gizli — paylaşılmadı';
 
   @override
   String get authResendVerification => 'Doğrulama tekrar gönder';

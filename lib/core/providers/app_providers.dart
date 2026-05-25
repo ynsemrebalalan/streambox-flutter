@@ -64,40 +64,11 @@ final activeProfileProvider = NotifierProvider<ActiveProfileNotifier, String>(
 );
 
 // ── Theme ─────────────────────────────────────────────────────────────────────
-
-class ThemeModeNotifier extends Notifier<ThemeMode> {
-  @override
-  ThemeMode build() => ThemeMode.dark;
-
-  void setMode(ThemeMode mode) {
-    state = mode;
-    ref.read(settingsRepoProvider).set(SettingsKeys.themeMode, _key(mode));
-  }
-
-  Future<void> loadFromDb() async {
-    final raw = await ref.read(settingsRepoProvider).get(SettingsKeys.themeMode);
-    state = switch (raw) {
-      'light'  => ThemeMode.light,
-      'system' => ThemeMode.system,
-      _        => ThemeMode.dark,
-    };
-  }
-
-  static String _key(ThemeMode m) => switch (m) {
-    ThemeMode.light  => 'light',
-    ThemeMode.system => 'system',
-    _                => 'dark',
-  };
-}
-
-final themeModeProvider = NotifierProvider<ThemeModeNotifier, ThemeMode>(
-  ThemeModeNotifier.new,
-);
-
-// ── Premium theme variant ────────────────────────────────────────────────────
 //
-// Kullanıcının seçtiği özel tema (default + 4 Pro). Pro değilse seçim
-// reddedilir, default'a düşer.
+// Tek source-of-truth: `themeVariantProvider`. `themeMode` ayri ayar olarak
+// degil, variant'tan derive edilen computed provider olarak sunulur — eski
+// "Görünüm" dialog'u ile "Tema" picker'in catismasi (2026-05-25 kullanici
+// raporu: "tema gecisleri pasif") boylece kaldirildi.
 
 class ThemeVariantNotifier extends Notifier<PremiumTheme> {
   @override
@@ -118,6 +89,19 @@ final themeVariantProvider =
     NotifierProvider<ThemeVariantNotifier, PremiumTheme>(
   ThemeVariantNotifier.new,
 );
+
+/// `themeVariant` -> Flutter `ThemeMode` map'i. UI tarafi `MaterialApp.themeMode`
+/// olarak bunu kullanir.
+final themeModeProvider = Provider<ThemeMode>((ref) {
+  final variant = ref.watch(themeVariantProvider);
+  return switch (variant) {
+    PremiumTheme.defaultSystem => ThemeMode.system,
+    PremiumTheme.defaultLight  => ThemeMode.light,
+    PremiumTheme.defaultDark   => ThemeMode.dark,
+    // Premium temalar dark-based — premium varyanttan bagimsiz olarak dark.
+    _ => ThemeMode.dark,
+  };
+});
 
 // ── Active playlist ───────────────────────────────────────────────────────────
 

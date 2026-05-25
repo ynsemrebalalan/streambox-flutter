@@ -628,6 +628,37 @@ class AppLocalizationsAr extends AppLocalizations {
   }
 
   @override
+  String seriesEpisodeCount(int count) {
+    return '$count حلقة';
+  }
+
+  @override
+  String get homeRemoveFromHistoryTitle => 'إزالة من سجل المشاهدة';
+
+  @override
+  String homeRemoveFromHistoryMessage(String name) {
+    return 'هل تريد إزالة $name من سجل المشاهدة؟';
+  }
+
+  @override
+  String get homeRemoveFromHistoryAction => 'إزالة';
+
+  @override
+  String homeRemoveFromHistorySnack(String name) {
+    return 'تمت إزالة $name من سجل المشاهدة';
+  }
+
+  @override
+  String homeFavoriteAdded(String name) {
+    return 'تمت إضافة $name إلى المفضلة';
+  }
+
+  @override
+  String homeFavoriteRemoved(String name) {
+    return 'تمت إزالة $name من المفضلة';
+  }
+
+  @override
   String get homeRowPopular => 'الأكثر شعبية';
 
   @override
@@ -745,6 +776,12 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get authVerifyEmailHint => 'أرسلنا لك رابط تحقق إلى بريدك الإلكتروني.';
+
+  @override
+  String get authAppleHiddenEmail => 'مستخدم Apple';
+
+  @override
+  String get authAppleHiddenEmailHint => 'البريد مخفي عبر Apple — لم تتم مشاركته';
 
   @override
   String get authResendVerification => 'إعادة إرسال التحقق';

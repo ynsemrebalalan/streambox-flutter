@@ -32,6 +32,19 @@ class AuthAuthenticated extends AuthState {
   /// Hangi sağlayıcıyla giriş yaptı? (`password`, `google.com`, `apple.com`)
   List<String> get providerIds =>
       user.providerData.map((p) => p.providerId).toList();
+
+  /// Apple ile giris yapildi mi? Apple Sign-In "Hide My Email" tespiti
+  /// icin gereklidir. 2026-05-25.
+  bool get isAppleProvider => providerIds.contains('apple.com');
+
+  /// Email Apple Private Relay mi? (`xxxxxxxxxx@privaterelay.appleid.com`)
+  /// Kullanici "Hide My Email" sectiyse Firebase'e bu format yazilir,
+  /// UI gercek email yerine "gizli e-posta" gostermeli.
+  bool get isAppleRelayEmail {
+    final e = email;
+    if (e == null) return false;
+    return e.toLowerCase().endsWith('@privaterelay.appleid.com');
+  }
 }
 
 /// Hiç user yok — Firebase Auth ne anonim ne kalıcı bir kullanıcı tanıyor.

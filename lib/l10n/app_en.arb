@@ -259,6 +259,28 @@
   "@seriesSeasonNumber": {
     "placeholders": { "n": { "type": "int" } }
   },
+  "seriesEpisodeCount": "{count} episodes",
+  "@seriesEpisodeCount": {
+    "placeholders": { "count": { "type": "int" } }
+  },
+  "homeRemoveFromHistoryTitle": "Remove from watch history",
+  "homeRemoveFromHistoryMessage": "{name} will be removed from your watch history. Continue?",
+  "@homeRemoveFromHistoryMessage": {
+    "placeholders": { "name": { "type": "String" } }
+  },
+  "homeRemoveFromHistoryAction": "Remove",
+  "homeRemoveFromHistorySnack": "{name} removed from watch history",
+  "@homeRemoveFromHistorySnack": {
+    "placeholders": { "name": { "type": "String" } }
+  },
+  "homeFavoriteAdded": "{name} added to favorites",
+  "@homeFavoriteAdded": {
+    "placeholders": { "name": { "type": "String" } }
+  },
+  "homeFavoriteRemoved": "{name} removed from favorites",
+  "@homeFavoriteRemoved": {
+    "placeholders": { "name": { "type": "String" } }
+  },
 
   "homeRowPopular": "Popular",
   "homeRowWatchedMovies": "Movies You've Watched",
@@ -303,6 +325,8 @@
   "authErrorGeneric": "Something went wrong: {message}",
   "@authErrorGeneric": { "placeholders": { "message": { "type": "String" } } },
   "authVerifyEmailHint": "We've sent a verification link to your email.",
+  "authAppleHiddenEmail": "Apple User",
+  "authAppleHiddenEmailHint": "Email kept private via Apple — not shared",
   "authResendVerification": "Resend verification",
   "authChangePassword": "Change password",
   "authDeleteAccount": "Delete account",

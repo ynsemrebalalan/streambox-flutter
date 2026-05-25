@@ -1281,6 +1281,48 @@ abstract class AppLocalizations {
   /// **'Sezon {n}'**
   String seriesSeasonNumber(int n);
 
+  /// No description provided for @seriesEpisodeCount.
+  ///
+  /// In tr, this message translates to:
+  /// **'{count} bölüm'**
+  String seriesEpisodeCount(int count);
+
+  /// No description provided for @homeRemoveFromHistoryTitle.
+  ///
+  /// In tr, this message translates to:
+  /// **'İzleme geçmişinden çıkar'**
+  String get homeRemoveFromHistoryTitle;
+
+  /// No description provided for @homeRemoveFromHistoryMessage.
+  ///
+  /// In tr, this message translates to:
+  /// **'{name} izleme geçmişinden silinecek. Onaylıyor musun?'**
+  String homeRemoveFromHistoryMessage(String name);
+
+  /// No description provided for @homeRemoveFromHistoryAction.
+  ///
+  /// In tr, this message translates to:
+  /// **'Kaldır'**
+  String get homeRemoveFromHistoryAction;
+
+  /// No description provided for @homeRemoveFromHistorySnack.
+  ///
+  /// In tr, this message translates to:
+  /// **'{name} izleme geçmişinden kaldırıldı'**
+  String homeRemoveFromHistorySnack(String name);
+
+  /// No description provided for @homeFavoriteAdded.
+  ///
+  /// In tr, this message translates to:
+  /// **'{name} favorilere eklendi'**
+  String homeFavoriteAdded(String name);
+
+  /// No description provided for @homeFavoriteRemoved.
+  ///
+  /// In tr, this message translates to:
+  /// **'{name} favorilerden çıkarıldı'**
+  String homeFavoriteRemoved(String name);
+
   /// No description provided for @homeRowPopular.
   ///
   /// In tr, this message translates to:
@@ -1514,6 +1556,18 @@ abstract class AppLocalizations {
   /// In tr, this message translates to:
   /// **'E-posta adresine doğrulama bağlantısı gönderdik.'**
   String get authVerifyEmailHint;
+
+  /// No description provided for @authAppleHiddenEmail.
+  ///
+  /// In tr, this message translates to:
+  /// **'Apple Kullanıcısı'**
+  String get authAppleHiddenEmail;
+
+  /// No description provided for @authAppleHiddenEmailHint.
+  ///
+  /// In tr, this message translates to:
+  /// **'E-posta Apple üzerinden gizli — paylaşılmadı'**
+  String get authAppleHiddenEmailHint;
 
   /// No description provided for @authResendVerification.
   ///

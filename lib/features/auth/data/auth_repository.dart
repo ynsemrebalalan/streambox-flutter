@@ -33,7 +33,19 @@ class AuthRepository {
   final FirebaseAuth? _authOverride;
   final GoogleSignIn? _googleOverride;
   late final FirebaseAuth _auth = _authOverride ?? FirebaseAuth.instance;
-  late final GoogleSignIn _google = _googleOverride ?? GoogleSignIn();
+
+  /// Firebase project'in WEB OAuth client ID'si (google-services.json içinde
+  /// client_type=3 olan). Android'de modern google_sign_in (^6.x) plugin'i
+  /// idToken alimi icin serverClientId'yi ZORUNLU kabul eder; eksikse
+  /// `sign_in_failed status 10 (DEVELOPER_ERROR)` doner. Bu Public bir
+  /// degerdir (gizli secret degil) — hardcoded gomulu, BuildConfig'e gerek yok.
+  static const String _webClientId =
+      '583696434507-o0bs6rvbmbndn01k8191epkusd2aufls.apps.googleusercontent.com';
+
+  late final GoogleSignIn _google = _googleOverride ?? GoogleSignIn(
+    serverClientId: _webClientId,
+    scopes: const ['email', 'profile'],
+  );
 
   // ── Stream ─────────────────────────────────────────────────────────────────
 
@@ -154,19 +166,53 @@ class AuthRepository {
     final result = await _signInOrLink(cred);
 
     // Apple ad-soyad SADECE ilk girişte gelir; persistent yoksa kaydet.
-    if (apple.givenName != null || apple.familyName != null) {
-      final name = [apple.givenName, apple.familyName]
+    // 2026-05-25: Kullanici email + isim paylasimini reddedebilir veya
+    // "Hide My Email" sececek olabilir. Bu durumlarda Firebase'e
+    // `xxxxxxxxxx@privaterelay.appleid.com` formatinda anlamsiz email
+    // yazilir ve displayName null kalir → UI'da "random" gozukur.
+    // Defansif fallback chain:
+    //   1) givenName + familyName varsa onu kullan (en iyi)
+    //   2) Email gercek mi? @privaterelay.appleid.com ise generic etiket
+    //   3) Hicbiri yoksa email'in local kismi
+    final user = result.user;
+    if (user != null && (user.displayName == null || user.displayName!.isEmpty)) {
+      final fromApple = [apple.givenName, apple.familyName]
           .whereType<String>()
           .where((s) => s.isNotEmpty)
           .join(' ');
-      if (name.isNotEmpty && result.user?.displayName == null) {
+      String? fallbackName;
+      if (fromApple.isNotEmpty) {
+        fallbackName = fromApple;
+      } else {
+        final email = user.email ?? '';
+        final isRelay = isApplePrivateRelayEmail(email);
+        if (isRelay || email.isEmpty) {
+          // Relay email veya email yok → generic. UI tarafi l10n ile
+          // override eder; burada placeholder yeterli.
+          fallbackName = 'Apple User';
+        } else if (email.contains('@')) {
+          // Gercek email var ama displayName yok — email'in local kismi
+          // (ornek: john@gmail.com → "john") fallback olur.
+          fallbackName = email.split('@').first;
+        }
+      }
+      if (fallbackName != null && fallbackName.isNotEmpty) {
         try {
-          await result.user?.updateDisplayName(name);
+          await user.updateDisplayName(fallbackName);
+          await user.reload();
         } catch (_) {}
       }
     }
 
     return result;
+  }
+
+  /// Apple Sign-In "Hide My Email" tespiti — kullanici e-postasini paylasmadi.
+  /// `xxxxxxxxxx@privaterelay.appleid.com` formatinda gelir. UI bunu gercek
+  /// e-posta yerine "gizli e-posta" gibi gosterir. 2026-05-25.
+  static bool isApplePrivateRelayEmail(String? email) {
+    if (email == null) return false;
+    return email.toLowerCase().endsWith('@privaterelay.appleid.com');
   }
 
   // ── Sign Out / Delete ──────────────────────────────────────────────────────

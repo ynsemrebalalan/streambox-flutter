@@ -663,15 +663,27 @@ class _ChannelList extends ConsumerWidget {
       );
     }
 
-    // Series: grouped view
+    final l = AppLocalizations.of(context);
+
+    // Series: grouped view + üstte "Son Eklenenler" şeridi (Android paritesi)
     if (state.activeTab == 'series') {
-      return SeriesSection(channels: channels);
+      final newSeries = state.newlyAddedSeries;
+      if (newSeries.isEmpty) {
+        return SeriesSection(channels: channels);
+      }
+      return Column(
+        children: [
+          _NewlyAddedStrip(channels: newSeries, title: l.homeRowNewSeries),
+          Expanded(child: SeriesSection(channels: channels)),
+        ],
+      );
     }
 
-    // Movie: poster grid (responsive columns for iPad)
+    // Movie: poster grid + üstte "Son Eklenenler" şeridi (Android paritesi)
     if (state.activeTab == 'movie') {
       final columns = Responsive.posterGridColumns(context);
-      return GridView.builder(
+      final newMovies = state.newlyAddedMovies;
+      final grid = GridView.builder(
         padding:     const EdgeInsets.all(Spacing.md),
         gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
           crossAxisCount:   columns,
@@ -681,6 +693,13 @@ class _ChannelList extends ConsumerWidget {
         ),
         itemCount:   channels.length,
         itemBuilder: (ctx, i) => _PosterCard(channel: channels[i]),
+      );
+      if (newMovies.isEmpty) return grid;
+      return Column(
+        children: [
+          _NewlyAddedStrip(channels: newMovies, title: l.homeRowNewMovies),
+          Expanded(child: grid),
+        ],
       );
     }
 
@@ -728,21 +747,25 @@ class _HomeRowsLayout extends StatelessWidget {
     // İzlediğin Diziler → Yeni Filmler → Yeni Diziler → Popüler → Yeni Kanallar.
     // Eski "homeRowRecentlyWatched" satırı kaldırıldı çünkü watchedMovies +
     // watchedSeriesEpisodes kombinasyonu aynı içeriği daha temiz tipte gösteriyor.
-    final sections = <(String, List<ChannelModel>, _HomeCardStyle)>[
+    //
+    // `isHistory` flag: long-press uzun bas davranisini degistirir. History
+    // satirlarinda (Devam Et, Izlediklerin) confirm dialog ile "Bu icerigi
+    // silmek istiyor musun?" sorulur. Diger satirlarda eski favori toggle.
+    final sections = <(String, List<ChannelModel>, _HomeCardStyle, bool)>[
       if (state.continueWatching.isNotEmpty)
-        (l.homeRowContinueWatching,   state.continueWatching,       _HomeCardStyle.poster),
+        (l.homeRowContinueWatching,   state.continueWatching,       _HomeCardStyle.poster, true),
       if (state.watchedMovies.isNotEmpty)
-        (l.homeRowWatchedMovies,      state.watchedMovies,          _HomeCardStyle.poster),
+        (l.homeRowWatchedMovies,      state.watchedMovies,          _HomeCardStyle.poster, true),
       if (state.watchedSeriesEpisodes.isNotEmpty)
-        (l.homeRowWatchedSeries,      state.watchedSeriesEpisodes,  _HomeCardStyle.poster),
+        (l.homeRowWatchedSeries,      state.watchedSeriesEpisodes,  _HomeCardStyle.poster, true),
       if (state.newlyAddedMovies.isNotEmpty)
-        (l.homeRowNewMovies,          state.newlyAddedMovies,       _HomeCardStyle.poster),
+        (l.homeRowNewMovies,          state.newlyAddedMovies,       _HomeCardStyle.poster, false),
       if (state.newlyAddedSeries.isNotEmpty)
-        (l.homeRowNewSeries,          state.newlyAddedSeries,       _HomeCardStyle.poster),
+        (l.homeRowNewSeries,          state.newlyAddedSeries,       _HomeCardStyle.poster, false),
       if (state.popularVodItems.isNotEmpty)
-        (l.homeRowPopular,            state.popularVodItems,        _HomeCardStyle.poster),
+        (l.homeRowPopular,            state.popularVodItems,        _HomeCardStyle.poster, false),
       if (state.latestLive.isNotEmpty)
-        (l.homeRowNewChannels,        state.latestLive,             _HomeCardStyle.logo),
+        (l.homeRowNewChannels,        state.latestLive,             _HomeCardStyle.logo,   false),
     ];
 
     if (sections.isEmpty) {
@@ -783,8 +806,13 @@ class _HomeRowsLayout extends StatelessWidget {
         if (hasBanner && i == 0) {
           return _FeaturedBanner(items: state.featuredVodItems);
         }
-        final (title, items, style) = sections[hasBanner ? i - 1 : i];
-        return _HomeRow(title: title, items: items, style: style);
+        final (title, items, style, isHistory) = sections[hasBanner ? i - 1 : i];
+        return _HomeRow(
+          title:     title,
+          items:     items,
+          style:     style,
+          isHistory: isHistory,
+        );
       },
     );
   }
@@ -1008,28 +1036,68 @@ enum _HomeCardStyle { poster, logo }
 /// _PosterCard'tan çağrılır. 2026-05-11 kullanıcı isteği.
 void _toggleFavoriteWithFeedback(
     BuildContext context, WidgetRef ref, ChannelModel channel) {
+  final l = AppLocalizations.of(context);
   final newFav = !channel.isFavorite;
   ref.read(homeProvider.notifier).toggleFavorite(channel);
   ScaffoldMessenger.of(context).showSnackBar(
     SnackBar(
       content: Text(newFav
-          ? '${channel.name} favorilere eklendi'
-          : '${channel.name} favorilerden çıkarıldı'),
+          ? l.homeFavoriteAdded(channel.name)
+          : l.homeFavoriteRemoved(channel.name)),
       duration: const Duration(seconds: 2),
       behavior: SnackBarBehavior.floating,
     ),
   );
 }
 
+/// "Son Izlenenler" / "Nerede Kaldim" / "Izlediklerin" satirlarinda uzun
+/// basma -> onay dialog -> izleme gecmisinden cikar. 2026-05-25.
+Future<void> _confirmClearWatched(
+    BuildContext context, WidgetRef ref, ChannelModel channel) async {
+  final l = AppLocalizations.of(context);
+  final confirmed = await showDialog<bool>(
+    context: context,
+    builder: (ctx) => AlertDialog(
+      title: Text(l.homeRemoveFromHistoryTitle),
+      content: Text(l.homeRemoveFromHistoryMessage(channel.name)),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(ctx).pop(false),
+          child: Text(l.cancel),
+        ),
+        FilledButton(
+          onPressed: () => Navigator.of(ctx).pop(true),
+          child: Text(l.homeRemoveFromHistoryAction),
+        ),
+      ],
+    ),
+  );
+  if (confirmed != true) return;
+  await ref.read(homeProvider.notifier).clearWatched(channel);
+  if (context.mounted) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(l.homeRemoveFromHistorySnack(channel.name)),
+        duration: const Duration(seconds: 2),
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
+}
+
 class _HomeRow extends StatelessWidget {
   final String             title;
   final List<ChannelModel> items;
   final _HomeCardStyle     style;
+  /// True ise long-press "izleme gecmisinden cikar" davranisi,
+  /// false ise "favori toggle".
+  final bool               isHistory;
 
   const _HomeRow({
     required this.title,
     required this.items,
     required this.style,
+    this.isHistory = false,
   });
 
   @override
@@ -1066,8 +1134,8 @@ class _HomeRow extends StatelessWidget {
               itemBuilder: (ctx, i) => SizedBox(
                 width: itemWidth,
                 child: style == _HomeCardStyle.poster
-                    ? _PosterCard(channel: items[i])
-                    : _LogoCard(channel: items[i]),
+                    ? _PosterCard(channel: items[i], isHistory: isHistory)
+                    : _LogoCard(channel: items[i], isHistory: isHistory),
               ),
             ),
           ),
@@ -1080,7 +1148,8 @@ class _HomeRow extends StatelessWidget {
 /// Canlı TV kanalları için landscape kart (logo + isim).
 class _LogoCard extends ConsumerWidget {
   final ChannelModel channel;
-  const _LogoCard({required this.channel});
+  final bool         isHistory;
+  const _LogoCard({required this.channel, this.isHistory = false});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -1097,7 +1166,9 @@ class _LogoCard extends ConsumerWidget {
           'streamType':      channel.streamType,
         },
       ),
-      onLongPress: () => _toggleFavoriteWithFeedback(context, ref, channel),
+      onLongPress: () => isHistory
+          ? _confirmClearWatched(context, ref, channel)
+          : _toggleFavoriteWithFeedback(context, ref, channel),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -1137,12 +1208,12 @@ class _LogoCard extends ConsumerWidget {
 
 // ── Recently watched strip ────────────────────────────────────────────────────
 
-class _RecentlyWatchedStrip extends StatelessWidget {
+class _RecentlyWatchedStrip extends ConsumerWidget {
   final List<ChannelModel> channels;
   const _RecentlyWatchedStrip({required this.channels});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final cs = Theme.of(context).colorScheme;
     final l = AppLocalizations.of(context);
     return Column(
@@ -1181,6 +1252,7 @@ class _RecentlyWatchedStrip extends StatelessWidget {
                     'streamType':      ch.streamType,
                   },
                 ),
+                onLongPress: () => _confirmClearWatched(context, ref, ch),
                 semanticLabel: ch.name,
                 child: Column(
                   children: [
@@ -1228,11 +1300,66 @@ class _RecentlyWatchedStrip extends StatelessWidget {
   }
 }
 
+// ── Newly added strip (Film/Dizi tab başlığı) ────────────────────────────────
+//
+// 2026-05-25: Android paritesi (VodHorizontalRow) — Movie ve Series tab'larında
+// kategori chip bar'ın altında "Son Eklenenler" başlıklı yatay poster şeridi.
+// Kullanıcı kategori seçse bile şerit kalır (kategoriden bağımsız bir alan).
+
+class _NewlyAddedStrip extends StatelessWidget {
+  final List<ChannelModel> channels;
+  /// Başlık türü: 'movie' → "Yeni Filmler", 'series' → "Yeni Diziler".
+  final String title;
+  const _NewlyAddedStrip({required this.channels, required this.title});
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    // Maks 20 öğe — şerit asırı uzun olmasın; tam liste zaten alttaki grid'de.
+    final items = channels.take(20).toList();
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(
+              Spacing.md, Spacing.md, Spacing.md, Spacing.xs),
+          child: Text(
+            title,
+            style: TextStyle(
+                fontSize:    TextSize.caption,
+                fontWeight:  FontWeight.w700,
+                letterSpacing: 1.0,
+                color: AppColors.accent),
+          ),
+        ),
+        SizedBox(
+          height: 180,
+          child: FocusTraversalGroup(
+            policy: OrderedTraversalPolicy(),
+            child: ListView.separated(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.symmetric(horizontal: Spacing.md),
+              itemCount: items.length,
+              separatorBuilder: (_, __) => const SizedBox(width: Spacing.sm),
+              itemBuilder: (ctx, i) => SizedBox(
+                width: 110,
+                child: _PosterCard(channel: items[i]),
+              ),
+            ),
+          ),
+        ),
+        Divider(height: 1, color: cs.outline.withValues(alpha: 0.3)),
+      ],
+    );
+  }
+}
+
 // ── Poster card (VOD) ─────────────────────────────────────────────────────────
 
 class _PosterCard extends ConsumerWidget {
   final ChannelModel channel;
-  const _PosterCard({required this.channel});
+  final bool         isHistory;
+  const _PosterCard({required this.channel, this.isHistory = false});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -1250,7 +1377,9 @@ class _PosterCard extends ConsumerWidget {
           'streamType':      channel.streamType,
         },
       ),
-      onLongPress: () => _toggleFavoriteWithFeedback(context, ref, channel),
+      onLongPress: () => isHistory
+          ? _confirmClearWatched(context, ref, channel)
+          : _toggleFavoriteWithFeedback(context, ref, channel),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [

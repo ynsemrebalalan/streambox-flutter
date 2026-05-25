@@ -52,6 +52,10 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
   bool     _isBuffering  = false;
   bool     _isReconnecting = false;
   int      _reconnectAttempts = 0;
+  /// 2026-05-25: dispose() sonrasinda _player'a erisim (race fix).
+  /// mounted bayragi yetersiz — Future.delayed sirasinda widget'tan
+  /// kopuldugunda native player pointer'ina seek crash yapabilir.
+  bool     _disposed = false;
   StreamSubscription<bool>?     _playingSub;
   StreamSubscription<bool>?     _bufferingSub;
   StreamSubscription<Duration>? _positionSub;
@@ -188,8 +192,10 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
       _scheduleReconnect(reason: 'error: $err');
     });
     _completedSub = _player.stream.completed.listen((completed) {
-      // Canli yayinlarda completed genelde stream kopmasidir.
-      if (completed) {
+      // Canli yayinlarda completed genelde stream kopmasidir → reconnect.
+      // VOD/film/dizi'de completed normaldir (video bitti) → reconnect ETME.
+      // 2026-05-25 (kullanici raporu: VOD'da ileri alinca basa donuyor).
+      if (completed && widget.streamType == 'live') {
         _scheduleReconnect(reason: 'stream ended (live)');
       }
     });
@@ -197,6 +203,12 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
 
   void _startWatchdog() {
     _watchdog?.cancel();
+    // 2026-05-25: Sadece canli yayinlarda watchdog calistir. VOD/film/dizi'de
+    // libmpv kendi reconnect/buffer mantigini yapiyor; ayrica buyuk bir seek
+    // sirasinda position 8+ sn ayni kalabilir → yanlis pozitif "stall" →
+    // _scheduleReconnect _player.open(...) cagiriyor ve kullanicinin ileri
+    // aldigi yer kayboluyor (basa donuyor). Sleuth raporu, kullanici #1.
+    if (widget.streamType != 'live') return;
     _watchdog = Timer.periodic(const Duration(seconds: 2), (_) {
       if (!mounted || _isReconnecting) return;
       // 2026-05-11: Pause sırasında stall sayma. Kullanıcı bilerek pause
@@ -238,11 +250,29 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
     await Future.delayed(delay);
     if (!mounted) return;
 
+    // 2026-05-25: VOD'da reconnect öncesi mevcut pozisyonu yakala — gercek
+    // bir error / nadir race durumunda bile kullanici izlediği yeri
+    // kaybetmesin. Live'da pozisyon korumanın anlami yok (kanal akiş
+    // basindan baslar). Sleuth raporu Fix #3.
+    final preservePos = widget.streamType != 'live'
+        ? _player.state.position
+        : Duration.zero;
+
     try {
       await _player.stop();
       await _player.open(Media(widget.channelUrl), play: true);
+      if (preservePos > const Duration(seconds: 2)) {
+        // libmpv open ile play=true başladıktan sonra seek edilebilir
+        // duruma kısa sürede gelir; 500ms guard pratikte yeterli.
+        await Future.delayed(const Duration(milliseconds: 500));
+        // _disposed bayragi: Future.delayed sirasinda widget kapatildiysa
+        // _player'a seek ETMEYELIM (native crash riski).
+        if (mounted && !_disposed) {
+          await _player.seek(preservePos);
+        }
+      }
       _lastProgress = DateTime.now();
-      _lastPosition = Duration.zero;
+      _lastPosition = preservePos;
     } catch (e) {
       debugPrint('[Player] reconnect failed: $e');
     } finally {
@@ -297,6 +327,10 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
 
   @override
   void dispose() {
+    // 2026-05-25 race fix: _scheduleReconnect Future.delayed sonrasi seek
+    // cagrisi widget dispose olduktan sonra calismaya devam ederse native
+    // player'a crash yapabilir. _disposed bayragi ile guvene al.
+    _disposed = true;
     // Bug #9 fix: VOD resume markWatched dispose'da fire-and-forget cagriliyordu;
     // hizli cikiste DB write tamamlanmadan tear down oluyordu. Artik
     // _stopAndPop() icinde await ile cagriliyor — burada sadece guvenli fallback
@@ -447,6 +481,12 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
     if (target < Duration.zero) target = Duration.zero;
     if (dur > Duration.zero && target > dur) target = dur;
     _player.seek(target);
+    // 2026-05-25: Buyuk seek sirasinda libmpv yeni segmenti indirirken
+    // position 5-10+ sn ayni kalabilir → watchdog yanlis pozitif "stall"
+    // tetiklemesin diye sayaclari hemen sifirla. Live'da watchdog disable
+    // edildi ama defansif olarak burada da reset.
+    _lastPosition = target;
+    _lastProgress = DateTime.now();
   }
 
   // ── Swipe gesture handlers ───────────────────────────────────────────────────
@@ -562,8 +602,9 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
   /// Phase 4: AirPlay — manuel buton. Pro check + AirPlay sheet.
   Future<void> _showAirplay() async {
     final available = await AirplayService.instance.isAvailable();
+    if (!mounted) return;
     if (!available) {
-      if (mounted) _showSnack(AppLocalizations.of(context).playerAirplayUnavailable);
+      _showSnack(AppLocalizations.of(context).playerAirplayUnavailable);
       return;
     }
     final allowed = await requirePro(context, ref, PaywallTrigger.airplay);

@@ -38,10 +38,24 @@ class HomeNotifier extends AsyncNotifier<HomeState> {
 
       // Background yüklemesi — UI hemen ilk içeriği gösterir,
       // diğer satırlar 1-2sn sonra otomatik düşer.
+      // 2026-05-25: Race fix — detailed task sonucu fast state'i degil,
+      // o ANDA mevcut state'i (latest) baz alip sadece detailed alanlari
+      // overwrite eder. Aksi takdirde clearWatched / markWatched gibi
+      // kullanici aksiyonlari detailed tamamlandiginda eziliyordu.
       Future.microtask(() async {
         try {
-          final detailed = await _loadHomeRowsDetailed(state);
-          this.state = AsyncData(detailed);
+          final base = state;
+          final detailed = await _loadHomeRowsDetailed(base);
+          final latest = this.state.value;
+          if (latest == null) return;
+          this.state = AsyncData(latest.copyWith(
+            newlyAddedMovies:      detailed.newlyAddedMovies,
+            newlyAddedSeries:      detailed.newlyAddedSeries,
+            watchedMovies:         detailed.watchedMovies,
+            watchedSeriesEpisodes: detailed.watchedSeriesEpisodes,
+            featuredVodItems:      detailed.featuredVodItems,
+            popularVodItems:       detailed.popularVodItems,
+          ));
         } catch (_) {
           // Detailed yükleme hatası kritik değil, fast state korunur.
         }
@@ -177,6 +191,14 @@ class HomeNotifier extends AsyncNotifier<HomeState> {
         clearError: true,
       );
     } else {
+      // 2026-05-25: Movie/Series tab'inda "Son Eklenenler" seridi
+      // newlyAddedMovies/newlyAddedSeries state'ine bagli — kullanici
+      // direkt bu tab'a girerse henuz dolmamis olabilir. Bos ise detailed
+      // load tetikle (UI bos serit yerine pas geçer).
+      if ((tab == 'movie' && next.newlyAddedMovies.isEmpty) ||
+          (tab == 'series' && next.newlyAddedSeries.isEmpty)) {
+        next = await _loadHomeRowsDetailed(next);
+      }
       next = await _loadCategories(next);
       next = await _loadChannels(next);
     }
@@ -244,6 +266,31 @@ class HomeNotifier extends AsyncNotifier<HomeState> {
     state = AsyncData(current.copyWith(isBackgroundLoading: true));
     final refreshed = await _loadHomeRows(current);
     state = AsyncData(refreshed.copyWith(isBackgroundLoading: false));
+  }
+
+  /// Kanali izleme gecmisinden cikar — Son Izlenenler / Nerede Kaldim
+  /// satirlarinda gozukmemesi icin. Optimistic update: ilgili satirlardan
+  /// hemen kaldir, sonra arka planda DB re-fetch yap.
+  Future<void> clearWatched(ChannelModel channel) async {
+    final current = state.value;
+    if (current == null) return;
+
+    // 1) Optimistic UI guncelle.
+    bool removeIf(ChannelModel c) => c.id == channel.id;
+    final next = current.copyWith(
+      recentlyWatched:       current.recentlyWatched.where((c) => !removeIf(c)).toList(),
+      continueWatching:      current.continueWatching.where((c) => !removeIf(c)).toList(),
+      watchedMovies:         current.watchedMovies.where((c) => !removeIf(c)).toList(),
+      watchedSeriesEpisodes: current.watchedSeriesEpisodes.where((c) => !removeIf(c)).toList(),
+    );
+    state = AsyncData(next);
+
+    // 2) DB + cloud sync.
+    await ref.read(channelRepoProvider).clearWatched(channel.id);
+
+    // 3) Sessiz arka plan re-fetch — diger satirlar tutarli kalsin.
+    final refreshed = await _loadHomeRows(next);
+    state = AsyncData(refreshed);
   }
 
   Future<void> toggleFavorite(ChannelModel channel) async {
@@ -327,9 +374,22 @@ class HomeNotifier extends AsyncNotifier<HomeState> {
     final type = _typeForTab(s.activeTab);
     if (type == null) return s.copyWith(categories: []);
 
-    var cats = await ref
-        .read(channelRepoProvider)
-        .getCategories(s.activePlaylistId, type);
+    final repo = ref.read(channelRepoProvider);
+    var cats = await repo.getCategories(s.activePlaylistId, type);
+
+    // 2026-05-25: Movie tab kategori chip bar — tek-bolumlu "dizilerin"
+    // kategorilerini de ekle (kullanici raporu: "1 bolumlu dizi olmaz,
+    // bunlar film"). Distinct + sirali tut.
+    if (type == 'movie') {
+      final orphanCats = await repo.getOrphanSeriesCategories(s.activePlaylistId);
+      if (orphanCats.isNotEmpty) {
+        final merged = <String>{...cats, ...orphanCats}.toList();
+        // Stabil siralama: case-insensitive alfabetik (getCategories ile uyumlu).
+        merged.sort((a, b) =>
+            a.toLowerCase().compareTo(b.toLowerCase()));
+        cats = merged;
+      }
+    }
 
     // Hidden categories'i filtrele.
     final hidden = await _hiddenCategories();
@@ -372,6 +432,37 @@ class HomeNotifier extends AsyncNotifier<HomeState> {
       channels = channels
           .where((c) => ChannelRepository.isChannelAllowedForTab(c, type))
           .toList();
+      // 2026-05-25: M3U providers bazi filmleri yanlislikla streamType=series
+      // etiketliyor. Kural: ayni seriesName altinda yalniz 1 bolum varsa
+      // bu aslinda bir film. Hicbir icerik kaybi olmasin diye:
+      //   - Series tab: 2+ bolumlu diziler kalir
+      //   - Movie tab: gercek movie + tek-bolumlu "dizi"ler birlikte gosterilir
+      // seriesName'i bos olanlar zaten "tek baslarina" sayilir.
+      if (type == 'series') {
+        final epCount = <String, int>{};
+        for (final c in channels) {
+          final key = c.seriesName.isNotEmpty ? c.seriesName : c.id;
+          epCount[key] = (epCount[key] ?? 0) + 1;
+        }
+        channels = channels.where((c) {
+          final key = c.seriesName.isNotEmpty ? c.seriesName : c.id;
+          return (epCount[key] ?? 0) >= 2;
+        }).toList();
+      } else if (type == 'movie') {
+        // Movie tab'ina ek olarak tek-bolumlu "dizi"leri de ekle.
+        final orphans = s.selectedCategory.isNotEmpty
+            ? await repo.getOrphanSeriesAsMovies(
+                s.activePlaylistId, category: s.selectedCategory)
+            : await repo.getOrphanSeriesAsMovies(s.activePlaylistId);
+        if (orphans.isNotEmpty) {
+          // Dublicate koruma — ayni id varsa atlayalim (saglam DB integrity
+          // varsa olmaz ama defansif).
+          final seen = channels.map((c) => c.id).toSet();
+          for (final o in orphans) {
+            if (seen.add(o.id)) channels.add(o);
+          }
+        }
+      }
       // Live için Dart-side priority sort (SQL CASE spinner takılmasına
       // neden oluyordu, sort buraya taşındı).
       if (type == 'live') {

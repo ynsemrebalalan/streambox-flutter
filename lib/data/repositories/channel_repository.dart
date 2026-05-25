@@ -59,8 +59,12 @@ class ChannelRepository {
     final cc = ch.category.toLowerCase();
     if (ch.lastWatched > 0) return 0;
     if (lc.contains('bein')) return 1;
-    if (lc.contains('spor') || lc.contains('sport') ||
-        cc.contains('spor') || cc.contains('sport')) return 2;
+    if (lc.contains('spor') ||
+        lc.contains('sport') ||
+        cc.contains('spor') ||
+        cc.contains('sport')) {
+      return 2;
+    }
     return 3;
   }
 
@@ -114,11 +118,87 @@ class ChannelRepository {
           'spor', 'sport', 'haber', 'news', 'dizi', 'series',
         ]);
       case 'series':
-        // Series tab: kategori adı spor/haber içeriyorsa gizle
-        return !any(const ['spor', 'sport', 'haber', 'news']);
+        // Series tab: kategori adı film/spor/haber içeriyorsa gizle.
+        // M3U sağlayıcısı bir kanali yanlislikla `series` streamType ile
+        // etiketlerse ve kategori adi "Aile Filmleri" gibi olursa series
+        // tabinda gozukmesin — kullanici raporu 2026-05-25.
+        return !any(const [
+          'film', 'movie', 'vod',
+          'spor', 'sport', 'haber', 'news',
+        ]);
       default:
         return true;
     }
+  }
+
+  /// Tek bolumlu "dizileri" film tab'inda gostermek icin yardimci.
+  /// streamType='series' AND seriesName != '' AND seriesName 1 bolume sahip
+  /// olan kanallari dondurur. 2026-05-25: M3U providers yanlis etiketleme
+  /// savunmasi — kullanici "1 bolumlu dizi olmaz, bunlar film".
+  ///
+  /// [category] verilirse sadece o kategorideki orphan'lari dondurur (junction
+  /// uzerinden, cati category ya da categoryIds ile eslesir).
+  Future<List<ChannelModel>> getOrphanSeriesAsMovies(
+    String playlistId, {
+    String? category,
+  }) async {
+    final db = await AppDatabase.instance;
+    // "Tek bolumlu seri" = seriesName != '' VE COUNT(*) = 1.
+    // Subquery ile orphan seriesName listesini bul, sonra channels'tan cek.
+    if (category == null) {
+      return (await db.rawQuery('''
+        SELECT * FROM channels
+        WHERE playlistId = ? AND streamType = 'series' AND seriesName != ''
+          AND seriesName IN (
+            SELECT seriesName FROM channels
+            WHERE playlistId = ? AND streamType = 'series' AND seriesName != ''
+            GROUP BY seriesName HAVING COUNT(*) = 1
+          )
+        ORDER BY name COLLATE NOCASE ASC
+        LIMIT 2000
+      ''', [playlistId, playlistId]))
+          .map(ChannelModel.fromMap)
+          .toList();
+    }
+    // Kategoriye gore — junction tablosu uzerinden
+    return (await db.rawQuery('''
+      SELECT channels.* FROM channels
+      INNER JOIN $_catTable cc
+        ON cc.channelId = channels.id AND cc.playlistId = channels.playlistId
+      WHERE channels.playlistId = ?
+        AND channels.streamType = 'series'
+        AND channels.seriesName != ''
+        AND cc.category = ?
+        AND channels.seriesName IN (
+          SELECT seriesName FROM channels
+          WHERE playlistId = ? AND streamType = 'series' AND seriesName != ''
+          GROUP BY seriesName HAVING COUNT(*) = 1
+        )
+      ORDER BY channels.name COLLATE NOCASE ASC
+    ''', [playlistId, category.trim(), playlistId]))
+        .map(ChannelModel.fromMap)
+        .toList();
+  }
+
+  /// Tek bolumlu "dizilerin" kategori adlari (junction uzerinden distinct).
+  /// Movie tab kategori chip bar'ina eklenir. 2026-05-25.
+  /// LIMIT 200 — kategori sayisi pratikte 50'yi gecmez, ic ice subquery'lerin
+  /// 10k+ kanalda yavaslamasini onler (skill: SQL CASE WHEN spinner).
+  Future<List<String>> getOrphanSeriesCategories(String playlistId) async {
+    final db = await AppDatabase.instance;
+    final rows = await db.rawQuery('''
+      SELECT DISTINCT cc.category FROM $_catTable cc
+      INNER JOIN channels c
+        ON c.id = cc.channelId AND c.playlistId = cc.playlistId
+      WHERE cc.playlistId = ? AND c.streamType = 'series' AND c.seriesName != ''
+        AND c.seriesName IN (
+          SELECT seriesName FROM channels
+          WHERE playlistId = ? AND streamType = 'series' AND seriesName != ''
+          GROUP BY seriesName HAVING COUNT(*) = 1
+        )
+      LIMIT 200
+    ''', [playlistId, playlistId]);
+    return rows.map((r) => r['category'] as String).toList();
   }
 
   Future<List<ChannelModel>> getByCategory(
@@ -146,14 +226,35 @@ class ChannelRepository {
     final db = await AppDatabase.instance;
     // 2026-05-11 v4: Basit SQL + Dart filter+sort. Önceki versiyonlarda
     // CASE WHEN priority SQL spinner sonsuz dönmesine neden oluyordu.
-
-    final rows = await db.rawQuery('''
-      SELECT DISTINCT cc.category FROM $_catTable cc
-      INNER JOIN channels c
-        ON c.id = cc.channelId AND c.playlistId = cc.playlistId
-      WHERE cc.playlistId = ? AND c.streamType = ?
-      ORDER BY cc.category COLLATE NOCASE ASC
-    ''', [playlistId, streamType]);
+    //
+    // 2026-05-25: Series tab icin ek kural — "1 bolumlu dizi olmaz".
+    // M3U providers bazi filmleri yanlislikla streamType=series etiketliyor;
+    // bunlarin kategorileri (jenerik adlarla: "Aksiyon", "Komedi", ...)
+    // dizi tab'inda gozukmesin. Kural: kategoride EN AZ BIR seriesName'in
+    // 2+ bolumu olmali → `COUNT(*) > COUNT(DISTINCT seriesName)` (toplam
+    // bolum sayisi distinct dizi sayisindan fazlaysa, en az bir dizi
+    // birden fazla bolume sahip demektir).
+    final List<Map<String, Object?>> rows;
+    if (streamType == 'series') {
+      rows = await db.rawQuery('''
+        SELECT cc.category FROM $_catTable cc
+        INNER JOIN channels c
+          ON c.id = cc.channelId AND c.playlistId = cc.playlistId
+        WHERE cc.playlistId = ? AND c.streamType = 'series'
+          AND c.seriesName != ''
+        GROUP BY cc.category
+        HAVING COUNT(*) > COUNT(DISTINCT c.seriesName)
+        ORDER BY cc.category COLLATE NOCASE ASC
+      ''', [playlistId]);
+    } else {
+      rows = await db.rawQuery('''
+        SELECT DISTINCT cc.category FROM $_catTable cc
+        INNER JOIN channels c
+          ON c.id = cc.channelId AND c.playlistId = cc.playlistId
+        WHERE cc.playlistId = ? AND c.streamType = ?
+        ORDER BY cc.category COLLATE NOCASE ASC
+      ''', [playlistId, streamType]);
+    }
 
     // Dart filter: kategori adı bazlı negatif filter (yanlış metadata savunması)
     final allCats = rows.map((r) => r['category'] as String).toList();
@@ -197,50 +298,17 @@ class ChannelRepository {
             catLower.contains('haber') ||
             catLower.contains('news'));
       case 'series':
-        return !(catLower.contains('spor') ||
+        // Series tab kategori chip bar'i: film/movie/vod ve spor/haber adli
+        // kategoriler gozukmemeli. Yanlis metadata savunmasi — 2026-05-25.
+        return !(catLower.contains('film') ||
+            catLower.contains('movie') ||
+            catLower.contains('vod') ||
+            catLower.contains('spor') ||
             catLower.contains('sport') ||
             catLower.contains('haber') ||
             catLower.contains('news'));
       default:
         return true;
-    }
-  }
-
-  /// streamType'a göre kategori adı negatif filter — provider yanlış
-  /// metadata'ya karşı UX savunması. Adında "film" geçen bir kategori
-  /// Live tab'da görünmemeli, "spor" geçen Movie tab'da görünmemeli.
-  static String _categoryNameExcludeClause(String streamType) {
-    switch (streamType) {
-      case 'live':
-        return '''
-          AND LOWER(cc.category) NOT LIKE '%film%'
-          AND LOWER(cc.category) NOT LIKE '%movie%'
-          AND LOWER(cc.category) NOT LIKE '%vod%'
-          AND LOWER(cc.category) NOT LIKE '%dizi%'
-          AND LOWER(cc.category) NOT LIKE '%series%'
-        ''';
-      case 'movie':
-        return '''
-          AND LOWER(cc.category) NOT LIKE '%dizi%'
-          AND LOWER(cc.category) NOT LIKE '%series%'
-          AND LOWER(cc.category) NOT LIKE '%spor%'
-          AND LOWER(cc.category) NOT LIKE '%sport%'
-          AND LOWER(cc.category) NOT LIKE '%haber%'
-          AND LOWER(cc.category) NOT LIKE '%news%'
-        ''';
-      case 'series':
-        return '''
-          AND (
-            LOWER(cc.category) NOT LIKE '%film%'
-            OR LOWER(cc.category) LIKE '%dizi%'
-            OR LOWER(cc.category) LIKE '%series%'
-          )
-          AND LOWER(cc.category) NOT LIKE '%spor%'
-          AND LOWER(cc.category) NOT LIKE '%sport%'
-          AND LOWER(cc.category) NOT LIKE '%haber%'
-        ''';
-      default:
-        return '';
     }
   }
 
@@ -562,6 +630,44 @@ class ChannelRepository {
       {'isWatched': 1},
       where: 'id = ?', whereArgs: [id],
     );
+  }
+
+  /// Kanali izleme gecmisinden cikar — Son Izlenenler / Nerede Kaldim
+  /// satirlarinda gozukmemesi icin lastWatched + lastPosition + isWatched
+  /// sifirlanir. Favori durumu korunur. Cloud sync icin tombstone yerine
+  /// pushHistory(0,0,0) sinyali kullanilir (LWW ile diger cihazda da silinir).
+  Future<void> clearWatched(String id) async {
+    final db = await AppDatabase.instance;
+    await db.update(
+      _table,
+      {
+        'lastWatched':  0,
+        'lastPosition': 0,
+        'isWatched':    0,
+      },
+      where: 'id = ?', whereArgs: [id],
+    );
+    // Cloud mirror — playlistId al, history kaydini sifirla.
+    () async {
+      try {
+        final rows = await db.query(_table,
+            columns: ['playlistId'],
+            where: 'id = ?',
+            whereArgs: [id],
+            limit: 1);
+        if (rows.isEmpty) return;
+        final pid = rows.first['playlistId'] as String? ?? '';
+        if (pid.isEmpty) return;
+        await CloudSyncService.pushHistory(
+          playlistId:   pid,
+          channelId:    id,
+          lastWatched:  0,
+          lastPosition: 0,
+          duration:     0,
+          isWatched:    false,
+        );
+      } catch (_) {}
+    }();
   }
 
   /// FTS4 indexini channels tablosundan yeniden olusturur.

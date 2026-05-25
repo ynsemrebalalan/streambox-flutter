@@ -628,6 +628,37 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String seriesEpisodeCount(int count) {
+    return '$count episodes';
+  }
+
+  @override
+  String get homeRemoveFromHistoryTitle => 'Remove from watch history';
+
+  @override
+  String homeRemoveFromHistoryMessage(String name) {
+    return '$name will be removed from your watch history. Continue?';
+  }
+
+  @override
+  String get homeRemoveFromHistoryAction => 'Remove';
+
+  @override
+  String homeRemoveFromHistorySnack(String name) {
+    return '$name removed from watch history';
+  }
+
+  @override
+  String homeFavoriteAdded(String name) {
+    return '$name added to favorites';
+  }
+
+  @override
+  String homeFavoriteRemoved(String name) {
+    return '$name removed from favorites';
+  }
+
+  @override
   String get homeRowPopular => 'Popular';
 
   @override
@@ -745,6 +776,12 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get authVerifyEmailHint => 'We\'ve sent a verification link to your email.';
+
+  @override
+  String get authAppleHiddenEmail => 'Apple User';
+
+  @override
+  String get authAppleHiddenEmailHint => 'Email kept private via Apple — not shared';
 
   @override
   String get authResendVerification => 'Resend verification';

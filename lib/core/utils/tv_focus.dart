@@ -13,6 +13,7 @@ import '../theme/app_colors.dart';
 class TvFocusable extends StatefulWidget {
   final Widget child;
   final VoidCallback onTap;
+  final VoidCallback? onLongPress;
   final bool autofocus;
   final BorderRadius? borderRadius;
   final EdgeInsets? padding;
@@ -23,6 +24,7 @@ class TvFocusable extends StatefulWidget {
     super.key,
     required this.child,
     required this.onTap,
+    this.onLongPress,
     this.autofocus = false,
     this.borderRadius,
     this.padding,
@@ -61,6 +63,7 @@ class _TvFocusableState extends State<TvFocusable> {
         button: true,
         child: GestureDetector(
           onTap: widget.onTap,
+          onLongPress: widget.onLongPress,
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 120),
             padding: widget.padding,

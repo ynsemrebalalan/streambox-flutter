@@ -59,7 +59,7 @@ class M3uParser {
     final channels = <ChannelModel>[];
     final allowed  = playlist.allowedTypes.split(',');
 
-    String? name, logo, category, tvgId, streamType, seriesName;
+    String? name, logo, category, tvgId, seriesName;
     List<String> categories = const [];
     int seasonNum = 0, epNum = 0, sortIdx = 0;
 
@@ -77,9 +77,8 @@ class M3uParser {
         final rawGroup = _attr(line, 'group-title') ?? 'Genel';
         categories = _splitCategories(rawGroup);
         category = categories.isNotEmpty ? categories.first : 'Genel';
-        // Geçici tahmin — URL geldikten sonra _detectStreamType yeniden
-        // çağrılır (URL extension/path en güçlü sinyal). 2026-05-11.
-        streamType = _detectStreamType(category, name, '');
+        // streamType nihai olarak URL geldikten sonra `_detectStreamType` ile
+        // belirlenir (URL extension/path en güçlü sinyal). 2026-05-11.
         seriesName = '';
         seasonNum  = 0;
         epNum      = 0;

@@ -194,7 +194,7 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
             TextButton(
                 onPressed: () async {
                   final uri = Uri.parse(
-                      'https://iptvaiplayer.com.tr/verisilme.php');
+                      'https://iptvaiplayer.com.tr/?gizlilik');
                   if (await canLaunchUrl(uri)) {
                     await launchUrl(uri,
                         mode: LaunchMode.externalApplication);

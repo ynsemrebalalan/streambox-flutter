@@ -259,6 +259,28 @@
   "@seriesSeasonNumber": {
     "placeholders": { "n": { "type": "int" } }
   },
+  "seriesEpisodeCount": "{count} حلقة",
+  "@seriesEpisodeCount": {
+    "placeholders": { "count": { "type": "int" } }
+  },
+  "homeRemoveFromHistoryTitle": "إزالة من سجل المشاهدة",
+  "homeRemoveFromHistoryMessage": "هل تريد إزالة {name} من سجل المشاهدة؟",
+  "@homeRemoveFromHistoryMessage": {
+    "placeholders": { "name": { "type": "String" } }
+  },
+  "homeRemoveFromHistoryAction": "إزالة",
+  "homeRemoveFromHistorySnack": "تمت إزالة {name} من سجل المشاهدة",
+  "@homeRemoveFromHistorySnack": {
+    "placeholders": { "name": { "type": "String" } }
+  },
+  "homeFavoriteAdded": "تمت إضافة {name} إلى المفضلة",
+  "@homeFavoriteAdded": {
+    "placeholders": { "name": { "type": "String" } }
+  },
+  "homeFavoriteRemoved": "تمت إزالة {name} من المفضلة",
+  "@homeFavoriteRemoved": {
+    "placeholders": { "name": { "type": "String" } }
+  },
 
   "homeRowPopular": "الأكثر شعبية",
   "homeRowWatchedMovies": "الأفلام التي شاهدتها",
@@ -303,6 +325,8 @@
   "authErrorGeneric": "حدث خطأ ما: {message}",
   "@authErrorGeneric": { "placeholders": { "message": { "type": "String" } } },
   "authVerifyEmailHint": "أرسلنا لك رابط تحقق إلى بريدك الإلكتروني.",
+  "authAppleHiddenEmail": "مستخدم Apple",
+  "authAppleHiddenEmailHint": "البريد مخفي عبر Apple — لم تتم مشاركته",
   "authResendVerification": "إعادة إرسال التحقق",
   "authChangePassword": "تغيير كلمة المرور",
   "authDeleteAccount": "حذف الحساب",

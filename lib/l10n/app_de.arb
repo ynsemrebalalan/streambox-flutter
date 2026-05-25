@@ -259,6 +259,28 @@
   "@seriesSeasonNumber": {
     "placeholders": { "n": { "type": "int" } }
   },
+  "seriesEpisodeCount": "{count} Folgen",
+  "@seriesEpisodeCount": {
+    "placeholders": { "count": { "type": "int" } }
+  },
+  "homeRemoveFromHistoryTitle": "Aus Verlauf entfernen",
+  "homeRemoveFromHistoryMessage": "{name} wird aus dem Wiedergabeverlauf entfernt. Fortfahren?",
+  "@homeRemoveFromHistoryMessage": {
+    "placeholders": { "name": { "type": "String" } }
+  },
+  "homeRemoveFromHistoryAction": "Entfernen",
+  "homeRemoveFromHistorySnack": "{name} aus Verlauf entfernt",
+  "@homeRemoveFromHistorySnack": {
+    "placeholders": { "name": { "type": "String" } }
+  },
+  "homeFavoriteAdded": "{name} zu Favoriten hinzugefügt",
+  "@homeFavoriteAdded": {
+    "placeholders": { "name": { "type": "String" } }
+  },
+  "homeFavoriteRemoved": "{name} aus Favoriten entfernt",
+  "@homeFavoriteRemoved": {
+    "placeholders": { "name": { "type": "String" } }
+  },
 
   "homeRowPopular": "Beliebt",
   "homeRowWatchedMovies": "Deine angesehenen Filme",
@@ -303,6 +325,8 @@
   "authErrorGeneric": "Etwas ist schiefgelaufen: {message}",
   "@authErrorGeneric": { "placeholders": { "message": { "type": "String" } } },
   "authVerifyEmailHint": "Wir haben dir einen Bestätigungs-Link gesendet.",
+  "authAppleHiddenEmail": "Apple-Benutzer",
+  "authAppleHiddenEmailHint": "E-Mail über Apple verborgen — nicht geteilt",
   "authResendVerification": "Bestätigung erneut senden",
   "authChangePassword": "Passwort ändern",
   "authDeleteAccount": "Konto löschen",

@@ -19,12 +19,13 @@ class ThemePickerScreen extends ConsumerWidget {
     final current = ref.watch(themeVariantProvider);
 
     final themes = <(PremiumTheme, String, List<Color>)>[
-      (PremiumTheme.defaultDark,  l.themeDefaultDark,  _swatch(AppTheme.dark)),
-      (PremiumTheme.defaultLight, l.themeDefaultLight, _swatch(AppTheme.light)),
-      (PremiumTheme.crimson,      l.themeCrimson,      _swatch(AppTheme.crimson)),
-      (PremiumTheme.royal,        l.themeRoyal,        _swatch(AppTheme.royal)),
-      (PremiumTheme.forest,       l.themeForest,       _swatch(AppTheme.forest)),
-      (PremiumTheme.ocean,        l.themeOcean,        _swatch(AppTheme.ocean)),
+      (PremiumTheme.defaultSystem, l.settingsThemeSystem, _swatchSystem()),
+      (PremiumTheme.defaultLight,  l.themeDefaultLight,   _swatch(AppTheme.light)),
+      (PremiumTheme.defaultDark,   l.themeDefaultDark,    _swatch(AppTheme.dark)),
+      (PremiumTheme.crimson,       l.themeCrimson,        _swatch(AppTheme.crimson)),
+      (PremiumTheme.royal,         l.themeRoyal,          _swatch(AppTheme.royal)),
+      (PremiumTheme.forest,        l.themeForest,         _swatch(AppTheme.forest)),
+      (PremiumTheme.ocean,         l.themeOcean,          _swatch(AppTheme.ocean)),
     ];
 
     return Scaffold(
@@ -64,6 +65,15 @@ class ThemePickerScreen extends ConsumerWidget {
         t.colorScheme.secondary,
         t.colorScheme.surface,
         t.scaffoldBackgroundColor,
+      ];
+
+  /// Sistem secenegi icin yari-light/yari-dark swatch — kullanici cihaz
+  /// modu takip edildigini gorur.
+  static List<Color> _swatchSystem() => [
+        AppTheme.dark.colorScheme.primary,
+        AppTheme.light.colorScheme.primary,
+        AppTheme.dark.scaffoldBackgroundColor,
+        AppTheme.light.scaffoldBackgroundColor,
       ];
 }
 

@@ -239,16 +239,30 @@ class _IPTVAIPlayerAppState extends ConsumerState<IPTVAIPlayerApp>
     });
     Future.microtask(() async {
       try {
-        await ref.read(themeModeProvider.notifier).loadFromDb();
-      } catch (e) {
-        debugPrint('Theme load failed: $e');
-      }
-      try {
         await ref.read(localeProvider.notifier).loadFromDb();
       } catch (e) {
         debugPrint('Locale load failed: $e');
       }
       try {
+        // 2026-05-25 one-time migration — eski `themeMode` ayari (light/
+        // dark/system) yeni `themeVariant` source-of-truth'una tasi. Hala
+        // DB'de orphan kalmasin diye eski key sil. Kullanici aydinlik
+        // secmisse yeni sisteme aktarilir, aksi takdirde defaultDark kalir.
+        final settings = ref.read(settingsRepoProvider);
+        final oldMode = await settings.get(SettingsKeys.themeMode);
+        final newVar  = await settings.get(SettingsKeys.themeVariant);
+        if (oldMode != null && newVar == null) {
+          final migrated = switch (oldMode) {
+            'system' => 'system',
+            'light'  => 'light',
+            _        => 'default',
+          };
+          await settings.set(SettingsKeys.themeVariant, migrated);
+        }
+        if (oldMode != null) {
+          await settings.delete(SettingsKeys.themeMode);
+        }
+        // Tek source-of-truth: themeVariant. themeMode bundan derive edilir.
         await ref.read(themeVariantProvider.notifier).loadFromDb();
       } catch (e) {
         debugPrint('Theme variant load failed: $e');
@@ -332,18 +346,16 @@ class _IPTVAIPlayerAppState extends ConsumerState<IPTVAIPlayerApp>
       }
     });
 
-    // Premium theme variant: Pro kullanıcı default DIŞINDA bir varyant
-    // seçtiyse hem light hem dark slot'una aynı tema verilir, ThemeMode
-    // override'ı pratikte iptal olur (kullanıcı bir tema seçti, sistem
-    // dark/light modu o tema içinde anlamsız). Default seçimde mevcut
-    // light/dark + system mode davranışı korunur.
-    final isPremium = themeVariant != PremiumTheme.defaultDark &&
-                      themeVariant != PremiumTheme.defaultLight;
+    // Tema secimi tek source-of-truth `themeVariantProvider`. `themeMode`
+    // computed (variant -> ThemeMode). Premium variant'larda hem light hem
+    // dark slot'una ayni premium tema atanir; sistem dark/light tercihinden
+    // bagimsiz olarak premium gorsel her zaman uygulanir.
+    final isPremium = themeVariant.isPro;
 
     return MaterialApp.router(
       onGenerateTitle:            (ctx) => AppLocalizations.of(ctx).appName,
       debugShowCheckedModeBanner: false,
-      themeMode:                  isPremium ? ThemeMode.dark : themeMode,
+      themeMode:                  themeMode,
       theme:                      isPremium ? AppTheme.of(themeVariant) : AppTheme.light,
       darkTheme:                  isPremium ? AppTheme.of(themeVariant) : AppTheme.dark,
       routerConfig:               appRouter,

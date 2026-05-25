@@ -121,6 +121,27 @@ class _AuthenticatedViewState extends ConsumerState<_AuthenticatedView> {
   @override
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context);
+    // 2026-05-25: Apple Sign-In "Hide My Email" durumunda Firebase email'i
+    // `xxxxxxxxxx@privaterelay.appleid.com` olur — kullaniciya bunu ham
+    // gostermek "random" izlenimi yaratir. UI tarafinda relay'i tespit
+    // edip displayName/etiket ile maskele.
+    final isRelay = widget.state.isAppleRelayEmail;
+    final displayName = widget.state.displayName ?? '';
+    final email = widget.state.email ?? '';
+    // Ana satir: displayName varsa onu kullan; yoksa relay'i etiketle veya
+    // ham email.
+    final primaryLabel = displayName.isNotEmpty
+        ? displayName
+        : (isRelay ? l.authAppleHiddenEmail : email);
+    // Alt satir: relay durumunda l10n etiketi, gercek email durumunda
+    // dogrulama uyarisi veya ham email.
+    final showEmailSub = displayName.isNotEmpty && email.isNotEmpty;
+    final avatarChar = (displayName.isNotEmpty ? displayName : email)
+        .characters
+        .firstOrNull
+        ?.toUpperCase() ??
+        '?';
+
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
@@ -132,7 +153,7 @@ class _AuthenticatedViewState extends ConsumerState<_AuthenticatedView> {
                 CircleAvatar(
                   radius: 28,
                   child: Text(
-                    (widget.state.email ?? '?').characters.first.toUpperCase(),
+                    avatarChar,
                     style: const TextStyle(fontSize: 22),
                   ),
                 ),
@@ -141,11 +162,25 @@ class _AuthenticatedViewState extends ConsumerState<_AuthenticatedView> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(widget.state.email ?? '',
+                      Text(primaryLabel,
                           style: const TextStyle(
                               fontSize: 16, fontWeight: FontWeight.w600)),
                       const SizedBox(height: 4),
-                      if (!widget.state.emailVerified)
+                      if (isRelay)
+                        Text(l.authAppleHiddenEmailHint,
+                            style: TextStyle(
+                                fontSize: 13,
+                                color: Theme.of(context)
+                                    .colorScheme
+                                    .onSurfaceVariant))
+                      else if (showEmailSub)
+                        Text(email,
+                            style: TextStyle(
+                                fontSize: 13,
+                                color: Theme.of(context)
+                                    .colorScheme
+                                    .onSurfaceVariant))
+                      else if (!widget.state.emailVerified)
                         Text(l.authVerifyEmailHint,
                             style: TextStyle(
                                 fontSize: 13,

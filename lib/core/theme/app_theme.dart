@@ -1,18 +1,21 @@
 import 'package:flutter/material.dart';
 import 'app_colors.dart';
 
-/// Pro-only premium theme variants. Default + 4 özel.
-/// `default` her kullanıcıda; diğerleri Pro entitlement gerektirir.
+/// Tek source-of-truth tema secimi. Sistem/Aydinlik/Karanlik varsayilanlar
+/// herkese acik; 4 premium variant Pro entitlement gerektirir. Eski
+/// ayri `themeMode` ayari kaldirildi — bu enum hem moda hem variant'a
+/// karar verir.
 enum PremiumTheme {
-  defaultDark,
+  defaultSystem,  // Cihaz sistem ayarini takip et
   defaultLight,
+  defaultDark,
   crimson,    // Pro — koyu kırmızı + altın aksent
   royal,      // Pro — kraliyet moru + gümüş
   forest,     // Pro — koyu yeşil + bakır
   ocean;      // Pro — okyanus mavisi + turkuaz
 
   bool get isPro => switch (this) {
-    defaultDark || defaultLight => false,
+    defaultSystem || defaultDark || defaultLight => false,
     _ => true,
   };
 
@@ -22,16 +25,18 @@ enum PremiumTheme {
     'forest'  => PremiumTheme.forest,
     'ocean'   => PremiumTheme.ocean,
     'light'   => PremiumTheme.defaultLight,
+    'system'  => PremiumTheme.defaultSystem,
     _         => PremiumTheme.defaultDark,
   };
 
   String get key => switch (this) {
-    PremiumTheme.defaultDark  => 'default',
-    PremiumTheme.defaultLight => 'light',
-    PremiumTheme.crimson      => 'crimson',
-    PremiumTheme.royal        => 'royal',
-    PremiumTheme.forest       => 'forest',
-    PremiumTheme.ocean        => 'ocean',
+    PremiumTheme.defaultSystem => 'system',
+    PremiumTheme.defaultDark   => 'default',
+    PremiumTheme.defaultLight  => 'light',
+    PremiumTheme.crimson       => 'crimson',
+    PremiumTheme.royal         => 'royal',
+    PremiumTheme.forest        => 'forest',
+    PremiumTheme.ocean         => 'ocean',
   };
 }
 
@@ -129,12 +134,15 @@ abstract final class AppTheme {
   }
 
   /// PremiumTheme enum → ThemeData. UI doğrudan bunu çağırır.
+  /// `defaultSystem` mod-aware oldugu icin burada `dark`'a dusurulur — gercek
+  /// secim main.dart `MaterialApp.themeMode` ile yapilir.
   static ThemeData of(PremiumTheme variant) => switch (variant) {
-    PremiumTheme.defaultDark  => dark,
-    PremiumTheme.defaultLight => light,
-    PremiumTheme.crimson      => crimson,
-    PremiumTheme.royal        => royal,
-    PremiumTheme.forest       => forest,
-    PremiumTheme.ocean        => ocean,
+    PremiumTheme.defaultSystem => dark,
+    PremiumTheme.defaultDark   => dark,
+    PremiumTheme.defaultLight  => light,
+    PremiumTheme.crimson       => crimson,
+    PremiumTheme.royal         => royal,
+    PremiumTheme.forest        => forest,
+    PremiumTheme.ocean         => ocean,
   };
 }
