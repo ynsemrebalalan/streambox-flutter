@@ -50,16 +50,21 @@ workflows:
       # 3) Build no'yu otomatik artir. ASC'deki son TestFlight build'inden +1,
       #    pubspec'tekiyle max al. "Duplicate bundle version" hatasini onler.
       #    integrations.app_store_connect kimlik bilgilerini env'e enjekte eder.
+      #
+      # FIX 2026-05-26: ASC CLI fail ederse (LATEST_TF=0) PUBSPEC_BUILD esit
+      # kullaniliyordu → Apple "previousBundleVersion already used" reject.
+      # Artik ASC CLI ne dondurursa donsun, PUBSPEC_BUILD+1 garantili.
       - name: Auto-increment build number
         script: |
           set +e
           LATEST_TF=$(app-store-connect get-latest-testflight-build-number "$BUNDLE_ID" 2>/dev/null || echo "0")
           set -e
           PUBSPEC_BUILD=$(grep "^version:" pubspec.yaml | sed -E 's/.*\+([0-9]+).*/\1/')
+          # Her iki kaynaktan da yukseki al + 1 (garantili monotonic increment)
           if [ "$LATEST_TF" -ge "$PUBSPEC_BUILD" ]; then
             NEW_BUILD=$((LATEST_TF + 1))
           else
-            NEW_BUILD=$PUBSPEC_BUILD
+            NEW_BUILD=$((PUBSPEC_BUILD + 1))
           fi
           echo "Latest TestFlight: $LATEST_TF, pubspec: $PUBSPEC_BUILD, building: $NEW_BUILD"
           echo "BUILD_NUMBER=$NEW_BUILD" >> $CM_ENV
