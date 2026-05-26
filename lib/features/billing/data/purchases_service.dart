@@ -21,10 +21,30 @@ class PurchasesService {
 
   bool _configured = false;
   StreamController<CustomerInfo>? _controller;
+  /// Devam eden configure future'i — lazy retry'lar ayni future'i bekler.
+  Future<void>? _configureInFlight;
 
   /// `configure` çağrılmış mı? `entitlementProvider` cached false döner
   /// configure edilmediyse — initialization race'i önler.
   bool get isConfigured => _configured;
+
+  /// Paywall acildigi anda cagrilir — RC SDK init olmamissa veya basarisiz
+  /// olmussa yeniden dener. Apple review cihazlarinda main.dart init 30sn
+  /// timeout'a girerse, kullanici paywall'a basinca burdan retry alir.
+  ///
+  /// Apple Reject 3 (2026-05-25) fix.
+  Future<void> ensureConfigured({String? appUserID}) async {
+    if (_configured) return;
+    final inFlight = _configureInFlight;
+    if (inFlight != null) return inFlight;
+    final f = configure(appUserID: appUserID);
+    _configureInFlight = f;
+    try {
+      await f;
+    } finally {
+      _configureInFlight = null;
+    }
+  }
 
   // ── Configure ──────────────────────────────────────────────────────────────
 

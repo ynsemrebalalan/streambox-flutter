@@ -36,8 +36,13 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
       _error = null;
     });
     try {
-      final offers =
-          await ref.read(purchasesServiceProvider).getOfferings();
+      final svc = ref.read(purchasesServiceProvider);
+      // Apple Reject 3 fix: RC init main.dart'ta timeout'a girmis olabilir
+      // (Apple review cihaz network gecikmesi). Paywall acilinca lazy retry.
+      if (!svc.isConfigured) {
+        await svc.ensureConfigured();
+      }
+      final offers = await svc.getOfferings();
       if (!mounted) return;
       setState(() {
         _offerings = offers;
@@ -99,16 +104,28 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
       }
 
       // Satin alma TAMAMLANDI ama entitlement aktif degil — RC dashboard
-      // konfigurasyon sorunu (entitlement 'pro' product'lara bagli degil
-      // veya product ID mismatch). Kullanici hesap teknik destege yonlendir.
+      // konfigurasyon sorunu. Kullaniciya GERCEK entitlement adlarini goster
+      // ki RC dashboard'da hangi adin atandigi tespit edebilsin (entitlement
+      // 'pro' degil baska bir ad ise -> productIdentifier mapping bozuk).
+      final freshInfo = await svc.getCustomerInfo();
+      final activeKeys =
+          freshInfo?.entitlements.active.keys.toList() ?? const <String>[];
+      final allKeys =
+          freshInfo?.entitlements.all.keys.toList() ?? const <String>[];
       debugPrint('[Paywall] WARN: purchase succeeded but entitlement "pro" '
-          'is NOT active. Check RC dashboard: Entitlements → pro → '
-          'attached products must include ${pkg.identifier}.');
+          'is NOT active. productId=${pkg.identifier} '
+          'activeEntitlements=$activeKeys allEntitlements=$allKeys');
+
+      if (!mounted) return;
+      final diag = activeKeys.isEmpty
+          ? (allKeys.isEmpty
+              ? 'RC: hic entitlement yok (product attach eksik)'
+              : 'RC entitlement adlari: ${allKeys.join(", ")} (kodda "pro" bekleniyor)')
+          : 'RC active: ${activeKeys.join(", ")} (kodda "pro" bekleniyor)';
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text(l.paywallPurchaseError(
-            'Satin alma tamamlandi fakat Pro aktiflesmedi. '
-            'Lutfen "Restore Purchases" deneyin veya destek@iptvaiplayer.com.tr')),
-        duration: const Duration(seconds: 8),
+        content: Text('Satin alma tamamlandi fakat Pro aktiflesmedi. '
+            '$diag — destek@iptvaiplayer.com.tr'),
+        duration: const Duration(seconds: 12),
       ));
     } on PlatformException catch (e) {
       if (!mounted) return;

@@ -167,12 +167,16 @@ Future<void> _initAdMob() async {
 
 /// RevenueCat configure — boş API key ise atlanır (BuildConfig kontrol).
 /// Init fail etse uygulama açılmaya devam eder; paywall'a basıldığında
-/// "Satın alma yapılandırılmadı" friendly mesaj gösterilir.
+/// ensureConfigured() ile gerekirse retry edilir.
+///
+/// Apple Reject 3 fix (2026-05-25): 5sn timeout Apple review cihazlarinda
+/// network gecikmesinde yetmedi → "Purchases not configured" reddi.
+/// Timeout 30sn'ye cikarildi + paywall lazy retry mekanizmasi eklendi.
 Future<void> _initRevenueCat() async {
   try {
     await PurchasesService.instance
         .configure()
-        .timeout(const Duration(seconds: 5));
+        .timeout(const Duration(seconds: 30));
   } catch (e) {
     debugPrint('RevenueCat init failed or timed out: $e');
   }
