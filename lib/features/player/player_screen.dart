@@ -924,79 +924,100 @@ class _ControlsOverlayState extends State<_ControlsOverlay> {
             // Bottom seek bar + time. Sol alttaki sabit ses göstergesi
             // kaldırıldı (kullanıcı isteği) — gesture sırasında ekran ortasında
             // beliren overlay zaten görsel feedback sağlıyor.
-            StreamBuilder<Duration>(
-              stream: widget.player.stream.duration,
-              builder: (ctx, durSnap) {
-                final duration = durSnap.data ?? Duration.zero;
-                // 'live' stream_type'ı kesin canlıdır. VOD/movie/series'te
-                // duration yüklenmeden 0 olabilir, o durumda "Canlı" badge'i
-                // basmayalım — kullanıcı raporu 2026-05-11.
-                final isLive   = widget.streamType == 'live';
+            //
+            // 2026-05-26: Tek StreamBuilder (position). Duration sync API ile
+            // alinir — `widget.player.stream.duration` bazi IPTV VOD'larinda
+            // hic emit etmiyordu, eski iç içe StreamBuilder yapisinda onChanged:
+            // null donderiyordu (Slider disabled) ve dokunulamiyordu.
+            // state.duration genelde dolu — degilse seek bar kapatip izlemeye
+            // devam edilebilir.
+            Builder(
+              builder: (ctx) {
+                final isLive = widget.streamType == 'live';
+                if (isLive) {
+                  // Canli yayinda seek bar yok, sadece kirmizi rozet.
+                  return Padding(
+                    padding: const EdgeInsets.fromLTRB(
+                        Spacing.lg, 0, Spacing.lg, Spacing.xl),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.circle,
+                            color: AppColors.live, size: 8),
+                        const SizedBox(width: 6),
+                        Text(l.playerLiveLabel,
+                            style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: TextSize.caption,
+                                fontWeight: FontWeight.w700,
+                                letterSpacing: 1)),
+                      ],
+                    ),
+                  );
+                }
 
                 return Padding(
                   padding: const EdgeInsets.fromLTRB(
                       Spacing.lg, 0, Spacing.lg, Spacing.xl),
                   child: Column(
                     children: [
-                      if (!isLive)
-                        StreamBuilder<Duration>(
-                          stream: widget.player.stream.position,
-                          builder: (ctx, posSnap) {
-                            final pos = posSnap.data ?? Duration.zero;
-                            // Progress bar (dokunmatik icin Slider yerine
-                            // gorsel bar + kumanda ok tuslariyla seek)
-                            final progress = duration.inMilliseconds > 0
-                                ? (pos.inMilliseconds / duration.inMilliseconds)
-                                    .clamp(0.0, 1.0)
-                                : 0.0;
-                            return Column(
-                              children: [
-                                // Seek bar — kumandayla sol/sag ok ile kontrol
-                                // edilir, touch'ta dokunarak seek yapılır
-                                GestureDetector(
-                                  onTapDown: (details) {
-                                    final box = context.findRenderObject()
-                                        as RenderBox?;
-                                    if (box == null) return;
-                                    final localX = details.localPosition.dx;
-                                    final width = box.size.width;
-                                    final ratio = (localX / width).clamp(0.0, 1.0);
-                                    final ms = (ratio * duration.inMilliseconds)
-                                        .toInt();
-                                    final cap =
-                                        (duration.inMilliseconds - 3000)
-                                            .clamp(0, duration.inMilliseconds);
-                                    widget.player.seek(
-                                        Duration(milliseconds: ms.clamp(0, cap)));
-                                  },
-                                  child: Container(
-                                    height: 24, // buyuk dokunma alani
-                                    alignment: Alignment.center,
-                                    child: Stack(
-                                      children: [
-                                        Container(
-                                          height: 4,
-                                          decoration: BoxDecoration(
-                                            color: Colors.white24,
-                                            borderRadius:
-                                                BorderRadius.circular(2),
-                                          ),
-                                        ),
-                                        FractionallySizedBox(
-                                          widthFactor: progress,
-                                          child: Container(
-                                            height: 4,
-                                            decoration: BoxDecoration(
-                                              color: AppColors.accent,
-                                              borderRadius:
-                                                  BorderRadius.circular(2),
-                                            ),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
+                      StreamBuilder<Duration>(
+                        // Position her saniye emit eder; Slider value & alt
+                        // saat metni her tick'te yenilenir.
+                        stream: widget.player.stream.position,
+                        builder: (ctx, posSnap) {
+                          final pos = posSnap.data ??
+                              widget.player.state.position;
+                          // Duration sync — IPTV VOD bazen stream'i emit
+                          // etmiyor. _player.state.duration native player'dan
+                          // gerceklesen son degeri donderir.
+                          final duration = widget.player.state.duration;
+                          final durMs = duration.inMilliseconds;
+                          final hasDuration = durMs > 0;
+                          // Slider value clamping: durMs<=0 ise gecici max=1,
+                          // value=0 → thumb solda. hasDuration false ise
+                          // onChanged null (UI gri ama tap kaybolmaz cunku
+                          // GestureDetector parent'ina dusmesin diye Stack
+                          // icinde fizikselsel olarak orada).
+                          final maxMs = hasDuration ? durMs : 1;
+                          final valMs =
+                              pos.inMilliseconds.clamp(0, maxMs);
+                          return Column(
+                            children: [
+                              SliderTheme(
+                                data: SliderTheme.of(ctx).copyWith(
+                                  trackHeight: 4,
+                                  activeTrackColor: AppColors.accent,
+                                  inactiveTrackColor: Colors.white24,
+                                  thumbColor: AppColors.accent,
+                                  overlayColor:
+                                      AppColors.accent.withValues(alpha: 0.2),
+                                  thumbShape: const RoundSliderThumbShape(
+                                      enabledThumbRadius: 7),
+                                  overlayShape: const RoundSliderOverlayShape(
+                                      overlayRadius: 16),
+                                  trackShape:
+                                      const RoundedRectSliderTrackShape(),
                                 ),
+                                child: Slider(
+                                  min: 0,
+                                  max: maxMs.toDouble(),
+                                  value: valMs.toDouble(),
+                                  onChanged: hasDuration
+                                      ? (v) {
+                                          // Drag sirasinda her tick'te seek.
+                                          // VOD'da watchdog kapali oldugundan
+                                          // serbestce seek edilebilir.
+                                          final cap = (durMs - 3000)
+                                              .clamp(0, durMs);
+                                          final ms = v
+                                              .toInt()
+                                              .clamp(0, cap);
+                                          widget.player.seek(
+                                              Duration(milliseconds: ms));
+                                        }
+                                      : null,
+                                ),
+                              ),
                                 Row(
                                   mainAxisAlignment:
                                       MainAxisAlignment.spaceBetween,
@@ -1019,19 +1040,6 @@ class _ControlsOverlayState extends State<_ControlsOverlay> {
                               ],
                             );
                           },
-                        ),
-                      if (isLive)
-                        Row(
-                          children: [
-                            const Icon(Icons.circle, color: AppColors.live, size: 8),
-                            const SizedBox(width: 6),
-                            Text(l.playerLiveLabel,
-                                style: const TextStyle(
-                                    color:      Colors.white,
-                                    fontSize:   TextSize.caption,
-                                    fontWeight: FontWeight.w700,
-                                    letterSpacing: 1)),
-                          ],
                         ),
                       const SizedBox(height: Spacing.sm),
                       // Subtitle + speed + audio + aspect-ratio + resolution + mute
