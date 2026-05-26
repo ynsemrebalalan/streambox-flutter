@@ -46,6 +46,13 @@ class PurchasesNotifier extends AsyncNotifier<Entitlement> {
       state = AsyncError(e, st);
     }
   }
+
+  /// Satin alma sonrasi listener race'i bypass: RC SDK'nin DOGRUDAN dondurdugu
+  /// CustomerInfo'yu parse edip state'i hemen guncelle. Paywall purchase
+  /// callback'inden cagrilir, "tikledim ama Pro acilmadi" race'i engeller.
+  void setEntitlement(Entitlement ent) {
+    state = AsyncData(ent);
+  }
 }
 
 /// Convenience: senkron Entitlement (Loading/Error → free).

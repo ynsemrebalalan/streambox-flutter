@@ -57,25 +57,59 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
     setState(() => _purchasing = true);
     final l = AppLocalizations.of(context);
     try {
-      await ref.read(purchasesServiceProvider).purchasePackage(pkg);
-      // Listener AsyncNotifier'ı güncellemiş olabilir, manuel olarak da
-      // restore çağırarak kesinleştir.
+      final svc = ref.read(purchasesServiceProvider);
+      final info = await svc.purchasePackage(pkg);
+      // RC SDK'nin dondurdugu CustomerInfo'yu DOGRUDAN parse et — listener +
+      // provider chain race'i bypass et. Sonra notifier'a force-set yap.
+      final ent = svc.parseEntitlement(info);
+      debugPrint('[Paywall] purchase complete — productId=${pkg.identifier} '
+          'isPro=${ent.isPro} activeEntitlements=${info.entitlements.active.keys.toList()} '
+          'allEntitlements=${info.entitlements.all.keys.toList()}');
       if (!mounted) return;
-      final isPro = ref.read(isProProvider);
-      if (isPro) {
+
+      if (ent.isPro) {
+        // CustomerInfo dogrudan pro doner → state'i hemen guncelle
+        ref.read(purchasesNotifierProvider.notifier).setEntitlement(ent);
         ScaffoldMessenger.of(context)
             .showSnackBar(SnackBar(content: Text(l.paywallPurchaseSuccess)));
         if (mounted) context.pop(true);
         return;
       }
-      // Edge: listener yetişmedi → manuel customerInfo refresh.
+
+      // Listener'in tetiklenmesini bekle (max 3 sn polling)
+      for (var i = 0; i < 6; i++) {
+        await Future.delayed(const Duration(milliseconds: 500));
+        if (!mounted) return;
+        if (ref.read(isProProvider)) {
+          ScaffoldMessenger.of(context)
+              .showSnackBar(SnackBar(content: Text(l.paywallPurchaseSuccess)));
+          if (mounted) context.pop(true);
+          return;
+        }
+      }
+
+      // Hala pro degil → manuel restore (RC backend'inden customerInfo yenile)
       await ref.read(purchasesNotifierProvider.notifier).restore();
       if (!mounted) return;
       if (ref.read(isProProvider)) {
         ScaffoldMessenger.of(context)
             .showSnackBar(SnackBar(content: Text(l.paywallPurchaseSuccess)));
         if (mounted) context.pop(true);
+        return;
       }
+
+      // Satin alma TAMAMLANDI ama entitlement aktif degil — RC dashboard
+      // konfigurasyon sorunu (entitlement 'pro' product'lara bagli degil
+      // veya product ID mismatch). Kullanici hesap teknik destege yonlendir.
+      debugPrint('[Paywall] WARN: purchase succeeded but entitlement "pro" '
+          'is NOT active. Check RC dashboard: Entitlements → pro → '
+          'attached products must include ${pkg.identifier}.');
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(l.paywallPurchaseError(
+            'Satin alma tamamlandi fakat Pro aktiflesmedi. '
+            'Lutfen "Restore Purchases" deneyin veya destek@iptvaiplayer.com.tr')),
+        duration: const Duration(seconds: 8),
+      ));
     } on PlatformException catch (e) {
       if (!mounted) return;
       final code = PurchasesErrorHelper.getErrorCode(e);
@@ -128,6 +162,14 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
             child: Text(l.paywallRestoreButton),
           ),
         ],
+      ),
+      // Apple 3.1.2(c) fix: Privacy + EULA linkleri Scaffold bottomNavigationBar'da
+      // — her durumda (loading, error, no-offerings, normal) GORUNUR. Eskiden
+      // _buildBody icinde idi, IAP load fail olunca da Apple bot link bulamadi
+      // → "in-app link yok" reddi (b3e3c893 submission, 2026-05-25).
+      bottomNavigationBar: SafeArea(
+        top: false,
+        child: _LegalLinksBar(l),
       ),
       body: SafeArea(
         child: ResponsiveCenter(
@@ -187,33 +229,8 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
               fontSize: 12,
               color: Theme.of(context).colorScheme.onSurfaceVariant),
         ),
-        const SizedBox(height: 8),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            TextButton(
-                onPressed: () async {
-                  final uri = Uri.parse(
-                      'https://iptvaiplayer.com.tr/?gizlilik');
-                  if (await canLaunchUrl(uri)) {
-                    await launchUrl(uri,
-                        mode: LaunchMode.externalApplication);
-                  }
-                },
-                child: Text(l.paywallPrivacyLink)),
-            const Text(' • '),
-            TextButton(
-                onPressed: () async {
-                  final uri = Uri.parse(
-                      'https://iptvaiplayer.com.tr/subscription-terms.php');
-                  if (await canLaunchUrl(uri)) {
-                    await launchUrl(uri,
-                        mode: LaunchMode.externalApplication);
-                  }
-                },
-                child: Text(l.paywallTermsLink)),
-          ],
-        ),
+        // Privacy + EULA linkleri Scaffold bottomNavigationBar'a tasindi
+        // (Apple 3.1.2(c) — her durumda gorunur olmali).
       ],
     );
   }
@@ -238,6 +255,67 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
       widgets.add(const SizedBox(height: 12));
     }
     return widgets;
+  }
+}
+
+/// Apple 3.1.2(c) zorunlu: subscription paywall'inda Privacy + EULA + Restore
+/// linkleri HER ZAMAN gorunur olmali. Eskiden bu linkler ListView icindeydi;
+/// IAP load fail oldugunda paywall'a hic ulasamiyordu → Apple reddetti
+/// (b3e3c893 submission, 2026-05-25).
+///
+/// Scaffold.bottomNavigationBar olarak ekleniyor: loading spinner gosterilse
+/// bile, "no offerings" hatasi olsa bile, IAP backend cokmus olsa bile
+/// linkler ekranin altinda sabit kalir.
+class _LegalLinksBar extends StatelessWidget {
+  final AppLocalizations l;
+  const _LegalLinksBar(this.l);
+
+  Future<void> _open(String url) async {
+    final uri = Uri.parse(url);
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return Container(
+      decoration: BoxDecoration(
+        color: cs.surface,
+        border: Border(
+          top: BorderSide(
+            color: cs.outlineVariant.withValues(alpha: 0.3),
+            width: 0.5,
+          ),
+        ),
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          TextButton(
+            onPressed: () => _open('https://iptvaiplayer.com.tr/?gizlilik'),
+            child: Text(
+              l.paywallPrivacyLink,
+              style: const TextStyle(fontSize: 13),
+            ),
+          ),
+          Text(
+            ' • ',
+            style: TextStyle(color: cs.onSurfaceVariant),
+          ),
+          TextButton(
+            onPressed: () =>
+                _open('https://iptvaiplayer.com.tr/subscription-terms.php'),
+            child: Text(
+              l.paywallTermsLink,
+              style: const TextStyle(fontSize: 13),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
 
