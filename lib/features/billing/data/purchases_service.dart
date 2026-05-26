@@ -145,9 +145,20 @@ class PurchasesService {
   // ── Entitlement parser ─────────────────────────────────────────────────────
 
   /// CustomerInfo → Entitlement. UI sadece Entitlement görür.
+  ///
+  /// Apple Reject 3 (2026-05-25) fix: RC dashboard'unda entitlement identifier
+  /// "İPTV Ai Player Pro" olarak ayarlanmis (Turkce karakter + bosluk), kod
+  /// `'pro'` ariyor → key mismatch → satin alma sonrasi Pro aktivelenmiyor.
+  ///
+  /// Defansif fallback: kesin 'pro' bulunamazsa, herhangi bir aktif
+  /// entitlement varsa onu kullan. Tek entitlement varsayimi gecerli
+  /// (RC dashboard'unda tek "Pro" entitlement, 3 product bagli).
   Entitlement parseEntitlement(CustomerInfo? info) {
     if (info == null) return Entitlement.free;
-    final ent = info.entitlements.active[entitlementId];
+    var ent = info.entitlements.active[entitlementId];
+    ent ??= info.entitlements.active.values.isNotEmpty
+        ? info.entitlements.active.values.first
+        : null;
     if (ent == null) return Entitlement.free;
 
     final source = switch (ent.store) {
