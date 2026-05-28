@@ -9,6 +9,16 @@ import '../../core/utils/secure_storage.dart';
 import '../models/subtitle_cue.dart';
 import 'vtt_parser.dart';
 
+/// AI altyazı üretimi başarısız olduğunda fırlatılır — kullanıcıya
+/// gösterilebilir, anlaşılır bir mesaj taşır. (Boş/konuşmasız segment
+/// hata DEĞİLDİR; o durumda boş liste döner.)
+class WhisperException implements Exception {
+  final String message;
+  WhisperException(this.message);
+  @override
+  String toString() => 'WhisperException: $message';
+}
+
 /// Whisper API (Groq proxy + OpenAI fallback) ile AI altyazi servisi.
 /// 60 saniyelik segment boundary ile cache.
 class WhisperService {
@@ -39,7 +49,11 @@ class WhisperService {
 
     // Stream'den segment indir
     final audioBytes = await _downloadSegment(streamUrl, segmentSec);
-    if (audioBytes == null || audioBytes.isEmpty) return [];
+    if (audioBytes == null || audioBytes.isEmpty) {
+      throw WhisperException(
+        'Yayından ses alınamadı. Bu içerik AI altyazıyı desteklemiyor olabilir.',
+      );
+    }
 
     // Groq proxy → OpenAI fallback
     List<SubtitleCue>? cues;
@@ -57,20 +71,32 @@ class WhisperService {
         ? overrideSecret
         : BuildConfig.groqProxySecret;
 
-    if (proxyUrl.isNotEmpty && proxySecret.isNotEmpty) {
+    final hasProxy = proxyUrl.isNotEmpty && proxySecret.isNotEmpty;
+    if (hasProxy) {
       cues = await _transcribeViaProxy(
           audioBytes, proxyUrl, proxySecret, language);
     }
 
-    if (cues == null) {
-      final openAiKey = await SecureStorage.getOpenAiKey();
-      if (openAiKey.isNotEmpty) {
-        provider = 'openai';
-        cues = await _transcribeViaOpenAi(audioBytes, openAiKey, language);
-      }
+    final openAiKey = await SecureStorage.getOpenAiKey();
+    if (cues == null && openAiKey.isNotEmpty) {
+      provider = 'openai';
+      cues = await _transcribeViaOpenAi(audioBytes, openAiKey, language);
     }
 
-    if (cues == null || cues.isEmpty) return [];
+    // Hiçbir sağlayıcı yapılandırılmamış → kullanıcıya bildir (sessiz kalma).
+    if (!hasProxy && openAiKey.isEmpty) {
+      throw WhisperException('AI altyazı şu an kullanılamıyor.');
+    }
+
+    // Sağlayıcı denendi ama yanıt alınamadı (servis/ağ hatası) → bildir.
+    if (cues == null) {
+      throw WhisperException(
+        'AI altyazı servisine ulaşılamadı. İnternet bağlantınızı kontrol edip tekrar deneyin.',
+      );
+    }
+
+    // Yanıt geldi ama konuşma yok — bu bir hata değil, boş döndür.
+    if (cues.isEmpty) return [];
 
     // Timestamp offset: segment baslangicina gore kaydır
     final offsetMs = segmentSec * 1000;

@@ -82,6 +82,31 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
   Timer?  _gestureHideTimer;
   static const _gestureMinDy = 40.0; // titremeden ayırt etmek için
 
+  // ── Aksiyon feedback overlay (her buton işleminde kısa "uyarı") ─────────────
+  // Kullanıcı hangi butona basarsa bassın ekran ortasında kısa süreli bir pill
+  // belirir (örn: "Duraklatıldı", "+10 sn", "Altyazı: TR"). TV/kumanda ile
+  // kullanımda işlemin gerçekleştiğini görmek kritik.
+  IconData? _actionIcon;
+  String    _actionText = '';
+  Timer?    _actionTimer;
+
+  void _showActionFeedback(IconData icon, String text) {
+    if (!mounted) return;
+    setState(() {
+      _actionIcon = icon;
+      _actionText = text;
+    });
+    _actionTimer?.cancel();
+    _actionTimer = Timer(const Duration(milliseconds: 1100), () {
+      if (mounted) {
+        setState(() {
+          _actionText = '';
+          _actionIcon = null;
+        });
+      }
+    });
+  }
+
   // Takildi sayilan esik (saniye). IPTV kaynak donmasinda bu surede
   // pozisyon ilerlemezse otomatik yeniden baglan.
   static const _stallThreshold = Duration(seconds: 8);
@@ -337,6 +362,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
     // (cikis sirasinda _stopAndPop devre disi kalirsa diye) tutmuyoruz.
     _hideTimer?.cancel();
     _gestureHideTimer?.cancel();
+    _actionTimer?.cancel();
     // Parlaklık override'ını kaldır — kullanıcı player'da değiştirdiyse
     // restore et, yoksa sistem default'una geri dön.
     if (_initialBrightness != null) {
@@ -677,6 +703,11 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
               streamType: widget.streamType,
               positionStream: _player.stream.position,
               enabled: _aiSubtitleEnabled,
+              onError: (msg) {
+                if (!mounted) return;
+                setState(() => _aiSubtitleEnabled = false);
+                _showSnack(msg);
+              },
             ),
 
             // Buffering / reconnect indicator
@@ -719,9 +750,20 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
                   subtitleEnabled:  _aiSubtitleEnabled,
                   onSubtitleToggle: _toggleAiSubtitle,
                   videoFit:         _videoFit,
-                  onFitChange:      (f) => setState(() => _videoFit = f),
+                  onFitChange:      (f) {
+                    setState(() => _videoFit = f);
+                    _showActionFeedback(
+                      Icons.aspect_ratio,
+                      switch (f) {
+                        BoxFit.cover => 'Görüntü: Doldur',
+                        BoxFit.fill  => 'Görüntü: Esnet',
+                        _            => 'Görüntü: Orijinal',
+                      },
+                    );
+                  },
                   onPip:            _enterPip,
                   onAirplay:        _showAirplay,
+                  onFeedback:       _showActionFeedback,
                   streamType:       widget.streamType,
                   channelId:        widget.channelId,
                 ),
@@ -732,6 +774,9 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
                 type:  _gestureType,
                 value: _gestureValue,
               ),
+            // Aksiyon feedback pill — buton işlemlerinde kısa süreli görünür.
+            if (_actionText.isNotEmpty)
+              _ActionFeedbackOverlay(icon: _actionIcon, text: _actionText),
             ],
           ),
         ),
@@ -756,6 +801,8 @@ class _ControlsOverlay extends StatefulWidget {
   final ValueChanged<BoxFit> onFitChange;
   final VoidCallback onPip;
   final VoidCallback onAirplay;
+  /// Her buton işleminde ekran ortasında kısa süreli pill göstermek için.
+  final void Function(IconData icon, String text) onFeedback;
   final String      streamType;       // 'live' | 'movie' | 'series'
   final String      channelId;        // Favori toggle için (2026-05-11)
 
@@ -772,6 +819,7 @@ class _ControlsOverlay extends StatefulWidget {
     required this.onFitChange,
     required this.onPip,
     required this.onAirplay,
+    required this.onFeedback,
     required this.streamType,
     required this.channelId,
   });
@@ -875,9 +923,13 @@ class _ControlsOverlayState extends State<_ControlsOverlay> {
                 _TvIconButton(
                   icon: Icons.replay_10,
                   tooltip: '-10s',
-                  onTap: () => widget.player.seek(
-                    widget.player.state.position - const Duration(seconds: 10),
-                  ),
+                  onTap: () {
+                    widget.player.seek(
+                      widget.player.state.position -
+                          const Duration(seconds: 10),
+                    );
+                    widget.onFeedback(Icons.replay_10, '-10 sn');
+                  },
                   size: 32,
                 ),
                 const SizedBox(width: Spacing.xl),
@@ -895,8 +947,10 @@ class _ControlsOverlayState extends State<_ControlsOverlay> {
                         onTap: () {
                           if (widget.player.state.playing) {
                             widget.player.pause();
+                            widget.onFeedback(Icons.pause, 'Duraklatıldı');
                           } else {
                             widget.player.play();
+                            widget.onFeedback(Icons.play_arrow, 'Oynatılıyor');
                           }
                         },
                       );
@@ -913,6 +967,7 @@ class _ControlsOverlayState extends State<_ControlsOverlay> {
                     var target = pos + const Duration(seconds: 10);
                     if (dur > Duration.zero && target > dur) target = dur;
                     widget.player.seek(target);
+                    widget.onFeedback(Icons.forward_10, '+10 sn');
                   },
                   size: 32,
                 ),
@@ -1052,15 +1107,22 @@ class _ControlsOverlayState extends State<_ControlsOverlay> {
                               aiEnabled: widget.subtitleEnabled,
                               player:    widget.player,
                               onAiToggle: widget.onSubtitleToggle,
+                              onFeedback: widget.onFeedback,
                             ),
                           ),
                           FocusTraversalOrder(
                             order: const NumericFocusOrder(4),
-                            child: _SpeedButton(player: widget.player),
+                            child: _SpeedButton(
+                              player: widget.player,
+                              onFeedback: widget.onFeedback,
+                            ),
                           ),
                           FocusTraversalOrder(
                             order: const NumericFocusOrder(5),
-                            child: _AudioTrackButton(player: widget.player),
+                            child: _AudioTrackButton(
+                              player: widget.player,
+                              onFeedback: widget.onFeedback,
+                            ),
                           ),
                           FocusTraversalOrder(
                             order: const NumericFocusOrder(5.5),
@@ -1071,7 +1133,10 @@ class _ControlsOverlayState extends State<_ControlsOverlay> {
                           ),
                           FocusTraversalOrder(
                             order: const NumericFocusOrder(5.8),
-                            child: _ResolutionButton(player: widget.player),
+                            child: _ResolutionButton(
+                              player: widget.player,
+                              onFeedback: widget.onFeedback,
+                            ),
                           ),
                           FocusTraversalOrder(
                             order: const NumericFocusOrder(6),
@@ -1084,8 +1149,14 @@ class _ControlsOverlayState extends State<_ControlsOverlay> {
                                       ? Icons.volume_up
                                       : Icons.volume_off,
                                   tooltip: vol > 0 ? l.playerMuteTooltip : l.playerUnmuteTooltip,
-                                  onTap: () => widget.player
-                                      .setVolume(vol > 0 ? 0 : 100),
+                                  onTap: () {
+                                    final mute = vol > 0;
+                                    widget.player.setVolume(mute ? 0 : 100);
+                                    widget.onFeedback(
+                                      mute ? Icons.volume_off : Icons.volume_up,
+                                      mute ? 'Sessiz' : 'Ses açık',
+                                    );
+                                  },
                                 );
                               },
                             ),
@@ -1330,7 +1401,8 @@ class _PlayPauseButtonState extends State<_PlayPauseButton> {
 
 class _AudioTrackButton extends StatefulWidget {
   final Player player;
-  const _AudioTrackButton({required this.player});
+  final void Function(IconData icon, String text) onFeedback;
+  const _AudioTrackButton({required this.player, required this.onFeedback});
 
   @override
   State<_AudioTrackButton> createState() => _AudioTrackButtonState();
@@ -1355,7 +1427,8 @@ class _AudioTrackButtonState extends State<_AudioTrackButton> {
               icon: Icons.audiotrack,
               tooltip: l.playerAudioTrackTooltip,
               onTap: () => _showAudioDialog(
-                  context, widget.player, audioTracks, current?.audio),
+                  context, widget.player, audioTracks, current?.audio,
+                  widget.onFeedback),
             );
           },
         );
@@ -1368,6 +1441,7 @@ class _AudioTrackButtonState extends State<_AudioTrackButton> {
     Player player,
     List<AudioTrack> tracks,
     AudioTrack? current,
+    void Function(IconData icon, String text) onFeedback,
   ) async {
     final l = AppLocalizations.of(context);
     final selected = await showDialog<AudioTrack>(
@@ -1390,7 +1464,15 @@ class _AudioTrackButtonState extends State<_AudioTrackButton> {
         }).toList(),
       ),
     );
-    if (selected != null) player.setAudioTrack(selected);
+    if (selected != null) {
+      player.setAudioTrack(selected);
+      final label = selected.title?.isNotEmpty == true
+          ? selected.title!
+          : (selected.language?.isNotEmpty == true
+              ? selected.language!
+              : '${tracks.indexOf(selected) + 1}');
+      onFeedback(Icons.audiotrack, 'Ses: $label');
+    }
   }
 }
 
@@ -1471,7 +1553,8 @@ class _TvDialogOptionState extends State<_TvDialogOption> {
 
 class _SpeedButton extends StatefulWidget {
   final Player player;
-  const _SpeedButton({required this.player});
+  final void Function(IconData icon, String text) onFeedback;
+  const _SpeedButton({required this.player, required this.onFeedback});
 
   @override
   State<_SpeedButton> createState() => _SpeedButtonState();
@@ -1503,6 +1586,7 @@ class _SpeedButtonState extends State<_SpeedButton> {
     if (selected != null) {
       setState(() => _speed = selected);
       widget.player.setRate(selected);
+      widget.onFeedback(Icons.speed, 'Hız ${selected}x');
     }
   }
 
@@ -1560,11 +1644,13 @@ class _SubtitleButton extends StatelessWidget {
   final bool aiEnabled;
   final Player player;
   final VoidCallback onAiToggle;
+  final void Function(IconData icon, String text) onFeedback;
 
   const _SubtitleButton({
     required this.aiEnabled,
     required this.player,
     required this.onAiToggle,
+    required this.onFeedback,
   });
 
   @override
@@ -1608,18 +1694,29 @@ class _SubtitleButton extends StatelessWidget {
         );
         if (result == null) return;
         if (result == 'ai') {
-          // AI toggle — varsa kapat, yoksa aç
+          // AI toggle — varsa kapat, yoksa aç. Feedback'i SubtitleOverlay
+          // ("AI altyazı hazırlanıyor…") + onError zinciri saglar.
           onAiToggle();
           // Embedded varsa onu da kapat
           await player.setSubtitleTrack(SubtitleTrack.no());
         } else if (result == 'off') {
           if (aiEnabled) onAiToggle();
+          onFeedback(Icons.subtitles_off, 'Altyazı kapalı');
           await player.setSubtitleTrack(SubtitleTrack.no());
         } else if (result.startsWith('emb_')) {
           if (aiEnabled) onAiToggle(); // AI varsa kapat
           final id = result.substring(4);
           final track = embedded.firstWhere((t) => t.id == id,
               orElse: () => SubtitleTrack.no());
+          // Anlık feedback — setSubtitleTrack yüklemesi birkaç saniye sürebilir;
+          // kullanıcı butona bastığında işlemin başladığını hemen görsün.
+          final lang = track.language;
+          onFeedback(
+            Icons.subtitles,
+            (lang != null && lang.isNotEmpty)
+                ? 'Altyazı: $lang'
+                : 'Altyazı yükleniyor…',
+          );
           await player.setSubtitleTrack(track);
         }
       },
@@ -1675,7 +1772,8 @@ class _AspectRatioButton extends StatelessWidget {
 
 class _ResolutionButton extends StatelessWidget {
   final Player player;
-  const _ResolutionButton({required this.player});
+  final void Function(IconData icon, String text) onFeedback;
+  const _ResolutionButton({required this.player, required this.onFeedback});
 
   @override
   Widget build(BuildContext context) {
@@ -1722,10 +1820,12 @@ class _ResolutionButton extends StatelessWidget {
         if (result == null) return;
         if (result == 'auto') {
           await player.setVideoTrack(VideoTrack.auto());
+          onFeedback(Icons.high_quality, 'Çözünürlük: Otomatik');
         } else {
           final track = variants.firstWhere((t) => t.id == result,
               orElse: () => VideoTrack.auto());
           await player.setVideoTrack(track);
+          onFeedback(Icons.high_quality, 'Çözünürlük: ${track.h}p');
         }
       },
     );
@@ -1785,6 +1885,56 @@ class _GestureOverlay extends StatelessWidget {
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+// ── Aksiyon feedback pill (buton işlemi → kısa süreli merkezi bildirim) ──────
+//
+// Kullanıcı bir butona/tuşa bastığında ekran ortasında ~1 sn boyunca görünen
+// ikon + metin. TV/kumanda ile kullanımda işlemin gerçekleştiğini doğrular.
+class _ActionFeedbackOverlay extends StatelessWidget {
+  final IconData? icon;
+  final String text;
+
+  const _ActionFeedbackOverlay({required this.icon, required this.text});
+
+  @override
+  Widget build(BuildContext context) {
+    return IgnorePointer(
+      child: Center(
+        child: AnimatedOpacity(
+          opacity: text.isEmpty ? 0.0 : 1.0,
+          duration: const Duration(milliseconds: 150),
+          child: Container(
+            padding:
+                const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+            decoration: BoxDecoration(
+              color: Colors.black.withValues(alpha: 0.72),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (icon != null) ...[
+                  Icon(icon, color: Colors.white, size: 26),
+                  const SizedBox(width: 10),
+                ],
+                Flexible(
+                  child: Text(
+                    text,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
         ),
       ),
     );

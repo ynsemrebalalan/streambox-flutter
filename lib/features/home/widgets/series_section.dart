@@ -3,6 +3,7 @@ import 'dart:ui' as ui show Radius;
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/router/app_router.dart';
 import '../../../core/theme/app_colors.dart';
@@ -11,6 +12,7 @@ import '../../../core/utils/responsive.dart';
 import '../../../core/utils/tv_focus.dart';
 import '../../../data/models/channel_model.dart';
 import '../../../l10n/generated/app_localizations.dart';
+import '../../parental/parental_guard.dart';
 
 /// Diziler tab'i — Kotlin paritesi (VodSeriesPosterGrid):
 /// Ust seviye poster grid (her dizi tek kart). Karta tiklayinca alttan
@@ -87,7 +89,7 @@ class SeriesSection extends StatelessWidget {
 }
 
 /// Tek dizi kapagi — film poster card stilinde. Tap -> bottom sheet detay.
-class _SeriesPosterCard extends StatelessWidget {
+class _SeriesPosterCard extends ConsumerWidget {
   final String                       seriesName;
   final Map<int, List<ChannelModel>> seasons;
 
@@ -95,6 +97,16 @@ class _SeriesPosterCard extends StatelessWidget {
     required this.seriesName,
     required this.seasons,
   });
+
+  /// Dizinin kategorisi — ebeveyn kilidi kontrolü için ilk bölümden okunur.
+  String _category() {
+    for (final eps in seasons.values) {
+      for (final ep in eps) {
+        if (ep.category.isNotEmpty) return ep.category;
+      }
+    }
+    return '';
+  }
 
   /// Posterde gosterilecek logo URL'i — en yeni bolumun logo'su (fallback olarak
   /// ilk dolu logo).
@@ -111,7 +123,7 @@ class _SeriesPosterCard extends StatelessWidget {
       seasons.values.fold(0, (sum, eps) => sum + eps.length);
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final cs = Theme.of(context).colorScheme;
     final l  = AppLocalizations.of(context);
     final cover = _coverUrl();
@@ -119,7 +131,7 @@ class _SeriesPosterCard extends StatelessWidget {
 
     return TvFocusableScale(
       borderRadius: BorderRadius.circular(Radius.card + 3),
-      onTap: () => _openDetail(context),
+      onTap: () => _openDetail(context, ref),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -167,7 +179,9 @@ class _SeriesPosterCard extends StatelessWidget {
     );
   }
 
-  void _openDetail(BuildContext context) {
+  Future<void> _openDetail(BuildContext context, WidgetRef ref) async {
+    if (!await ensureCategoryUnlocked(context, ref, _category())) return;
+    if (!context.mounted) return;
     showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,

@@ -15,6 +15,7 @@ import '../../core/utils/tv_focus.dart';
 import '../../data/models/channel_model.dart';
 import '../../l10n/generated/app_localizations.dart';
 import '../ads/widgets/ads_banner.dart';
+import '../parental/parental_guard.dart';
 import '../playlists/playlists_screen.dart';
 import 'home_provider.dart';
 import 'home_state.dart';
@@ -483,8 +484,11 @@ class _CategoryBar extends ConsumerWidget {
               label:   cat,
               icon:    icon,
               active:  active,
-              onTap:   () =>
-                  ref.read(homeProvider.notifier).selectCategory(cat),
+              onTap:   () async {
+                if (await ensureCategoryUnlocked(ctx, ref, cat)) {
+                  ref.read(homeProvider.notifier).selectCategory(cat);
+                }
+              },
             );
           },
         ),
@@ -915,12 +919,12 @@ class _FeaturedBannerState extends State<_FeaturedBanner> {
   }
 }
 
-class _FeaturedCard extends StatelessWidget {
+class _FeaturedCard extends ConsumerWidget {
   final ChannelModel channel;
   const _FeaturedCard({required this.channel});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final cs = Theme.of(context).colorScheme;
     final l  = AppLocalizations.of(context);
     // 3 tip: movie (amber), series (mor), live (kırmızı)
@@ -938,16 +942,7 @@ class _FeaturedCard extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: Spacing.sm),
       child: TvFocusableScale(
         borderRadius: BorderRadius.circular(Radius.card + 4),
-        onTap: () => context.push(
-          AppRoutes.player,
-          extra: {
-            'channelId':       channel.id,
-            'channelUrl':      channel.streamUrl,
-            'title':           channel.name,
-            'initialPosition': channel.lastPosition,
-            'streamType':      channel.streamType,
-          },
-        ),
+        onTap: () => openChannelGuarded(context, ref, channel),
         child: ClipRRect(
           borderRadius: BorderRadius.circular(Radius.card + 4),
           child: Stack(
@@ -1156,16 +1151,7 @@ class _LogoCard extends ConsumerWidget {
     final cs = Theme.of(context).colorScheme;
     return TvFocusableScale(
       borderRadius: BorderRadius.circular(Radius.card + 3),
-      onTap: () => context.push(
-        AppRoutes.player,
-        extra: {
-          'channelId':       channel.id,
-          'channelUrl':      channel.streamUrl,
-          'title':           channel.name,
-          'initialPosition': channel.lastPosition,
-          'streamType':      channel.streamType,
-        },
-      ),
+      onTap: () => openChannelGuarded(context, ref, channel),
       onLongPress: () => isHistory
           ? _confirmClearWatched(context, ref, channel)
           : _toggleFavoriteWithFeedback(context, ref, channel),
@@ -1242,16 +1228,7 @@ class _RecentlyWatchedStrip extends ConsumerWidget {
               final ch = channels[i];
               return TvFocusable(
                 borderRadius: BorderRadius.circular(Radius.cardSm + 3),
-                onTap: () => context.push(
-                  AppRoutes.player,
-                  extra: {
-                    'channelId':       ch.id,
-                    'channelUrl':      ch.streamUrl,
-                    'title':           ch.name,
-                    'initialPosition': ch.lastPosition,
-                    'streamType':      ch.streamType,
-                  },
-                ),
+                onTap: () => openChannelGuarded(context, ref, ch),
                 onLongPress: () => _confirmClearWatched(context, ref, ch),
                 semanticLabel: ch.name,
                 child: Column(
@@ -1367,16 +1344,7 @@ class _PosterCard extends ConsumerWidget {
 
     return TvFocusableScale(
       borderRadius: BorderRadius.circular(Radius.card + 3),
-      onTap: () => context.push(
-        AppRoutes.player,
-        extra: {
-          'channelId':       channel.id,
-          'channelUrl':      channel.streamUrl,
-          'title':           channel.name,
-          'initialPosition': channel.lastPosition,
-          'streamType':      channel.streamType,
-        },
-      ),
+      onTap: () => openChannelGuarded(context, ref, channel),
       onLongPress: () => isHistory
           ? _confirmClearWatched(context, ref, channel)
           : _toggleFavoriteWithFeedback(context, ref, channel),

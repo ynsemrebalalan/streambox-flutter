@@ -2,14 +2,13 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 import '../../../core/providers/app_providers.dart';
-import '../../../core/router/app_router.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_tokens.dart';
 import '../../../data/models/channel_model.dart';
 import '../../../data/models/epg_model.dart';
 import '../../../data/services/cloud_sync_service.dart';
+import '../../parental/parental_guard.dart';
 import '../home_provider.dart';
 
 // EPG current programme provider for a given tvgId
@@ -34,17 +33,7 @@ class _ChannelListItemState extends ConsumerState<ChannelListItem> {
   bool _focused = false;
 
   void _openPlayer() {
-    final channel = widget.channel;
-    context.push(
-      AppRoutes.player,
-      extra: {
-        'channelId':       channel.id,
-        'channelUrl':      channel.streamUrl,
-        'title':           channel.name,
-        'initialPosition': channel.lastPosition,
-        'streamType':      channel.streamType,
-      },
-    );
+    openChannelGuarded(context, ref, widget.channel);
   }
 
   @override

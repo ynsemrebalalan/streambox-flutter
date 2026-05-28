@@ -12,6 +12,9 @@ class SubtitleOverlay extends StatefulWidget {
   final String streamType;
   final Stream<Duration> positionStream;
   final bool enabled;
+  /// İlk segment üretimi başarısız olursa anlaşılır bir mesajla çağrılır.
+  /// Player bunu snackbar gösterip AI altyazı toggle'ını kapatmak için kullanır.
+  final void Function(String message)? onError;
   // Styling
   final Color textColor;
   final Color bgColor;
@@ -24,6 +27,7 @@ class SubtitleOverlay extends StatefulWidget {
     required this.streamType,
     required this.positionStream,
     this.enabled = false,
+    this.onError,
     this.textColor = Colors.white,
     this.bgColor = const Color(0xAA000000),
     this.fontSize = 16,
@@ -41,6 +45,8 @@ class _SubtitleOverlayState extends State<SubtitleOverlay> {
   StreamSubscription<Duration>? _posSub;
   int _lastFetchedSegment = -1;
   bool _loading = false;
+  /// İlk segment hazırlanırken kullanıcıya "hazırlanıyor" göstergesi için.
+  bool _initialLoading = false;
 
   @override
   void initState() {
@@ -66,15 +72,22 @@ class _SubtitleOverlayState extends State<SubtitleOverlay> {
       const Duration(seconds: 25),
       (_) => _prefetchNext(),
     );
-    // Ilk segment'i yukle
-    _fetchSegment(0);
+    // Ilk segment'i yukle — kullanıcıya "hazırlanıyor" feedback'i göster.
+    setState(() => _initialLoading = true);
+    _fetchSegment(0, isInitial: true);
   }
 
   void _stop() {
     _posSub?.cancel();
     _prefetchTimer?.cancel();
     _cues.clear();
-    if (mounted) setState(() => _currentText = '');
+    _lastFetchedSegment = -1;
+    if (mounted) {
+      setState(() {
+        _currentText = '';
+        _initialLoading = false;
+      });
+    }
   }
 
   void _onPosition(Duration position) {
@@ -100,7 +113,7 @@ class _SubtitleOverlayState extends State<SubtitleOverlay> {
     }
   }
 
-  Future<void> _fetchSegment(int startSec) async {
+  Future<void> _fetchSegment(int startSec, {bool isInitial = false}) async {
     if (_loading) return;
     _loading = true;
     try {
@@ -115,10 +128,25 @@ class _SubtitleOverlayState extends State<SubtitleOverlay> {
       if (_cues.length > 500) {
         _cues.removeRange(0, _cues.length - 500);
       }
+      // İlk segment başarıyla geldi ama hiç konuşma yoksa kullanıcıyı bilgilendir.
+      if (isInitial && _cues.isEmpty) {
+        widget.onError?.call('Bu içerikte AI altyazı için konuşma algılanamadı.');
+      }
+    } on WhisperException catch (e) {
+      // İlk denemede hata → kullanıcıya bildir (sessiz kalma). Sonraki
+      // segment/prefetch hatalarında akışı bozmamak için sessiz geç.
+      debugPrint('[SubtitleOverlay] whisper error: ${e.message}');
+      if (isInitial) widget.onError?.call(e.message);
     } catch (e) {
       debugPrint('[SubtitleOverlay] fetch failed: $e');
+      if (isInitial) {
+        widget.onError?.call(
+          'AI altyazı başlatılamadı. Lütfen tekrar deneyin.',
+        );
+      }
     } finally {
       _loading = false;
+      if (mounted && _initialLoading) setState(() => _initialLoading = false);
     }
   }
 
@@ -137,7 +165,51 @@ class _SubtitleOverlayState extends State<SubtitleOverlay> {
 
   @override
   Widget build(BuildContext context) {
-    if (!widget.enabled || _currentText.isEmpty) {
+    if (!widget.enabled) return const SizedBox.shrink();
+
+    // İlk segment hazırlanırken "hazırlanıyor" göstergesi — kullanıcı butona
+    // bastıktan sonra bir şeyin olduğunu görsün (segment indirme + transkripsiyon
+    // birkaç saniye sürebilir).
+    if (_initialLoading && _currentText.isEmpty) {
+      return Positioned(
+        bottom: 80,
+        left: 24,
+        right: 24,
+        child: Center(
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+            decoration: BoxDecoration(
+              color: widget.bgColor,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const SizedBox(
+                  width: 14,
+                  height: 14,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: Colors.white,
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Text(
+                  'AI altyazı hazırlanıyor…',
+                  style: TextStyle(
+                    color: widget.textColor,
+                    fontSize: widget.fontSize - 2,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
+    if (_currentText.isEmpty) {
       return const SizedBox.shrink();
     }
 
