@@ -990,6 +990,7 @@ String _localeLabel(AppLocalizations l, Locale? locale) {
     case 'tr': return l.languageTurkish;
     case 'en': return l.languageEnglish;
     case 'de': return l.languageGerman;
+    case 'it': return l.languageItalian;
     case 'ar': return l.languageArabic;
     default:   return l.languageSystem;
   }
@@ -1006,6 +1007,7 @@ Future<void> _showLanguagePicker(
     (const Locale('tr'),   l.languageTurkish),
     (const Locale('en'),   l.languageEnglish),
     (const Locale('de'),   l.languageGerman),
+    (const Locale('it'),   l.languageItalian),
     (const Locale('ar'),   l.languageArabic),
   ];
   await showDialog<void>(

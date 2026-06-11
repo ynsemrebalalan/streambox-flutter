@@ -19,6 +19,7 @@
   "languageEnglish": "Englisch",
   "languageGerman": "Deutsch",
   "languageArabic": "Arabisch",
+  "languageItalian": "Italienisch",
 
   "errorWithDetails": "Fehler: {details}",
   "@errorWithDetails": {

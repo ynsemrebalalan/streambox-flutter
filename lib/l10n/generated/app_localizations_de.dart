@@ -66,6 +66,9 @@ class AppLocalizationsDe extends AppLocalizations {
   String get languageArabic => 'Arabisch';
 
   @override
+  String get languageItalian => 'Italienisch';
+
+  @override
   String errorWithDetails(String details) {
     return 'Fehler: $details';
   }

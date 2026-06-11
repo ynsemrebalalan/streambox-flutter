@@ -66,6 +66,9 @@ class AppLocalizationsTr extends AppLocalizations {
   String get languageArabic => 'Arapça';
 
   @override
+  String get languageItalian => 'İtalyanca';
+
+  @override
   String errorWithDetails(String details) {
     return 'Hata: $details';
   }
