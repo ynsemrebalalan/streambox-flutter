@@ -244,15 +244,19 @@ class ChannelRepository {
           AND c.seriesName != ''
         GROUP BY cc.category
         HAVING COUNT(*) > COUNT(DISTINCT c.seriesName)
-        ORDER BY cc.category COLLATE NOCASE ASC
+        ORDER BY MIN(c.sortOrder), cc.category COLLATE NOCASE ASC
       ''', [playlistId]);
     } else {
+      // 2026-07-07: Sağlayıcı sırası korunur — MIN(sortOrder) = kategorinin
+      // kaynak listede ilk göründüğü konum. Alfabetik sıralama kullanıcı
+      // şikayetiydi ("TR en altta, özel kanallar üstte").
       rows = await db.rawQuery('''
-        SELECT DISTINCT cc.category FROM $_catTable cc
+        SELECT cc.category FROM $_catTable cc
         INNER JOIN channels c
           ON c.id = cc.channelId AND c.playlistId = cc.playlistId
         WHERE cc.playlistId = ? AND c.streamType = ?
-        ORDER BY cc.category COLLATE NOCASE ASC
+        GROUP BY cc.category
+        ORDER BY MIN(c.sortOrder), cc.category COLLATE NOCASE ASC
       ''', [playlistId, streamType]);
     }
 
@@ -263,8 +267,13 @@ class ChannelRepository {
       return _isCategoryNameAllowedForTab(lc, streamType);
     }).toList();
 
-    // Live için Dart-side priority sort: BeIN > spor > diğer (alfabetik)
+    // Live için Dart-side priority sort: BeIN > spor > diğer.
+    // Eşit skorda sağlayıcı sırası korunur (alfabetik DEĞİL — List.sort
+    // stable olmadığı için orijinal index ile tie-break yapılır).
     if (streamType == 'live') {
+      final origIdx = <String, int>{
+        for (var i = 0; i < filtered.length; i++) filtered[i]: i,
+      };
       filtered.sort((a, b) {
         final la = a.toLowerCase();
         final lb = b.toLowerCase();
@@ -275,7 +284,7 @@ class ChannelRepository {
         }
         final cmp = score(la).compareTo(score(lb));
         if (cmp != 0) return cmp;
-        return la.compareTo(lb);
+        return (origIdx[a] ?? 0).compareTo(origIdx[b] ?? 0);
       });
     }
     return filtered;
