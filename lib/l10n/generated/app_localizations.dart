@@ -8,7 +8,9 @@ import 'package:intl/intl.dart' as intl;
 import 'app_localizations_ar.dart';
 import 'app_localizations_de.dart';
 import 'app_localizations_en.dart';
+import 'app_localizations_es.dart';
 import 'app_localizations_it.dart';
+import 'app_localizations_ro.dart';
 import 'app_localizations_tr.dart';
 
 // ignore_for_file: type=lint
@@ -97,7 +99,9 @@ abstract class AppLocalizations {
     Locale('ar'),
     Locale('de'),
     Locale('en'),
+    Locale('es'),
     Locale('it'),
+    Locale('ro'),
     Locale('tr')
   ];
 
@@ -220,6 +224,18 @@ abstract class AppLocalizations {
   /// In tr, this message translates to:
   /// **'İtalyanca'**
   String get languageItalian;
+
+  /// No description provided for @languageSpanish.
+  ///
+  /// In tr, this message translates to:
+  /// **'İspanyolca'**
+  String get languageSpanish;
+
+  /// No description provided for @languageRomanian.
+  ///
+  /// In tr, this message translates to:
+  /// **'Rumence'**
+  String get languageRomanian;
 
   /// Error display with extra details (typically exception toString)
   ///
@@ -2385,7 +2401,7 @@ class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> 
   }
 
   @override
-  bool isSupported(Locale locale) => <String>['ar', 'de', 'en', 'it', 'tr'].contains(locale.languageCode);
+  bool isSupported(Locale locale) => <String>['ar', 'de', 'en', 'es', 'it', 'ro', 'tr'].contains(locale.languageCode);
 
   @override
   bool shouldReload(_AppLocalizationsDelegate old) => false;
@@ -2399,7 +2415,9 @@ AppLocalizations lookupAppLocalizations(Locale locale) {
     case 'ar': return AppLocalizationsAr();
     case 'de': return AppLocalizationsDe();
     case 'en': return AppLocalizationsEn();
+    case 'es': return AppLocalizationsEs();
     case 'it': return AppLocalizationsIt();
+    case 'ro': return AppLocalizationsRo();
     case 'tr': return AppLocalizationsTr();
   }
 

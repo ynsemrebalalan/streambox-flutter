@@ -23,7 +23,8 @@
   "languageGerman": "Almanca",
   "languageArabic": "Arapça",
   "languageItalian": "İtalyanca",
-
+  "languageSpanish": "İspanyolca",
+  "languageRomanian": "Rumence",
   "errorWithDetails": "Hata: {details}",
   "@errorWithDetails": {
     "description": "Error display with extra details (typically exception toString)",

@@ -20,7 +20,8 @@
   "languageGerman": "Tedesco",
   "languageArabic": "Arabo",
   "languageItalian": "Italiano",
-
+  "languageSpanish": "Spagnolo",
+  "languageRomanian": "Rumeno",
   "errorWithDetails": "Errore: {details}",
   "@errorWithDetails": {
     "placeholders": { "details": { "type": "String" } }

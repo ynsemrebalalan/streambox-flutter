@@ -69,6 +69,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get languageItalian => 'Italian';
 
   @override
+  String get languageSpanish => 'Spanish';
+
+  @override
+  String get languageRomanian => 'Romanian';
+
+  @override
   String errorWithDetails(String details) {
     return 'Error: $details';
   }

@@ -4,6 +4,24 @@
 <dict>
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
+	<!--
+	    Desteklenen diller. Bu anahtar OLMADAN iOS, uygulamanin yalnizca
+	    development region dilini destekledigini varsayar; cihaz dili
+	    Ispanyolca/Almanca/vb. olsa bile Flutter'a yanlis locale gelir ve
+	    "sistem dilini takip et" secenegi calismaz. Uygulama ici dil secici
+	    bundan bagimsiz calisir. AppLocalizations.supportedLocales ile ayni
+	    liste olmali.
+	-->
+	<key>CFBundleLocalizations</key>
+	<array>
+		<string>tr</string>
+		<string>en</string>
+		<string>de</string>
+		<string>it</string>
+		<string>es</string>
+		<string>ro</string>
+		<string>ar</string>
+	</array>
 	<key>CFBundleDisplayName</key>
 	<string>IPTV Ai Player</string>
 	<key>CFBundleExecutable</key>

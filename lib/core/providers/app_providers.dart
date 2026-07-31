@@ -148,6 +148,8 @@ class LocaleNotifier extends Notifier<Locale?> {
       'en' => const Locale('en'),
       'de' => const Locale('de'),
       'it' => const Locale('it'),
+      'es' => const Locale('es'),
+      'ro' => const Locale('ro'),
       'ar' => const Locale('ar'),
       _    => null, // 'system' or unset → follow device
     };

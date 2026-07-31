@@ -69,6 +69,12 @@ class AppLocalizationsTr extends AppLocalizations {
   String get languageItalian => 'İtalyanca';
 
   @override
+  String get languageSpanish => 'İspanyolca';
+
+  @override
+  String get languageRomanian => 'Rumence';
+
+  @override
   String errorWithDetails(String details) {
     return 'Hata: $details';
   }

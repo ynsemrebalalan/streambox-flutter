@@ -1008,6 +1008,8 @@ Future<void> _showLanguagePicker(
     (const Locale('en'),   l.languageEnglish),
     (const Locale('de'),   l.languageGerman),
     (const Locale('it'),   l.languageItalian),
+    (const Locale('es'),   l.languageSpanish),
+    (const Locale('ro'),   l.languageRomanian),
     (const Locale('ar'),   l.languageArabic),
   ];
   await showDialog<void>(
