@@ -14,7 +14,8 @@ import 'legal_notice_screen.dart';
 /// VLC / GSE Smart IPTV / Smarters Pro pattern'ine gore:
 /// - Kisa welcome + "Continue" CTA
 /// - Tum yasal metin ayri ekranda ("Legal Notice" butonu)
-/// - Bundled demo content (DemoSeedService) reviewer'a hemen gorunur
+/// - Demo content YOK: DemoSeedService seeding'i 2026-05-11'de kapatildi
+///   (main.dart) + eski DB'lerden tek seferlik cleanup migration siler.
 class DisclaimerScreen extends ConsumerStatefulWidget {
   final VoidCallback onAccepted;
   const DisclaimerScreen({super.key, required this.onAccepted});

@@ -22,6 +22,9 @@ plugins {
     id("org.jetbrains.kotlin.android") version "2.2.0" apply false
     // Firebase google-services.json processor — Firebase init'i native config'ten okur.
     id("com.google.gms.google-services") version "4.4.2" apply false
+    // Crashlytics — release build'de R8 mapping.txt'yi otomatik yukler.
+    // Olmadan stack trace'ler obfuscate kalir ve okunmaz.
+    id("com.google.firebase.crashlytics") version "3.0.2" apply false
 }
 
 include(":app")

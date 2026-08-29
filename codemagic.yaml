@@ -23,9 +23,14 @@ workflows:
         BUNDLE_ID: "com.ynsemrebalalan.iptvai"
 
     scripts:
-      # 1) Swift Package Manager'i KAPAT — her seyden ONCE. google_mobile_ads
-      #    (CocoaPods-only) ile webview_flutter_wkwebview (SPM destekli) cakisip
-      #    pod install'u patlatiyor. SPM kapaliyken ikisi de CocoaPods kullanir.
+      # 1) Swift Package Manager'i KAPAT — her seyden ONCE.
+      #    Gerekcesi google_mobile_ads (CocoaPods-only) ile
+      #    webview_flutter_wkwebview (SPM destekli) cakismasiydi.
+      #    2026-08-29: google_mobile_ads uygulamadan tamamen cikarildi, yani bu
+      #    adim ARTIK ZORUNLU DEGIL. Yine de birakildi: tum pod'lari tek
+      #    yonetici (CocoaPods) altinda tutmak, calisan build'i SPM'e gecirip
+      #    yeni sorun uretmekten daha guvenli. Kaldirmak istersen once bir
+      #    deneme build'i al.
       - name: Swift Package Manager kapat
         script: |
           flutter config --no-enable-swift-package-manager
@@ -71,6 +76,48 @@ workflows:
       #    SPM kapali oldugu icin pod install temiz gecer.
       - name: Build iOS IPA (release)
         script: flutter build ipa --release --build-number=$BUILD_NUMBER
+
+      # 5) Crashlytics dSYM upload. Bu adim OLMADAN iOS crash'leri
+      #    Crashlytics'e duser ama sembolize EDILMEZ — stack trace'ler
+      #    ham adres olarak gorunur ve ise yaramaz.
+      #
+      #    Xcode "run script build phase" yerine burada yapiliyor: pbxproj'a
+      #    dokunmuyoruz (bozulursa TUM iOS build'leri patlar) ve CI log'unda
+      #    ne olup bittigi acikca gorunuyor.
+      #
+      #    -gsp: GoogleService-Info.plist diskte mevcut (Xcode bundle'ina
+      #    ekli degil, ama upload-symbols icin dosya yolu yeterli).
+      - name: Crashlytics dSYM upload
+        script: |
+          set -e
+          # CM_BUILD_DIR normalde clone dizini; set degilse cwd'ye dus.
+          ROOT="${CM_BUILD_DIR:-$PWD}"
+          echo "ROOT=$ROOT"
+          GSP="$ROOT/ios/Runner/GoogleService-Info.plist"
+          UPLOAD=$(find "$ROOT/ios/Pods" -name upload-symbols -type f 2>/dev/null | head -1)
+
+          if [ ! -f "$GSP" ]; then
+            echo "!! UYARI: GoogleService-Info.plist yok -> dSYM YUKLENMEDI"
+            exit 0
+          fi
+          if [ -z "$UPLOAD" ]; then
+            echo "!! UYARI: upload-symbols bulunamadi (FirebaseCrashlytics pod kurulu mu?) -> dSYM YUKLENMEDI"
+            exit 0
+          fi
+
+          DSYMS=$(find "$ROOT/build/ios" -name "*.dSYM" -type d 2>/dev/null)
+          if [ -z "$DSYMS" ]; then
+            echo "!! UYARI: dSYM bulunamadi -> crash'ler sembolize EDILMEYECEK"
+            exit 0
+          fi
+
+          # Buraya geldiysek arac ve dosyalar yerinde; upload hatasi GERCEK
+          # hatadir, sessizce yutma — build'i durdur ki fark edelim.
+          echo "$DSYMS" | while read -r d; do
+            echo ">> upload: $d"
+            "$UPLOAD" -gsp "$GSP" -p ios "$d"
+          done
+          echo "Crashlytics dSYM upload tamam."
 
     artifacts:
       - build/ios/ipa/*.ipa

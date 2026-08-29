@@ -8,6 +8,8 @@ plugins {
     id("dev.flutter.flutter-gradle-plugin")
     // Firebase google-services.json processor (root settings.gradle.kts'de versiyon).
     id("com.google.gms.google-services")
+    // Crashlytics mapping upload — google-services'ten SONRA gelmeli.
+    id("com.google.firebase.crashlytics")
 }
 
 val keyPropertiesFile = rootProject.file("key.properties")
