@@ -449,8 +449,9 @@
   "playerPipTooltip": "Imagine în imagine (Pro)",
   "playerPipUnavailable": "Acest dispozitiv nu acceptă imagine în imagine",
   "playerPipEntered": "Se redă într-o fereastră mică",
-  "playerAirplayTooltip": "AirPlay (Pro)",
-  "playerAirplayUnavailable": "AirPlay este disponibil doar pe iOS",
+  "playerAirplayTooltip": "AirPlay (audio)",
+  "playerAirplayUnavailable": "AirPlay nu este disponibil pe acest dispozitiv",
+  "playerAirplayAudioOnlyHint": "AirPlay trimite sunetul către televizor. Pentru imagine folosește Centru de control > Oglindire ecran.",
   "playerCastTooltip": "Cast (în curând)",
 
   "settingsPipSection": "Imagine în imagine",

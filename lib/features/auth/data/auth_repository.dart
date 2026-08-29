@@ -42,7 +42,27 @@ class AuthRepository {
   static const String _webClientId =
       '583696434507-o0bs6rvbmbndn01k8191epkusd2aufls.apps.googleusercontent.com';
 
+  /// iOS OAuth client ID — `ios/Runner/GoogleService-Info.plist` icindeki
+  /// `CLIENT_ID`. Info.plist'teki `CFBundleURLSchemes` girdisi (REVERSED_
+  /// CLIENT_ID) bununla ayni client'a ait.
+  ///
+  /// **2026-08-29 fix — iOS'ta Google girisi cokuyordu.**
+  /// GoogleService-Info.plist Xcode bundle'ina EKLI DEGIL (bilincli: firebase
+  /// config Dart tarafinda `firebase_options.dart` ile veriliyor). Ama
+  /// google_sign_in_ios client ID'yi su sirayla ariyor:
+  ///   1. Dart'tan gelen `clientId`  → verilmiyordu
+  ///   2. bundle'daki GoogleService-Info.plist `CLIENT_ID` → dosya bundle'da yok
+  ///   3. Info.plist `GIDClientID` → bu anahtar da yok
+  /// Ucu de bos kalinca GIDSignIn `NSException` firlatiyor; plugin bunu
+  /// yakalayip `[e raise]` ile YENIDEN firlatiyor → yakalanmamis ObjC
+  /// exception → uygulama cokuyor. Cozum: clientId'yi Dart'tan ver.
+  ///
+  /// Android'de `clientId` desteklenmez (plugin assert eder) — sadece iOS/macOS.
+  static const String _iosClientId =
+      '583696434507-dp78u7jc99i07f28qb4othk7quk73tfq.apps.googleusercontent.com';
+
   late final GoogleSignIn _google = _googleOverride ?? GoogleSignIn(
+    clientId: (Platform.isIOS || Platform.isMacOS) ? _iosClientId : null,
     serverClientId: _webClientId,
     scopes: const ['email', 'profile'],
   );

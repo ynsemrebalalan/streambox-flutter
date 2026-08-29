@@ -449,8 +449,9 @@
   "playerPipTooltip": "Imagen en imagen (Pro)",
   "playerPipUnavailable": "Este dispositivo no admite imagen en imagen",
   "playerPipEntered": "Reproduciendo en ventana pequeña",
-  "playerAirplayTooltip": "AirPlay (Pro)",
-  "playerAirplayUnavailable": "AirPlay solo está disponible en iOS",
+  "playerAirplayTooltip": "AirPlay (audio)",
+  "playerAirplayUnavailable": "AirPlay no está disponible en este dispositivo",
+  "playerAirplayAudioOnlyHint": "AirPlay envía el audio al televisor. Para el vídeo, usa Centro de control > Duplicar pantalla.",
   "playerCastTooltip": "Enviar (próximamente)",
 
   "settingsPipSection": "Imagen en imagen",

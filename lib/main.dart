@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:media_kit/media_kit.dart';
 import 'firebase_options.dart';
 import 'core/analytics/analytics.dart';
+import 'core/crash/crash_reporting.dart';
 import 'core/providers/app_providers.dart';
 import 'core/router/app_router.dart';
 import 'core/theme/app_theme.dart';
@@ -14,25 +15,30 @@ import 'core/utils/secure_storage.dart';
 import 'data/repositories/channel_repository.dart';
 import 'data/repositories/playlist_repository.dart';
 import 'data/repositories/settings_repository.dart';
-import 'data/services/demo_seed_service.dart';
-import 'features/ads/ads_service.dart';
 import 'features/auth/data/auth_state.dart';
 import 'features/auth/providers/auth_providers.dart';
 import 'features/billing/data/purchases_service.dart';
+import 'features/billing/providers/purchases_providers.dart';
 import 'features/cloud_sync/cloud_sync_controller.dart';
 import 'features/epg/epg_auto_refresh_controller.dart';
 import 'l10n/generated/app_localizations.dart';
 
 void main() {
-  // Catch all uncaught Flutter framework errors
+  // Catch all uncaught Flutter framework errors.
+  // NOT: Firebase henuz init olmamis olabilir (runApp sonrasi arka planda
+  // kuruluyor). CrashReporting bu pencerede hatalari buffer'lar, init
+  // bitince flush eder — acilis crash'lerini kaybetmiyoruz.
   FlutterError.onError = (details) {
     FlutterError.presentError(details);
     debugPrint('FlutterError: ${details.exceptionAsString()}');
+    CrashReporting.recordFlutterError(details, fatal: true);
   };
 
   // Catch all uncaught async errors
   PlatformDispatcher.instance.onError = (error, stack) {
     debugPrint('PlatformError: $error\n$stack');
+    CrashReporting.recordError(error, stack,
+        fatal: true, reason: 'PlatformDispatcher.onError');
     return true;
   };
 
@@ -65,6 +71,8 @@ void main() {
     unawaited(_bootstrapInBackground());
   }, (error, stack) {
     debugPrint('Uncaught error: $error\n$stack');
+    CrashReporting.recordError(error, stack,
+        fatal: true, reason: 'runZonedGuarded');
   });
 }
 
@@ -76,26 +84,29 @@ void main() {
 /// runApp sonrasi calisinca ilk frame'lerde rotation lock yanlis uygulanip
 /// otomatik donusu engelleyebiliyordu.
 Future<void> _bootstrapInBackground() async {
+  // Cihaz RAM'ini native'den duzelt (iOS). DeviceProfile.init() sync oldugu
+  // icin platform kanalini cagiramiyor ve iOS'ta HER cihazi "high" sayiyordu;
+  // bu cagri import/DB parametrelerini gercek RAM'e gore geri ayarlar.
+  // Import kullanici aksiyonuyla cok daha sonra basladigi icin bu zamanlama
+  // yeterli. Hata/timeout durumunda eski varsayilan kalir.
+  await DeviceProfile.refreshFromPlatform();
+
+  // RevenueCat EN BASTA — hicbir seyi beklemez.
+  //
+  // 2026-08-29 fix: eskiden Firebase + MediaKit + secret migration'in
+  // ARKASINDAYDI ("appUserID Firebase UID'sini kullaniyor" gerekcesiyle).
+  // Oysa configure appUserID'siz cagriliyordu; tek etkisi RC'nin saniyelerce
+  // gec hazir olmasiydi. O pencerede tum UI "free" goruyordu. Kimlik artik
+  // PurchasesService icindeki kuyruk ile bagimsiz kuruluyor: Firebase UID
+  // hazir olunca logIn(uid) uygulanir, RC hazir degilse kuyrukta bekler.
+  unawaited(_initRevenueCat());
+
   await Future.wait([
     _initFirebaseAndAnalytics(),
     _initMediaKit(),
   ], eagerError: false);
 
   await _migrateSecrets();
-
-  // RevenueCat — Firebase init'inden SONRA olmali cunku appUserID Firebase
-  // anon/authenticated user'in UID'sini kullaniyor. Fail olsa devam (paywall
-  // sonradan friendly hata gosterir).
-  unawaited(_initRevenueCat());
-
-  // AdMob — Free user banner reklamlari icin. Pro user'da widget reklam
-  // yuklenmez ama init yine yapilir (Pro -> Free downgrade'de gecikme yok).
-  unawaited(_initAdMob());
-
-  // 2026-05-11: Demo seed kaldırıldı (kullanıcı raporu — production'da
-  // demo playlist yanıltıyor). Cleanup migration mevcut DB'lerden temizler.
-  // Apple App Review için ileride feature flag arkasında açılabilir.
-  // unawaited(DemoSeedService.seedIfNeeded());
 
   // One-time DB migration (2026-05-11): mevcut yanlış classify edilmiş
   // kanalları yeni _detectStreamType ile yeniden değerlendir.
@@ -105,6 +116,10 @@ Future<void> _bootstrapInBackground() async {
   unawaited(_cleanupDemoPlaylist());
 }
 
+// Demo playlist temizleme migration (2026-05-11). Bir kere çalışır.
+// DemoSeedService silindi; ID sabit tutuldu ki eski DB'ler temizlenebilsin.
+const String _demoPlaylistId = 'demo_playlist_builtin';
+
 Future<void> _cleanupDemoPlaylist() async {
   try {
     final settings = SettingsRepository();
@@ -113,13 +128,13 @@ Future<void> _cleanupDemoPlaylist() async {
 
     final playlistRepo = PlaylistRepository();
     final channelRepo = ChannelRepository();
-    final demo = await playlistRepo.getById(DemoSeedService.demoPlaylistId);
+    final demo = await playlistRepo.getById(_demoPlaylistId);
     if (demo != null) {
-      await channelRepo.deleteByPlaylist(DemoSeedService.demoPlaylistId);
-      await playlistRepo.delete(DemoSeedService.demoPlaylistId);
+      await channelRepo.deleteByPlaylist(_demoPlaylistId);
+      await playlistRepo.delete(_demoPlaylistId);
       // Eğer demo aktifti, kullanıcının başka playlist'i varsa onu yap
       final activeId = await settings.get(SettingsKeys.activePlaylistId);
-      if (activeId == DemoSeedService.demoPlaylistId) {
+      if (activeId == _demoPlaylistId) {
         final all = await playlistRepo.getAll();
         await settings.set(
             SettingsKeys.activePlaylistId, all.firstOrNull?.id ?? '');
@@ -155,16 +170,6 @@ Future<void> _runStreamTypeMigration() async {
   }
 }
 
-Future<void> _initAdMob() async {
-  try {
-    await AdsService.instance
-        .ensureInitialized()
-        .timeout(const Duration(seconds: 5));
-  } catch (e) {
-    debugPrint('AdMob init failed or timed out: $e');
-  }
-}
-
 /// RevenueCat configure — boş API key ise atlanır (BuildConfig kontrol).
 /// Init fail etse uygulama açılmaya devam eder; paywall'a basıldığında
 /// ensureConfigured() ile gerekirse retry edilir.
@@ -190,6 +195,10 @@ Future<void> _initFirebaseAndAnalytics() async {
     await Firebase.initializeApp(
       options: DefaultFirebaseOptions.currentPlatform,
     ).timeout(const Duration(seconds: 5));
+    // Crashlytics ONCE — Analytics'ten daha kritik. Kendi icinde try/catch
+    // ile korunuyor, throw etmez; buradaki timeout sadece platform channel
+    // takilirsa Analytics'i bekletmesin diye.
+    await CrashReporting.init().timeout(const Duration(seconds: 3));
     await Analytics.init().timeout(const Duration(seconds: 3));
   } catch (e) {
     debugPrint('Firebase/Analytics init failed or timed out: $e');
@@ -316,6 +325,11 @@ class _IPTVAIPlayerAppState extends ConsumerState<IPTVAIPlayerApp>
     // App foreground'a döndüğünde cloud pull + EPG auto-refresh tetikle.
     // Pro değilse iki controller da no-op döner.
     if (state == AppLifecycleState.resumed) {
+      // Abonelik durumu App Store tarafinda degismis olabilir (yenileme,
+      // iptal, iade, baska cihazdan satin alma). Foreground'a her donuste
+      // RC'den tazele — "Pro ama free goruyorum" sikayetinin ikinci ayagi.
+      // ignore: unawaited_futures
+      ref.read(purchasesNotifierProvider.notifier).refresh();
       // ignore: unawaited_futures
       ref.read(cloudSyncControllerProvider.notifier).syncNow();
       // ignore: unawaited_futures
@@ -330,16 +344,25 @@ class _IPTVAIPlayerAppState extends ConsumerState<IPTVAIPlayerApp>
     final locale       = ref.watch(localeProvider);
 
     // Adim 22 Phase C: Firebase Auth state -> RevenueCat user binding.
-    // Anon UID, login UID veya null hangi olursa olsun RC'yi senkron tut.
     // Build icindeki ref.listen Riverpod kurali (initState'te degil).
+    //
+    // 2026-08-29 fix: eskiden `uid == null` olan HER state'te logOut()
+    // cagriliyordu. Auth stream acilista once `AuthLoading` (uid null) emit
+    // ediyor -> RC entitlement'li user'i birakip YENI anonim ID uretiyordu ->
+    // Pro kullanici free goruyordu. Artik logOut SADECE gercek cikista
+    // (Unauthenticated'a gecis) cagriliyor; Loading/Error state'leri no-op.
     ref.listen(authStateProvider, (prev, next) {
       final auth = next.valueOrNull;
       final uid = auth?.userOrNull?.uid;
       if (uid != null && uid.isNotEmpty) {
         PurchasesService.instance.logIn(uid);
-      } else {
+      } else if (auth is AuthUnauthenticated) {
+        // Gercek oturum kapatma. Loading/Error'da RC'ye dokunma.
         PurchasesService.instance.logOut();
       }
+      // Crash raporunu kullaniciya bagla — "kac kullanici etkilendi"
+      // metrigi ve tekrar eden crash'lerde ayni cihazi izleyebilmek icin.
+      CrashReporting.setUserId(uid);
       // Phase 2 Cloud Sync: login + Pro user'a geçişte otomatik pull
       // (auth Authenticated'a transition oldu mu kontrol).
       final wasAuth = prev?.valueOrNull is AuthAuthenticated;

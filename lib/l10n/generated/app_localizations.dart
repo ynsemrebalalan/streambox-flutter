@@ -2220,14 +2220,20 @@ abstract class AppLocalizations {
   /// No description provided for @playerAirplayTooltip.
   ///
   /// In tr, this message translates to:
-  /// **'AirPlay (Pro)'**
+  /// **'AirPlay (ses)'**
   String get playerAirplayTooltip;
 
   /// No description provided for @playerAirplayUnavailable.
   ///
   /// In tr, this message translates to:
-  /// **'AirPlay sadece iOS\'ta'**
+  /// **'AirPlay bu cihazda kullanılamıyor'**
   String get playerAirplayUnavailable;
+
+  /// No description provided for @playerAirplayAudioOnlyHint.
+  ///
+  /// In tr, this message translates to:
+  /// **'AirPlay sesi TV\'ye gönderir. Görüntü için Kontrol Merkezi > Ekran Yansıtma\'yı kullanın.'**
+  String get playerAirplayAudioOnlyHint;
 
   /// No description provided for @playerCastTooltip.
   ///

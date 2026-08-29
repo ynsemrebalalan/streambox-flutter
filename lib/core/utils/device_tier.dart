@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 
 /// Cihaz performans katmani. RAM ve islemci cekirdek sayisina gore belirlenir.
 /// Playlist yukleme, DB yazma, parse stratejisi buna gore adapte edilir.
@@ -23,6 +24,8 @@ class DeviceProfile {
   static int _totalRamMB = 0;
   static int _cpuCores = 0;
 
+  static const _deviceChannel = MethodChannel('iptvai/device');
+
   /// Session basinda cagirilir. Async degil, hizli.
   static void init() {
     _cpuCores = Platform.numberOfProcessors;
@@ -40,6 +43,31 @@ class DeviceProfile {
       return _tier!;
     }();
     return _tier!;
+  }
+
+  /// iOS'ta gercek RAM'i native'den (`ProcessInfo.physicalMemory`) okuyup
+  /// tier'i yeniden hesaplar. `init()` sync oldugu icin platform kanalini
+  /// cagiramiyor; bu metod `main`'de bootstrap sirasinda bir kez awaitlenir.
+  ///
+  /// **Neden gerekli:** `_detectRamMB` iOS'ta sabit 4096 donuyordu → HER
+  /// iPhone/iPad `DeviceTier.high` sayiliyordu. Deployment target iOS 15,
+  /// yani 2 GB'lik iPhone 6s/7/SE ve iPad Air 2 hala destekleniyor. Bu
+  /// cihazlarda high tier = tek seferde 10.000 satirlik DB batch'i,
+  /// 8 paralel Xtream istegi, 16 MB SQLite cache + 64 MB mmap → buyuk
+  /// playlist import'unda jetsam (bellek) ile sessiz kapanma riski.
+  static Future<void> refreshFromPlatform() async {
+    if (!Platform.isIOS) return;
+    try {
+      final mb = await _deviceChannel
+          .invokeMethod<int>('physicalMemoryMB')
+          .timeout(const Duration(seconds: 2));
+      if (mb == null || mb <= 0) return;
+      _totalRamMB = mb;
+      _tier = _classify();
+      debugPrint('[DeviceProfile] iOS RAM: ${mb}MB → tier: $_tier');
+    } catch (e) {
+      debugPrint('[DeviceProfile] physicalMemory okunamadi: $e');
+    }
   }
 
   static int get totalRamMB => _totalRamMB;
@@ -102,10 +130,12 @@ class DeviceProfile {
   }
 
   /// Android'de /proc/meminfo'dan toplam RAM okur.
-  /// iOS/desktop'ta 0 doner (varsayilan high kullanilir).
+  ///
+  /// iOS'ta burada gercek deger okunamaz (sandbox'ta /proc yok, platform
+  /// kanali ise sync degil) — gecici olarak 4096 varsayilir ve acilistan
+  /// hemen sonra [refreshFromPlatform] gercek degerle duzeltir.
   static int _detectRamMB() {
     if (!Platform.isAndroid) {
-      // iOS/desktop genelde yeterli RAM'e sahip
       return 4096;
     }
     try {

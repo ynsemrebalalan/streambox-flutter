@@ -67,8 +67,15 @@ enum PaywallTrigger {
   premiumTheme,    // Phase 1: özel temalar
   watchlist,       // Phase 1: izleme listesi (free şu an, ileride Pro olabilir)
   epg,             // Phase 3: TV rehberi otomatik fetch
-  pip,             // Phase 4: Picture-in-Picture
-  airplay,         // Phase 4: AirPlay/Cast
+  pip,             // Phase 4: Picture-in-Picture (yalnizca Android)
+  // 2026-08-29: ARTIK KULLANILMIYOR. AirPlay bu oynaticida yalnizca SES
+  // yonlendirmesi yapabiliyor (media_kit texture render → AVPlayerLayer yok),
+  // sistem ses cikisi ise ucretli bir ozellik degil. Enum degeri gecmis
+  // analytics kayitlariyla uyum icin birakildi; yeni kullanim EKLEME.
+  airplay,
   multiProfile,    // Phase 6: çoklu profil
-  noAds,           // Phase 5: reklamsız
+  // 2026-08-29: ARTIK KULLANILMIYOR. AdMob uygulamadan cikarildi, reklam
+  // diye bir sey kalmadigi icin "reklamsiz" bir Pro faydasi da yok.
+  // Enum degeri gecmis analytics kayitlariyla uyum icin birakildi.
+  noAds,
 }

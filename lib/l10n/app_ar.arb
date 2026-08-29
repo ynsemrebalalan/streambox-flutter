@@ -448,8 +448,9 @@
   "playerPipTooltip": "نافذة صغيرة (Pro)",
   "playerPipUnavailable": "PiP غير مدعوم على هذا الجهاز",
   "playerPipEntered": "يتم التشغيل في نافذة صغيرة",
-  "playerAirplayTooltip": "AirPlay (Pro)",
-  "playerAirplayUnavailable": "AirPlay على iOS فقط",
+  "playerAirplayTooltip": "AirPlay (الصوت)",
+  "playerAirplayUnavailable": "AirPlay غير متوفر على هذا الجهاز",
+  "playerAirplayAudioOnlyHint": "يرسل AirPlay الصوت إلى التلفزيون. للفيديو استخدم مركز التحكم > نسخ الشاشة.",
   "playerCastTooltip": "Cast (قريبًا)",
 
   "settingsPipSection": "نافذة صغيرة",

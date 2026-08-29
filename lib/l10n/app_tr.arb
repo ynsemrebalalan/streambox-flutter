@@ -477,8 +477,9 @@
   "playerPipTooltip": "Pencereye Küçült (Pro)",
   "playerPipUnavailable": "Bu cihazda PiP desteklenmiyor",
   "playerPipEntered": "Küçük pencerede oynatılıyor",
-  "playerAirplayTooltip": "AirPlay (Pro)",
-  "playerAirplayUnavailable": "AirPlay sadece iOS'ta",
+  "playerAirplayTooltip": "AirPlay (ses)",
+  "playerAirplayUnavailable": "AirPlay bu cihazda kullanılamıyor",
+  "playerAirplayAudioOnlyHint": "AirPlay sesi TV'ye gönderir. Görüntü için Kontrol Merkezi > Ekran Yansıtma'yı kullanın.",
   "playerCastTooltip": "Cast (yakında)",
 
   "settingsPipSection": "Picture-in-Picture",

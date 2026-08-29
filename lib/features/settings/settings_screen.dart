@@ -724,34 +724,21 @@ class _SubtitleSection extends ConsumerWidget {
   }
 }
 
-// ── Player section: PiP + Ads notice ────────────────────────────────────────
+// ── Player section ──────────────────────────────────────────────────────────
 
-class _PlayerSection extends ConsumerWidget {
+/// 2026-08-29: "Free surumde banner reklam gorunur / Pro ile reklamsiz"
+/// bilgi satiri KALDIRILDI — AdMob uygulamadan tamamen cikarildi, artik
+/// hicbir kullaniciya reklam gosterilmiyor. Ilgili l10n anahtarlari
+/// (`settingsAdsFreeNotice`, `settingsAdsRemoved`) reklam geri gelirse diye
+/// arb dosyalarinda birakildi.
+class _PlayerSection extends StatelessWidget {
   const _PlayerSection();
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final l = AppLocalizations.of(context);
-    final isPro = ref.watch(isProProvider);
-    final cs = Theme.of(context).colorScheme;
-
-    return Column(
+  Widget build(BuildContext context) {
+    return const Column(
       children: [
-        const _PipAutoTile(),
-        const _TileDivider(),
-        ListTile(
-          dense: true,
-          leading: Icon(
-            isPro ? Icons.block : Icons.campaign_outlined,
-            size: 22,
-            color: isPro ? Colors.green : cs.onSurfaceVariant,
-          ),
-          title: Text(
-              isPro ? l.settingsAdsRemoved : l.settingsAdsFreeNotice,
-              style: TextStyle(
-                  fontSize: 13,
-                  color: isPro ? null : cs.onSurfaceVariant)),
-        ),
+        _PipAutoTile(),
       ],
     );
   }

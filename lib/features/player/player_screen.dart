@@ -16,6 +16,7 @@ import '../billing/providers/purchases_providers.dart';
 import '../billing/widgets/paywall_trigger.dart';
 import '../home/home_provider.dart';
 import 'services/airplay_service.dart';
+import 'services/audio_session_service.dart';
 import 'services/pip_service.dart';
 import 'widgets/subtitle_overlay.dart';
 
@@ -68,6 +69,10 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
   // ── Phase 4: PiP / AirPlay durumu ──────────────────────────────────────────
   bool _inPipMode = false;
   StreamSubscription<bool>? _pipModeSub;
+  /// Butonlarin gorunurlugu — calismayan butonu hic gosterme.
+  /// iOS: PiP desteklenmiyor (media_kit texture render), AirPlay ses icin var.
+  bool _pipSupported = false;
+  bool _airplaySupported = false;
 
   // ── Swipe gesture state (sol yarı = parlaklık, sağ yarı = ses) ──────────────
   // Android paritesi (StreamBox PlayerScreen.kt). Tuzaklar: memory
@@ -124,6 +129,9 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
       ),
     );
     _controller = VideoController(_player);
+    // iOS: ses oturumunu SADECE oynatma penceresinde aktif tut. Acilista
+    // aktif etmek kullanicinin dinledigi muzigi bosuna susturuyordu.
+    AudioSessionService.instance.activate();
     _applyLiveStreamOptions();
     _play();
     _attachListeners();
@@ -145,6 +153,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
     // ── Phase 4: PiP — auto-PiP setup. Pro user + auto pref ON ise
     //    Home tusuna basinca otomatik PiP'e gec.
     _setupAutoPip();
+    _resolveCastButtons();
     _pipModeSub = PipService.instance.modeStream.listen((inPip) {
       if (mounted) setState(() => _inPipMode = inPip);
     });
@@ -388,12 +397,21 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
     // fire-and-forget — dispose sync sözleşmesini bozmaz.
     _player.stop().catchError((_) {});
     _player.dispose();
+    // iOS ses oturumunu birak — arka plandaki muzik uygulamasi kaldigi
+    // yerden devam edebilsin (.notifyOthersOnDeactivation).
+    AudioSessionService.instance.deactivate();
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
-    // Bug #1 fix: player kapanirken orientation'i portrait'e geri kilitle —
-    // diger ekranlar (home, splash) landscape kalmasin.
-    SystemChrome.setPreferredOrientations(const [
-      DeviceOrientation.portraitUp,
-    ]);
+    // Player kapanirken orientation kisitini KALDIR — bos liste "Info.plist /
+    // sistem ne diyorsa o" demek.
+    //
+    // 2026-08-29 fix: eskiden burada `[portraitUp]` kilidi kaliyordu. Sonuc:
+    //   * Uygulama ACILISTA donuyordu (Info.plist portrait+landscape), bir kez
+    //     player acilip kapandiktan SONRA hicbir ekran donmuyordu — tutarsiz.
+    //   * iPad'de Info.plist 4 yon + UIRequiresFullScreen=false (multitasking)
+    //     ilan ediyor; portrait kilidi bunu bozuyor ve Apple'in "multitasking
+    //     destekleyen iPad uygulamasi tum yonleri desteklemeli" kuralina
+    //     aykiri dusuyordu.
+    SystemChrome.setPreferredOrientations(const []);
     super.dispose();
   }
 
@@ -597,6 +615,18 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
 
   /// Phase 4: PiP — Pro auto-mode ayarini DB'den oku, native'e ilet.
   /// Player aktiflik bayragi da set edilir → onUserLeaveHint dogru karar verir.
+  /// Buton gorunurluklerini platformdan belirle. iOS'ta PiP hic desteklenmiyor
+  /// (media_kit Texture render), AirPlay ise yalnizca SES yonlendirmesi yapar.
+  Future<void> _resolveCastButtons() async {
+    await PipService.instance.ensureInitialized();
+    final airplay = await AirplayService.instance.isAvailable();
+    if (!mounted) return;
+    setState(() {
+      _pipSupported     = PipService.instance.isSupported;
+      _airplaySupported = airplay;
+    });
+  }
+
   Future<void> _setupAutoPip() async {
     try {
       await PipService.instance.ensureInitialized();
@@ -625,23 +655,34 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
     }
   }
 
-  /// Phase 4: AirPlay — manuel buton. Pro check + AirPlay sheet.
+  /// AirPlay — sistem ses cikisi secici.
+  ///
+  /// **2026-08-29 — ne yaptigi konusunda durustlestirildi.**
+  /// Oynatici `media_kit` (libmpv) ve video Flutter texture'ina ciziliyor;
+  /// ortada `AVPlayerLayer` olmadigi icin AirPlay'e GORUNTU gonderilemez —
+  /// sistem yalnizca AVAudioSession'i (sesi) yonlendirir. Onceden bu buton
+  /// "AirPlay (Pro)" adiyla Pro kilidi arkasindaydi ve kullanici Apple TV'yi
+  /// secince sadece ses gidiyordu. Artik:
+  ///   * Pro kilidi YOK (sistem ses cikisi ucretli bir ozellik degil),
+  ///   * ad "AirPlay (ses)",
+  ///   * secici acilmadan once goruntu icin Ekran Yansitma yonlendirmesi.
   Future<void> _showAirplay() async {
-    final available = await AirplayService.instance.isAvailable();
     if (!mounted) return;
-    if (!available) {
+    if (!_airplaySupported) {
       _showSnack(AppLocalizations.of(context).playerAirplayUnavailable);
       return;
     }
-    final allowed = await requirePro(context, ref, PaywallTrigger.airplay);
-    if (!allowed || !mounted) return;
+    _showSnack(
+      AppLocalizations.of(context).playerAirplayAudioOnlyHint,
+      duration: const Duration(seconds: 5),
+    );
     await AirplayService.instance.showRoutePicker();
   }
 
-  void _showSnack(String msg) {
+  void _showSnack(String msg, {Duration duration = const Duration(seconds: 2)}) {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(msg), duration: const Duration(seconds: 2)),
+      SnackBar(content: Text(msg), duration: duration),
     );
   }
 
@@ -763,6 +804,8 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
                   },
                   onPip:            _enterPip,
                   onAirplay:        _showAirplay,
+                  showPip:          _pipSupported,
+                  showAirplay:      _airplaySupported,
                   onFeedback:       _showActionFeedback,
                   streamType:       widget.streamType,
                   channelId:        widget.channelId,
@@ -801,6 +844,10 @@ class _ControlsOverlay extends StatefulWidget {
   final ValueChanged<BoxFit> onFitChange;
   final VoidCallback onPip;
   final VoidCallback onAirplay;
+  /// Butonlar yalnizca gercekten calistiklari platformda gorunur — calismayan
+  /// bir butonu gosterip "kullanilamiyor" demek kullaniciyi yaniltiyordu.
+  final bool showPip;
+  final bool showAirplay;
   /// Her buton işleminde ekran ortasında kısa süreli pill göstermek için.
   final void Function(IconData icon, String text) onFeedback;
   final String      streamType;       // 'live' | 'movie' | 'series'
@@ -819,6 +866,8 @@ class _ControlsOverlay extends StatefulWidget {
     required this.onFitChange,
     required this.onPip,
     required this.onAirplay,
+    required this.showPip,
+    required this.showAirplay,
     required this.onFeedback,
     required this.streamType,
     required this.channelId,
@@ -879,24 +928,30 @@ class _ControlsOverlayState extends State<_ControlsOverlay> {
                       overflow:  TextOverflow.ellipsis,
                     ),
                   ),
-                  // Phase 4 — AirPlay (iOS Pro)
-                  FocusTraversalOrder(
-                    order: const NumericFocusOrder(1.7),
-                    child: _TvIconButton(
-                      icon: Icons.airplay,
-                      tooltip: l.playerAirplayTooltip,
-                      onTap: widget.onAirplay,
+                  // AirPlay — yalnizca iOS. Ses cikisini Apple TV/hoparlore
+                  // yonlendirir; goruntu icin Kontrol Merkezi > Ekran
+                  // Yansitma gerekir (media_kit texture render, AVPlayerLayer
+                  // olmadigi icin AirPlay video mumkun degil).
+                  if (widget.showAirplay)
+                    FocusTraversalOrder(
+                      order: const NumericFocusOrder(1.7),
+                      child: _TvIconButton(
+                        icon: Icons.airplay,
+                        tooltip: l.playerAirplayTooltip,
+                        onTap: widget.onAirplay,
+                      ),
                     ),
-                  ),
-                  // Phase 4 — PiP (Android Pro)
-                  FocusTraversalOrder(
-                    order: const NumericFocusOrder(1.8),
-                    child: _TvIconButton(
-                      icon: Icons.picture_in_picture_alt,
-                      tooltip: l.playerPipTooltip,
-                      onTap: widget.onPip,
+                  // PiP — yalnizca destekleyen platformda (Android). iOS'ta
+                  // media_kit texture render oldugu icin sistem PiP calismaz.
+                  if (widget.showPip)
+                    FocusTraversalOrder(
+                      order: const NumericFocusOrder(1.8),
+                      child: _TvIconButton(
+                        icon: Icons.picture_in_picture_alt,
+                        tooltip: l.playerPipTooltip,
+                        onTap: widget.onPip,
+                      ),
                     ),
-                  ),
                   // Favori toggle — 2026-05-11 kullanıcı isteği.
                   FocusTraversalOrder(
                     order: const NumericFocusOrder(1.9),

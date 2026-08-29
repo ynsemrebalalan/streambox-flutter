@@ -448,8 +448,9 @@
   "playerPipTooltip": "Bild-in-Bild (Pro)",
   "playerPipUnavailable": "PiP wird auf diesem Gerät nicht unterstützt",
   "playerPipEntered": "Wiedergabe im Mini-Fenster",
-  "playerAirplayTooltip": "AirPlay (Pro)",
-  "playerAirplayUnavailable": "AirPlay nur unter iOS",
+  "playerAirplayTooltip": "AirPlay (Ton)",
+  "playerAirplayUnavailable": "AirPlay ist auf diesem Gerät nicht verfügbar",
+  "playerAirplayAudioOnlyHint": "AirPlay überträgt nur den Ton auf den Fernseher. Für das Bild nutze Kontrollzentrum > Bildschirmsynchronisierung.",
   "playerCastTooltip": "Cast (bald verfügbar)",
 
   "settingsPipSection": "Bild-in-Bild",

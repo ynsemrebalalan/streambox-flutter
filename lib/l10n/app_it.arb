@@ -448,8 +448,9 @@
   "playerPipTooltip": "Picture-in-Picture (Pro)",
   "playerPipUnavailable": "PiP non supportato su questo dispositivo",
   "playerPipEntered": "Riproduzione in finestra mini",
-  "playerAirplayTooltip": "AirPlay (Pro)",
-  "playerAirplayUnavailable": "AirPlay è disponibile solo su iOS",
+  "playerAirplayTooltip": "AirPlay (audio)",
+  "playerAirplayUnavailable": "AirPlay non è disponibile su questo dispositivo",
+  "playerAirplayAudioOnlyHint": "AirPlay invia l'audio alla TV. Per il video usa Centro di Controllo > Duplica schermo.",
   "playerCastTooltip": "Cast (in arrivo)",
 
   "settingsPipSection": "Picture-in-Picture",

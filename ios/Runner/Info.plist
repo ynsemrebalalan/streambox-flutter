@@ -88,6 +88,16 @@
 	<!-- App does not use non-exempt encryption -->
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
+	<!-- Google Sign-In client ID (GoogleService-Info.plist icindeki CLIENT_ID).
+	     GoogleService-Info.plist Xcode bundle'ina EKLI DEGIL; bu anahtar
+	     olmadan GIDSignIn client ID bulamayip NSException firlatiyor ve
+	     plugin onu yeniden firlattigi icin uygulama cokuyordu (2026-08-29).
+	     auth_repository.dart ayrica clientId'yi Dart'tan da veriyor —
+	     ikisi birlikte savunma katmani. -->
+	<key>GIDClientID</key>
+	<string>583696434507-dp78u7jc99i07f28qb4othk7quk73tfq.apps.googleusercontent.com</string>
+	<key>GIDServerClientID</key>
+	<string>583696434507-o0bs6rvbmbndn01k8191epkusd2aufls.apps.googleusercontent.com</string>
 	<!-- Firebase Auth / Google Sign-In URL scheme (REVERSED_CLIENT_ID) -->
 	<key>CFBundleURLTypes</key>
 	<array>
@@ -98,18 +108,6 @@
 			<array>
 				<string>com.googleusercontent.apps.583696434507-dp78u7jc99i07f28qb4othk7quk73tfq</string>
 			</array>
-		</dict>
-	</array>
-	<!-- AdMob — Pro user'da reklam yuklenmiyor (build_config.dart isPro check).
-	     Test app ID. Yayinlamadan once gercek app ID build_config.dart icinde override. -->
-	<key>GADApplicationIdentifier</key>
-	<string>ca-app-pub-3940256099942544~1458002511</string>
-	<!-- AdMob 2024+ SKAdNetwork manifest (App Tracking transparency icin gerekli olabilir) -->
-	<key>SKAdNetworkItems</key>
-	<array>
-		<dict>
-			<key>SKAdNetworkIdentifier</key>
-			<string>cstr6suwn9.skadnetwork</string>
 		</dict>
 	</array>
 </dict>

@@ -14,7 +14,6 @@ import '../../core/utils/responsive.dart';
 import '../../core/utils/tv_focus.dart';
 import '../../data/models/channel_model.dart';
 import '../../l10n/generated/app_localizations.dart';
-import '../ads/widgets/ads_banner.dart';
 import '../parental/parental_guard.dart';
 import '../playlists/playlists_screen.dart';
 import 'home_provider.dart';
@@ -159,7 +158,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 : _ChannelList(state: state),
           ),
           // Phase 5: Free user banner reklam — Pro user'da SizedBox.shrink().
-          const AdsBanner(),
           _BottomBar(state: state),
         ],
         ),

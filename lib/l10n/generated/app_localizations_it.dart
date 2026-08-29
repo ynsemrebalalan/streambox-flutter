@@ -1119,10 +1119,13 @@ class AppLocalizationsIt extends AppLocalizations {
   String get playerPipEntered => 'Riproduzione in finestra mini';
 
   @override
-  String get playerAirplayTooltip => 'AirPlay (Pro)';
+  String get playerAirplayTooltip => 'AirPlay (audio)';
 
   @override
-  String get playerAirplayUnavailable => 'AirPlay è disponibile solo su iOS';
+  String get playerAirplayUnavailable => 'AirPlay non è disponibile su questo dispositivo';
+
+  @override
+  String get playerAirplayAudioOnlyHint => 'AirPlay invia l\'audio alla TV. Per il video usa Centro di Controllo > Duplica schermo.';
 
   @override
   String get playerCastTooltip => 'Cast (in arrivo)';

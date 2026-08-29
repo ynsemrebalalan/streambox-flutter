@@ -29,23 +29,18 @@ import UIKit
     _ application: UIApplication,
     didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
   ) -> Bool {
-    // 0) AVAudioSession — Background audio + AirPlay route + PiP icin sart.
+    // 0) AVAudioSession — Background audio + AirPlay route icin sart.
     //    .playback category, video playback + lock screen + control center
     //    integration sagliyor; .allowAirPlay ile AirPlay/Apple TV route'lari
     //    sistem tarafindan tanitiliyor. Hata olursa app rendering blokmaz —
     //    sadece debug log.
-    do {
-      let session = AVAudioSession.sharedInstance()
-      try session.setCategory(
-        .playback,
-        mode: .moviePlayback,
-        options: [.allowAirPlay, .allowBluetoothA2DP]
-      )
-      try session.setActive(true, options: [])
-      NSLog("[Audio] AVAudioSession .playback + .allowAirPlay aktif.")
-    } catch {
-      NSLog("[Audio] AVAudioSession setup failed: \(error.localizedDescription)")
-    }
+    //
+    //    2026-08-29: `setActive(true)` BURADAN KALDIRILDI. .playback kategorisi
+    //    "mix with others" DEGIL; oturumu uygulama acilir acilmaz aktif etmek
+    //    kullanicinin o an dinledigi Spotify/podcast/radyoyu, hicbir sey
+    //    oynatmasak bile ANINDA susturuyordu. Artik oturum yalnizca oynatma
+    //    baslarken aktif edilir (`iptvai/audio` kanali → PlayerScreen).
+    configureAudioSession()
 
     // 1) Engine'i onceden baslat — plugin'ler ve task runner hazir olur.
     flutterEngine.run()
@@ -84,8 +79,76 @@ import UIKit
       }
     }
 
+    // 5) Ses oturumu kanali — oynatma baslarken aktif, biterken pasif.
+    let audioChannel = FlutterMethodChannel(
+      name: "iptvai/audio",
+      binaryMessenger: flutterEngine.binaryMessenger
+    )
+    audioChannel.setMethodCallHandler { [weak self] call, result in
+      switch call.method {
+      case "setActive":
+        let active = (call.arguments as? [String: Any])?["active"] as? Bool ?? false
+        result(self?.setAudioSessionActive(active) ?? false)
+      default:
+        result(FlutterMethodNotImplemented)
+      }
+    }
+
+    // 6) Cihaz fiziksel RAM'i — DeviceProfile tier hesabi icin.
+    //    iOS'ta /proc/meminfo yok; Dart tarafi bu deger olmadan HER iPhone'u
+    //    "high" sayiyordu (iOS 15 hedefiyle 2 GB'lik iPhone 6s/7, iPad Air 2
+    //    dahil) ve buyuk playlist import'unda jetsam ile oldurulebiliyordu.
+    let deviceChannel = FlutterMethodChannel(
+      name: "iptvai/device",
+      binaryMessenger: flutterEngine.binaryMessenger
+    )
+    deviceChannel.setMethodCallHandler { call, result in
+      switch call.method {
+      case "physicalMemoryMB":
+        let bytes = ProcessInfo.processInfo.physicalMemory
+        result(Int(bytes / (1024 * 1024)))
+      default:
+        result(FlutterMethodNotImplemented)
+      }
+    }
+
     NSLog("[Flutter] Explicit engine prewarmed + FlutterViewController ready.")
     return true
+  }
+
+  /// Kategori + secenekleri kurar; oturumu AKTIF ETMEZ.
+  private func configureAudioSession() {
+    do {
+      try AVAudioSession.sharedInstance().setCategory(
+        .playback,
+        mode: .moviePlayback,
+        options: [.allowAirPlay, .allowBluetoothA2DP]
+      )
+      NSLog("[Audio] AVAudioSession .playback + .allowAirPlay yapilandirildi (pasif).")
+    } catch {
+      NSLog("[Audio] AVAudioSession setup failed: \(error.localizedDescription)")
+    }
+  }
+
+  /// Oynatma basladiginda aktif, player kapaninca pasif eder.
+  /// Pasife alirken `.notifyOthersOnDeactivation` ile arka plandaki muzik
+  /// uygulamasi kaldigi yerden devam edebilir.
+  @discardableResult
+  private func setAudioSessionActive(_ active: Bool) -> Bool {
+    do {
+      if active {
+        // Kategori bir sekilde sifirlandiysa (baska plugin) yeniden kur.
+        configureAudioSession()
+        try AVAudioSession.sharedInstance().setActive(true, options: [])
+      } else {
+        try AVAudioSession.sharedInstance()
+          .setActive(false, options: [.notifyOthersOnDeactivation])
+      }
+      return true
+    } catch {
+      NSLog("[Audio] setActive(\(active)) failed: \(error.localizedDescription)")
+      return false
+    }
   }
 
   /// AirPlay sistem sheet'ini ac. AVRoutePickerView gorunmez sekilde

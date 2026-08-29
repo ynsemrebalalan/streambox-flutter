@@ -1119,10 +1119,13 @@ class AppLocalizationsTr extends AppLocalizations {
   String get playerPipEntered => 'Küçük pencerede oynatılıyor';
 
   @override
-  String get playerAirplayTooltip => 'AirPlay (Pro)';
+  String get playerAirplayTooltip => 'AirPlay (ses)';
 
   @override
-  String get playerAirplayUnavailable => 'AirPlay sadece iOS\'ta';
+  String get playerAirplayUnavailable => 'AirPlay bu cihazda kullanılamıyor';
+
+  @override
+  String get playerAirplayAudioOnlyHint => 'AirPlay sesi TV\'ye gönderir. Görüntü için Kontrol Merkezi > Ekran Yansıtma\'yı kullanın.';
 
   @override
   String get playerCastTooltip => 'Cast (yakında)';

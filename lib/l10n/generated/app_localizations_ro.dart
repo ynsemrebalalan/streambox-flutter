@@ -1119,10 +1119,13 @@ class AppLocalizationsRo extends AppLocalizations {
   String get playerPipEntered => 'Se redă într-o fereastră mică';
 
   @override
-  String get playerAirplayTooltip => 'AirPlay (Pro)';
+  String get playerAirplayTooltip => 'AirPlay (audio)';
 
   @override
-  String get playerAirplayUnavailable => 'AirPlay este disponibil doar pe iOS';
+  String get playerAirplayUnavailable => 'AirPlay nu este disponibil pe acest dispozitiv';
+
+  @override
+  String get playerAirplayAudioOnlyHint => 'AirPlay trimite sunetul către televizor. Pentru imagine folosește Centru de control > Oglindire ecran.';
 
   @override
   String get playerCastTooltip => 'Cast (în curând)';
