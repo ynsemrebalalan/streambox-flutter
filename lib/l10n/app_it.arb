@@ -480,5 +480,15 @@
   "profileEmptyName": "Il nome del profilo non può essere vuoto",
   "profileSwitched": "Profilo cambiato",
   "profileMaxFreeReached": "La versione gratuita supporta 1 profilo. Pro sblocca profili illimitati.",
-  "profileSection": "Profilo"
+  "profileSection": "Profilo",
+
+  "otherAppsTitle": "Altre nostre app",
+  "otherAppsSubtitle": "Altre app sviluppate dal nostro team",
+  "otherAppsEmpty": "Impossibile caricare l'elenco. Controlla la connessione a internet e riprova.",
+  "otherAppsRetry": "Riprova",
+  "otherAppsOpenFailed": "Impossibile aprire lo store.",
+  "otherAppsGateTitle": "Controllo genitori",
+  "otherAppsGateQuestion": "Per continuare, scrivi il risultato:",
+  "otherAppsCancel": "Annulla",
+  "otherAppsContinue": "Continua"
 }

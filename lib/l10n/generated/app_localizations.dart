@@ -2396,6 +2396,60 @@ abstract class AppLocalizations {
   /// In tr, this message translates to:
   /// **'Profil'**
   String get profileSection;
+
+  /// No description provided for @otherAppsTitle.
+  ///
+  /// In tr, this message translates to:
+  /// **'Diğer Uygulamalarımız'**
+  String get otherAppsTitle;
+
+  /// No description provided for @otherAppsSubtitle.
+  ///
+  /// In tr, this message translates to:
+  /// **'Ekibimizin geliştirdiği diğer uygulamalar'**
+  String get otherAppsSubtitle;
+
+  /// No description provided for @otherAppsEmpty.
+  ///
+  /// In tr, this message translates to:
+  /// **'Liste şu an yüklenemedi. İnternet bağlantınızı kontrol edip tekrar deneyin.'**
+  String get otherAppsEmpty;
+
+  /// No description provided for @otherAppsRetry.
+  ///
+  /// In tr, this message translates to:
+  /// **'Tekrar Dene'**
+  String get otherAppsRetry;
+
+  /// No description provided for @otherAppsOpenFailed.
+  ///
+  /// In tr, this message translates to:
+  /// **'Mağaza açılamadı.'**
+  String get otherAppsOpenFailed;
+
+  /// No description provided for @otherAppsGateTitle.
+  ///
+  /// In tr, this message translates to:
+  /// **'Ebeveyn kontrolü'**
+  String get otherAppsGateTitle;
+
+  /// No description provided for @otherAppsGateQuestion.
+  ///
+  /// In tr, this message translates to:
+  /// **'Devam etmek için işlemin sonucunu yazın:'**
+  String get otherAppsGateQuestion;
+
+  /// No description provided for @otherAppsCancel.
+  ///
+  /// In tr, this message translates to:
+  /// **'Vazgeç'**
+  String get otherAppsCancel;
+
+  /// No description provided for @otherAppsContinue.
+  ///
+  /// In tr, this message translates to:
+  /// **'Devam'**
+  String get otherAppsContinue;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

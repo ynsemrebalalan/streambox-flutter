@@ -1207,4 +1207,31 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get profileSection => 'الملف';
+
+  @override
+  String get otherAppsTitle => 'تطبيقاتنا الأخرى';
+
+  @override
+  String get otherAppsSubtitle => 'تطبيقات أخرى من تطوير فريقنا';
+
+  @override
+  String get otherAppsEmpty => 'تعذّر تحميل القائمة. تحقق من اتصالك بالإنترنت وحاول مرة أخرى.';
+
+  @override
+  String get otherAppsRetry => 'إعادة المحاولة';
+
+  @override
+  String get otherAppsOpenFailed => 'تعذّر فتح المتجر.';
+
+  @override
+  String get otherAppsGateTitle => 'تحقق الوالدين';
+
+  @override
+  String get otherAppsGateQuestion => 'للمتابعة، اكتب ناتج العملية:';
+
+  @override
+  String get otherAppsCancel => 'إلغاء';
+
+  @override
+  String get otherAppsContinue => 'متابعة';
 }

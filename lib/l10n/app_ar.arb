@@ -480,5 +480,15 @@
   "profileEmptyName": "لا يمكن أن يكون اسم الملف فارغًا",
   "profileSwitched": "تم تبديل الملف",
   "profileMaxFreeReached": "الإصدار المجاني يدعم ملفًا واحدًا. Pro يفتح ملفات غير محدودة.",
-  "profileSection": "الملف"
+  "profileSection": "الملف",
+
+  "otherAppsTitle": "تطبيقاتنا الأخرى",
+  "otherAppsSubtitle": "تطبيقات أخرى من تطوير فريقنا",
+  "otherAppsEmpty": "تعذّر تحميل القائمة. تحقق من اتصالك بالإنترنت وحاول مرة أخرى.",
+  "otherAppsRetry": "إعادة المحاولة",
+  "otherAppsOpenFailed": "تعذّر فتح المتجر.",
+  "otherAppsGateTitle": "تحقق الوالدين",
+  "otherAppsGateQuestion": "للمتابعة، اكتب ناتج العملية:",
+  "otherAppsCancel": "إلغاء",
+  "otherAppsContinue": "متابعة"
 }

@@ -480,5 +480,15 @@
   "profileEmptyName": "Profilname darf nicht leer sein",
   "profileSwitched": "Profil gewechselt",
   "profileMaxFreeReached": "Free-Version unterstützt 1 Profil. Pro schaltet unbegrenzte Profile frei.",
-  "profileSection": "Profil"
+  "profileSection": "Profil",
+
+  "otherAppsTitle": "Weitere Apps von uns",
+  "otherAppsSubtitle": "Weitere Apps unseres Teams",
+  "otherAppsEmpty": "Die Liste konnte nicht geladen werden. Prüfe deine Internetverbindung und versuche es erneut.",
+  "otherAppsRetry": "Erneut versuchen",
+  "otherAppsOpenFailed": "Der Store konnte nicht geöffnet werden.",
+  "otherAppsGateTitle": "Elternprüfung",
+  "otherAppsGateQuestion": "Gib zum Fortfahren das Ergebnis ein:",
+  "otherAppsCancel": "Abbrechen",
+  "otherAppsContinue": "Weiter"
 }

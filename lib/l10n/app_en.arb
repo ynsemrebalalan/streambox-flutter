@@ -480,5 +480,15 @@
   "profileEmptyName": "Profile name cannot be empty",
   "profileSwitched": "Profile switched",
   "profileMaxFreeReached": "Free version supports 1 profile. Pro unlocks unlimited profiles.",
-  "profileSection": "Profile"
+  "profileSection": "Profile",
+
+  "otherAppsTitle": "More Apps From Us",
+  "otherAppsSubtitle": "Other apps made by our team",
+  "otherAppsEmpty": "The list could not be loaded. Check your internet connection and try again.",
+  "otherAppsRetry": "Try Again",
+  "otherAppsOpenFailed": "Could not open the store.",
+  "otherAppsGateTitle": "Parental check",
+  "otherAppsGateQuestion": "To continue, type the answer:",
+  "otherAppsCancel": "Cancel",
+  "otherAppsContinue": "Continue"
 }

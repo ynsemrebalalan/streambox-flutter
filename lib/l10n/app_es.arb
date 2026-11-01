@@ -481,5 +481,15 @@
   "profileEmptyName": "El nombre del perfil no puede estar vacío",
   "profileSwitched": "Perfil cambiado",
   "profileMaxFreeReached": "La versión gratuita admite 1 perfil. Pro desbloquea perfiles ilimitados.",
-  "profileSection": "Perfil"
+  "profileSection": "Perfil",
+
+  "otherAppsTitle": "Más apps nuestras",
+  "otherAppsSubtitle": "Otras apps creadas por nuestro equipo",
+  "otherAppsEmpty": "No se pudo cargar la lista. Comprueba tu conexión a internet e inténtalo de nuevo.",
+  "otherAppsRetry": "Reintentar",
+  "otherAppsOpenFailed": "No se pudo abrir la tienda.",
+  "otherAppsGateTitle": "Control parental",
+  "otherAppsGateQuestion": "Para continuar, escribe el resultado:",
+  "otherAppsCancel": "Cancelar",
+  "otherAppsContinue": "Continuar"
 }

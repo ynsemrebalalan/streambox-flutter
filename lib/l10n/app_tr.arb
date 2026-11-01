@@ -509,5 +509,15 @@
   "profileEmptyName": "Profil adı boş olamaz",
   "profileSwitched": "Profil değiştirildi",
   "profileMaxFreeReached": "Free sürümde 1 profil. Pro ile sınırsız profil.",
-  "profileSection": "Profil"
+  "profileSection": "Profil",
+
+  "otherAppsTitle": "Diğer Uygulamalarımız",
+  "otherAppsSubtitle": "Ekibimizin geliştirdiği diğer uygulamalar",
+  "otherAppsEmpty": "Liste şu an yüklenemedi. İnternet bağlantınızı kontrol edip tekrar deneyin.",
+  "otherAppsRetry": "Tekrar Dene",
+  "otherAppsOpenFailed": "Mağaza açılamadı.",
+  "otherAppsGateTitle": "Ebeveyn kontrolü",
+  "otherAppsGateQuestion": "Devam etmek için işlemin sonucunu yazın:",
+  "otherAppsCancel": "Vazgeç",
+  "otherAppsContinue": "Devam"
 }

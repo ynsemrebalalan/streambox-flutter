@@ -1207,4 +1207,31 @@ class AppLocalizationsRo extends AppLocalizations {
 
   @override
   String get profileSection => 'Profil';
+
+  @override
+  String get otherAppsTitle => 'Alte aplicații ale noastre';
+
+  @override
+  String get otherAppsSubtitle => 'Alte aplicații create de echipa noastră';
+
+  @override
+  String get otherAppsEmpty => 'Lista nu a putut fi încărcată. Verifică conexiunea la internet și încearcă din nou.';
+
+  @override
+  String get otherAppsRetry => 'Încearcă din nou';
+
+  @override
+  String get otherAppsOpenFailed => 'Magazinul nu a putut fi deschis.';
+
+  @override
+  String get otherAppsGateTitle => 'Verificare parentală';
+
+  @override
+  String get otherAppsGateQuestion => 'Pentru a continua, scrie rezultatul:';
+
+  @override
+  String get otherAppsCancel => 'Anulează';
+
+  @override
+  String get otherAppsContinue => 'Continuă';
 }

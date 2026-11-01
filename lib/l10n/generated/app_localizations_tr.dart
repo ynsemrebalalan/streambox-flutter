@@ -1207,4 +1207,31 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String get profileSection => 'Profil';
+
+  @override
+  String get otherAppsTitle => 'Diğer Uygulamalarımız';
+
+  @override
+  String get otherAppsSubtitle => 'Ekibimizin geliştirdiği diğer uygulamalar';
+
+  @override
+  String get otherAppsEmpty => 'Liste şu an yüklenemedi. İnternet bağlantınızı kontrol edip tekrar deneyin.';
+
+  @override
+  String get otherAppsRetry => 'Tekrar Dene';
+
+  @override
+  String get otherAppsOpenFailed => 'Mağaza açılamadı.';
+
+  @override
+  String get otherAppsGateTitle => 'Ebeveyn kontrolü';
+
+  @override
+  String get otherAppsGateQuestion => 'Devam etmek için işlemin sonucunu yazın:';
+
+  @override
+  String get otherAppsCancel => 'Vazgeç';
+
+  @override
+  String get otherAppsContinue => 'Devam';
 }

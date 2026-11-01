@@ -1207,4 +1207,31 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get profileSection => 'Perfil';
+
+  @override
+  String get otherAppsTitle => 'Más apps nuestras';
+
+  @override
+  String get otherAppsSubtitle => 'Otras apps creadas por nuestro equipo';
+
+  @override
+  String get otherAppsEmpty => 'No se pudo cargar la lista. Comprueba tu conexión a internet e inténtalo de nuevo.';
+
+  @override
+  String get otherAppsRetry => 'Reintentar';
+
+  @override
+  String get otherAppsOpenFailed => 'No se pudo abrir la tienda.';
+
+  @override
+  String get otherAppsGateTitle => 'Control parental';
+
+  @override
+  String get otherAppsGateQuestion => 'Para continuar, escribe el resultado:';
+
+  @override
+  String get otherAppsCancel => 'Cancelar';
+
+  @override
+  String get otherAppsContinue => 'Continuar';
 }

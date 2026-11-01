@@ -18,6 +18,7 @@ import '../billing/providers/purchases_providers.dart';
 import '../billing/widgets/paywall_trigger.dart';
 import '../cloud_sync/widgets/cloud_sync_tile.dart';
 import '../epg/widgets/epg_auto_refresh_tile.dart';
+import '../other_apps/other_apps_screen.dart';
 
 // ── State ─────────────────────────────────────────────────────────────────────
 
@@ -762,6 +763,22 @@ class _AboutSection extends StatelessWidget {
           title:    Text(l.homeAppTitle),
           subtitle: Text(
               l.settingsAppVersion(appVersion.isEmpty ? '…' : appVersion)),
+        ),
+        const _TileDivider(),
+        // Diğer uygulamalar (liste daveddeva.com/apps.json'dan gelir).
+        // selfPackage sitedeki Android paket adıdır (iOS bundle id'si farklı).
+        _NavTile(
+          icon: Icons.apps_rounded,
+          title: l.otherAppsTitle,
+          subtitle: l.otherAppsSubtitle,
+          onTap: () => Navigator.of(context).push(
+            MaterialPageRoute<void>(
+              builder: (_) => OtherAppsScreen(
+                selfPackage: 'com.streambox.app',
+                lang: Localizations.localeOf(context).languageCode,
+              ),
+            ),
+          ),
         ),
         const _TileDivider(),
         _NavTile(

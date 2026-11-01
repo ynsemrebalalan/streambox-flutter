@@ -481,5 +481,15 @@
   "profileEmptyName": "Numele profilului nu poate fi gol",
   "profileSwitched": "Profil schimbat",
   "profileMaxFreeReached": "Versiunea gratuită acceptă 1 profil. Pro deblochează profiluri nelimitate.",
-  "profileSection": "Profil"
+  "profileSection": "Profil",
+
+  "otherAppsTitle": "Alte aplicații ale noastre",
+  "otherAppsSubtitle": "Alte aplicații create de echipa noastră",
+  "otherAppsEmpty": "Lista nu a putut fi încărcată. Verifică conexiunea la internet și încearcă din nou.",
+  "otherAppsRetry": "Încearcă din nou",
+  "otherAppsOpenFailed": "Magazinul nu a putut fi deschis.",
+  "otherAppsGateTitle": "Verificare parentală",
+  "otherAppsGateQuestion": "Pentru a continua, scrie rezultatul:",
+  "otherAppsCancel": "Anulează",
+  "otherAppsContinue": "Continuă"
 }
