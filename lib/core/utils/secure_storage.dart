@@ -22,11 +22,56 @@ class SecureStorage {
   // ── OpenAI API Key ─────────────────────────────────────────────────────────
   static const _keyOpenAi = 'openai_api_key';
 
+  /// Kullanıcı anahtarı Ayarlar'dan KENDİSİ girdi mi? Eski sürümler uzak
+  /// (paylaşılan) `openAiApiKey`'i aynı anahtara yazıyordu; bayraksız anahtar
+  /// "kendi anahtarı" sayılmaz (Pro/deneme kapısını atlatmasın).
+  static const _keyByokFlag = 'byok_entered_by_user';
+
+  /// Ham yazım (yalnız eski plain-settings göçü). Bayrak yazmaz.
   static Future<void> setOpenAiKey(String key) =>
       _storage.write(key: _keyOpenAi, value: key);
 
-  static Future<String> getOpenAiKey() async =>
-      await _storage.read(key: _keyOpenAi) ?? '';
+  /// Ayarlar'da kullanıcının girdiği anahtar: anahtar + BYOK bayrağı.
+  static Future<void> setUserOpenAiKey(String key) async {
+    await _storage.write(key: _keyOpenAi, value: key);
+    await _storage.write(key: _keyByokFlag, value: 'true');
+  }
+
+  static Future<void> clearOpenAiKey() async {
+    await _storage.delete(key: _keyOpenAi);
+    await _storage.delete(key: _keyByokFlag);
+  }
+
+  /// Kullanıcının kendi anahtarı (bayrak yoksa '').
+  static Future<String> getOpenAiKey() async => ownKeyFrom(
+        key: await _storage.read(key: _keyOpenAi),
+        userFlag: await _storage.read(key: _keyByokFlag),
+      );
+
+  static String ownKeyFrom({required String? key, required String? userFlag}) =>
+      userFlag == 'true' ? (key ?? '') : '';
+
+  static bool shouldPurgeLegacyKey({
+    required bool migrationDone,
+    required String? key,
+    required String? userFlag,
+  }) =>
+      !migrationDone && (key ?? '').isNotEmpty && userFlag != 'true';
+
+  /// Tek seferlik göç: bayraksız (uzaktan önbelleğe alınmış paylaşılan)
+  /// anahtarı sil. [migrationDone] ayar bayrağı main.dart'ta tutulur.
+  static Future<bool> purgeLegacySharedOpenAiKey({
+    required bool migrationDone,
+  }) async {
+    final key = await _storage.read(key: _keyOpenAi);
+    final flag = await _storage.read(key: _keyByokFlag);
+    if (!shouldPurgeLegacyKey(
+        migrationDone: migrationDone, key: key, userFlag: flag)) {
+      return false;
+    }
+    await _storage.delete(key: _keyOpenAi);
+    return true;
+  }
 
   // ── Groq Proxy Secret ──────────────────────────────────────────────────────
   static const _keyProxySecret = 'groq_proxy_secret';

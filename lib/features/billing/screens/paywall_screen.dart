@@ -3,13 +3,18 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:purchases_flutter/purchases_flutter.dart';
-import 'package:url_launcher/url_launcher.dart';
 
+import '../../../core/utils/device_tier.dart';
 import '../../../core/utils/responsive.dart';
 import '../../../l10n/generated/app_localizations.dart';
+import '../logic/paywall_logic.dart';
+import '../logic/playlist_limit.dart';
 import '../providers/purchases_providers.dart';
+import '../widgets/paywall_widgets.dart';
 
-/// Trigger context — analytics ve copy variant için (bu sürümde copy aynı).
+/// Pro satin alma ekrani — alttan acilan modal (router: fullscreenDialog).
+/// Apple 3.1.2: fiyat + periyot belirgin, deneme/yenileme kosullari, Restore,
+/// Gizlilik + Kullanim Sartlari linkleri her durumda gorunur.
 class PaywallScreen extends ConsumerStatefulWidget {
   final String trigger;
   const PaywallScreen({super.key, this.trigger = 'unknown'});
@@ -20,9 +25,12 @@ class PaywallScreen extends ConsumerStatefulWidget {
 
 class _PaywallScreenState extends ConsumerState<PaywallScreen> {
   Offerings? _offerings;
+  Map<String, bool?> _introEligible = const {};
   bool _loading = true;
   bool _purchasing = false;
-  String? _error;
+  bool _failed = false;
+  bool _closed = false;
+  late final bool _initiallyPro = ref.read(isProProvider);
 
   @override
   void initState() {
@@ -30,10 +38,16 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
     _load();
   }
 
+  void _close(bool purchased) {
+    if (_closed || !mounted) return;
+    _closed = true;
+    context.pop(purchased);
+  }
+
   Future<void> _load() async {
     setState(() {
       _loading = true;
-      _error = null;
+      _failed = false;
     });
     try {
       final svc = ref.read(purchasesServiceProvider);
@@ -43,18 +57,39 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
         await svc.ensureConfigured();
       }
       final offers = await svc.getOfferings();
+      // Deneme/tanıtım uygunluğu — daha önce deneyen kullanıcıya
+      // "N gün ücretsiz" gösterilmesin.
+      final ids = [
+        for (final p in [...?offers?.current?.availablePackages])
+          if (p.storeProduct.introductoryPrice != null) p.storeProduct.identifier,
+      ];
+      final eligible = await svc
+          .introEligibility(ids)
+          .timeout(const Duration(seconds: 5), onTimeout: () => const {});
       if (!mounted) return;
       setState(() {
         _offerings = offers;
+        _introEligible = eligible;
         _loading = false;
+        _failed = !svc.isConfigured;
       });
     } catch (e) {
+      debugPrint('[Paywall] offerings load failed: $e');
       if (!mounted) return;
       setState(() {
         _loading = false;
-        _error = e.toString();
+        _failed = true;
       });
     }
+  }
+
+  void _snack(String msg, {SnackBarAction? action, Duration? duration}) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: Text(msg),
+      action: action,
+      duration: duration ?? const Duration(seconds: 4),
+    ));
   }
 
   Future<void> _purchase(Package pkg) async {
@@ -65,82 +100,61 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
       final svc = ref.read(purchasesServiceProvider);
       final info = await svc.purchasePackage(pkg);
       // RC SDK'nin dondurdugu CustomerInfo'yu DOGRUDAN parse et — listener +
-      // provider chain race'i bypass et. Sonra notifier'a force-set yap.
+      // provider chain race'i bypass et.
       final ent = svc.parseEntitlement(info);
-      debugPrint('[Paywall] purchase complete — productId=${pkg.identifier} '
-          'isPro=${ent.isPro} activeEntitlements=${info.entitlements.active.keys.toList()} '
-          'allEntitlements=${info.entitlements.all.keys.toList()}');
       if (!mounted) return;
-
       if (ent.isPro) {
-        // CustomerInfo dogrudan pro doner → state'i hemen guncelle
         ref.read(purchasesNotifierProvider.notifier).setEntitlement(ent);
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text(l.paywallPurchaseSuccess)));
-        if (mounted) context.pop(true);
+        _snack(l.paywallPurchaseSuccess);
+        _close(true);
         return;
       }
 
       // Listener'in tetiklenmesini bekle (max 3 sn polling)
       for (var i = 0; i < 6; i++) {
-        await Future.delayed(const Duration(milliseconds: 500));
+        await Future<void>.delayed(const Duration(milliseconds: 500));
         if (!mounted) return;
         if (ref.read(isProProvider)) {
-          ScaffoldMessenger.of(context)
-              .showSnackBar(SnackBar(content: Text(l.paywallPurchaseSuccess)));
-          if (mounted) context.pop(true);
+          _snack(l.paywallPurchaseSuccess);
+          _close(true);
           return;
         }
       }
 
-      // Hala pro degil → manuel restore (RC backend'inden customerInfo yenile)
-      await ref.read(purchasesNotifierProvider.notifier).restore();
+      // Hala pro degil → RC backend'inden customerInfo yenile.
+      await ref.read(purchasesNotifierProvider.notifier).refresh(force: true);
       if (!mounted) return;
       if (ref.read(isProProvider)) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text(l.paywallPurchaseSuccess)));
-        if (mounted) context.pop(true);
+        _snack(l.paywallPurchaseSuccess);
+        _close(true);
         return;
       }
 
-      // Satin alma TAMAMLANDI ama entitlement aktif degil — RC dashboard
-      // konfigurasyon sorunu. Kullaniciya GERCEK entitlement adlarini goster
-      // ki RC dashboard'da hangi adin atandigi tespit edebilsin (entitlement
-      // 'pro' degil baska bir ad ise -> productIdentifier mapping bozuk).
-      final freshInfo = await svc.getCustomerInfo();
-      final activeKeys =
-          freshInfo?.entitlements.active.keys.toList() ?? const <String>[];
-      final allKeys =
-          freshInfo?.entitlements.all.keys.toList() ?? const <String>[];
-      debugPrint('[Paywall] WARN: purchase succeeded but entitlement "pro" '
-          'is NOT active. productId=${pkg.identifier} '
-          'activeEntitlements=$activeKeys allEntitlements=$allKeys');
-
+      // Satin alma tamamlandi ama entitlement aktif degil (RC dashboard
+      // urun-entitlement eslesmesi). Teshis YALNIZ log'a; kullaniciya
+      // yerellestirilmis mesaj + Restore aksiyonu.
+      final fresh = await svc.getCustomerInfo();
+      debugPrint('[Paywall] WARN: purchase ok but entitlement inactive. '
+          'product=${pkg.storeProduct.identifier} '
+          'active=${fresh?.entitlements.active.keys.toList()} '
+          'all=${fresh?.entitlements.all.keys.toList()}');
       if (!mounted) return;
-      final diag = activeKeys.isEmpty
-          ? (allKeys.isEmpty
-              ? 'RC: hic entitlement yok (product attach eksik)'
-              : 'RC entitlement adlari: ${allKeys.join(", ")} (kodda "pro" bekleniyor)')
-          : 'RC active: ${activeKeys.join(", ")} (kodda "pro" bekleniyor)';
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text('Satin alma tamamlandi fakat Pro aktiflesmedi. '
-            '$diag — destek@iptvaiplayer.com.tr'),
-        duration: const Duration(seconds: 12),
-      ));
+      _snack(
+        l.paywallActivationPending,
+        duration: const Duration(seconds: 10),
+        action: SnackBarAction(
+            label: l.paywallRestoreButton, onPressed: _restore),
+      );
     } on PlatformException catch (e) {
-      if (!mounted) return;
       final code = PurchasesErrorHelper.getErrorCode(e);
+      debugPrint('[Paywall] purchase error: ${code.name} ${e.message}');
       if (code == PurchasesErrorCode.purchaseCancelledError) {
-        ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(l.paywallPurchaseCancelled)));
+        _snack(l.paywallPurchaseCancelled);
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-            content: Text(l.paywallPurchaseError(e.message ?? code.name))));
+        _snack(l.paywallPurchaseError(e.message ?? code.name));
       }
     } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(l.paywallPurchaseError(e.toString()))));
+      _snack(l.paywallPurchaseError('$e'));
     } finally {
       if (mounted) setState(() => _purchasing = false);
     }
@@ -154,14 +168,14 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
       await ref.read(purchasesNotifierProvider.notifier).restore();
       if (!mounted) return;
       if (ref.read(isProProvider)) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text(l.paywallPurchaseSuccess)));
-        if (mounted) context.pop(true);
+        _snack(l.paywallPurchaseSuccess);
+        _close(true);
+      } else {
+        final err = ref.read(purchasesNotifierProvider).error;
+        _snack(err != null ? l.paywallPurchaseError('$err') : l.paywallRestoreNothing);
       }
     } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(l.paywallPurchaseError(e.toString()))));
+      _snack(l.paywallPurchaseError('$e'));
     } finally {
       if (mounted) setState(() => _purchasing = false);
     }
@@ -170,9 +184,18 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
   @override
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context);
+    // Android: yalniz satin alma sonrasi (false → true) otomatik kapan.
+    ref.listen<bool>(isProProvider, (prev, next) {
+      if (next && !_initiallyPro) _close(true);
+    });
     return Scaffold(
       appBar: AppBar(
         title: Text(l.paywallTitle),
+        leading: IconButton(
+          icon: const Icon(Icons.close),
+          tooltip: MaterialLocalizations.of(context).closeButtonTooltip,
+          onPressed: () => _close(false),
+        ),
         actions: [
           TextButton(
             onPressed: _purchasing ? null : _restore,
@@ -180,14 +203,8 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
           ),
         ],
       ),
-      // Apple 3.1.2(c) fix: Privacy + EULA linkleri Scaffold bottomNavigationBar'da
-      // — her durumda (loading, error, no-offerings, normal) GORUNUR. Eskiden
-      // _buildBody icinde idi, IAP load fail olunca da Apple bot link bulamadi
-      // → "in-app link yok" reddi (b3e3c893 submission, 2026-05-25).
-      bottomNavigationBar: SafeArea(
-        top: false,
-        child: _LegalLinksBar(l),
-      ),
+      // Apple 3.1.2(c): Privacy + Terms her durumda (loading/error dahil) gorunur.
+      bottomNavigationBar: const SafeArea(top: false, child: PaywallLegalLinksBar()),
       body: SafeArea(
         child: ResponsiveCenter(
           maxWidth: Responsive.formMaxWidth(context),
@@ -198,282 +215,69 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
   }
 
   Widget _buildBody(AppLocalizations l) {
-    if (_loading) {
-      return const Center(child: CircularProgressIndicator());
-    }
-
-    final svc = ref.read(purchasesServiceProvider);
-    if (!svc.isConfigured || _error != null) {
-      return Center(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Icon(Icons.cloud_off_outlined, size: 64),
-              const SizedBox(height: 12),
-              Text(l.paywallNotConfigured, textAlign: TextAlign.center),
-            ],
-          ),
-        ),
-      );
-    }
-
-    final offering = _offerings?.current;
-    if (offering == null || offering.availablePackages.isEmpty) {
-      return Center(child: Text(l.paywallNoOfferings));
-    }
+    final cs = Theme.of(context).colorScheme;
+    final tt = Theme.of(context).textTheme;
+    final packages = [...?_offerings?.current?.availablePackages]
+      ..sort((a, b) => packageSortRank(a.identifier)
+          .compareTo(packageSortRank(b.identifier)));
+    final hasLifetime = packages.any((p) => packageSortRank(p.identifier) == 0);
+    final hasSubscription =
+        packages.any((p) => packageSortRank(p.identifier) != 0);
 
     return ListView(
-      padding: const EdgeInsets.all(24),
+      padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
       children: [
-        Text(
-          l.paywallSubtitle,
-          textAlign: TextAlign.center,
-          style: TextStyle(
-              fontSize: 14,
-              color: Theme.of(context).colorScheme.onSurfaceVariant),
+        if (widget.trigger == 'aiSubtitle') ...[
+          Text(l.paywallAiTrialEnded,
+              textAlign: TextAlign.center,
+              style: tt.titleSmall?.copyWith(
+                  color: cs.primary, fontWeight: FontWeight.w600)),
+          const SizedBox(height: 8),
+        ],
+        Text(l.paywallSubtitle,
+            textAlign: TextAlign.center,
+            style: tt.bodyMedium?.copyWith(color: cs.onSurfaceVariant)),
+        const SizedBox(height: 20),
+        PaywallBenefitsList(
+          playlistLimit: playlistLimitFor(isPro: true, tier: DeviceProfile.tier),
         ),
-        const SizedBox(height: 24),
-        _BenefitsList(),
-        const SizedBox(height: 24),
-        ..._buildPackageCards(offering.availablePackages, l),
-        const SizedBox(height: 16),
-        Text(
-          l.paywallTermsFooter,
-          textAlign: TextAlign.center,
-          style: TextStyle(
-              fontSize: 12,
-              color: Theme.of(context).colorScheme.onSurfaceVariant),
-        ),
-        // Privacy + EULA linkleri Scaffold bottomNavigationBar'a tasindi
-        // (Apple 3.1.2(c) — her durumda gorunur olmali).
-      ],
-    );
-  }
-
-  List<Widget> _buildPackageCards(List<Package> pkgs, AppLocalizations l) {
-    // Yıllık'ı highlight göster (sektör std).
-    final widgets = <Widget>[];
-    for (final pkg in pkgs) {
-      final isAnnual = pkg.identifier.contains('annual') ||
-          pkg.identifier == r'$rc_annual';
-      final isLifetime = pkg.identifier.contains('lifetime') ||
-          pkg.identifier == r'$rc_lifetime';
-      widgets.add(_PackageCard(
-        pkg: pkg,
-        highlighted: isAnnual,
-        badge: isAnnual
-            ? l.paywallBadgePopular
-            : (isLifetime ? l.paywallBadgeBest : null),
-        onPressed: _purchasing ? null : () => _purchase(pkg),
-        loading: _purchasing,
-      ));
-      widgets.add(const SizedBox(height: 12));
-    }
-    return widgets;
-  }
-}
-
-/// Apple 3.1.2(c) zorunlu: subscription paywall'inda Privacy + EULA + Restore
-/// linkleri HER ZAMAN gorunur olmali. Eskiden bu linkler ListView icindeydi;
-/// IAP load fail oldugunda paywall'a hic ulasamiyordu → Apple reddetti
-/// (b3e3c893 submission, 2026-05-25).
-///
-/// Scaffold.bottomNavigationBar olarak ekleniyor: loading spinner gosterilse
-/// bile, "no offerings" hatasi olsa bile, IAP backend cokmus olsa bile
-/// linkler ekranin altinda sabit kalir.
-class _LegalLinksBar extends StatelessWidget {
-  final AppLocalizations l;
-  const _LegalLinksBar(this.l);
-
-  Future<void> _open(String url) async {
-    final uri = Uri.parse(url);
-    if (await canLaunchUrl(uri)) {
-      await launchUrl(uri, mode: LaunchMode.externalApplication);
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    return Container(
-      decoration: BoxDecoration(
-        color: cs.surface,
-        border: Border(
-          top: BorderSide(
-            color: cs.outlineVariant.withValues(alpha: 0.3),
-            width: 0.5,
+        const SizedBox(height: 20),
+        if (_loading)
+          ...List.generate(3, (_) => const PaywallSkeletonCard())
+        else if (_failed || packages.isEmpty) ...[
+          PaywallErrorState(
+            message: _failed ? l.paywallLoadError : l.paywallNoOfferings,
+            onRetry: _load,
           ),
-        ),
-      ),
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          TextButton(
-            onPressed: () => _open('https://iptvaiplayer.com.tr/?gizlilik'),
-            child: Text(
-              l.paywallPrivacyLink,
-              style: const TextStyle(fontSize: 13),
+          ...List.generate(3, (_) => const PaywallSkeletonCard()),
+        ] else
+          for (final pkg in packages)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: PaywallPackageCard(
+                pkg: pkg,
+                highlighted:
+                    isHighlightedPackage(pkg.identifier, hasLifetime: hasLifetime),
+                busy: _purchasing,
+                introEligible: _introEligible[pkg.storeProduct.identifier],
+                onPurchase: () => _purchase(pkg),
+              ),
             ),
-          ),
+        const SizedBox(height: 4),
+        OutlinedButton(
+          onPressed: _purchasing ? null : _restore,
+          child: Text(l.paywallRestoreButton),
+        ),
+        if (hasSubscription || _loading || _failed) ...[
+          const SizedBox(height: 16),
           Text(
-            ' • ',
-            style: TextStyle(color: cs.onSurfaceVariant),
-          ),
-          TextButton(
-            onPressed: () =>
-                _open('https://iptvaiplayer.com.tr/subscription-terms.php'),
-            child: Text(
-              l.paywallTermsLink,
-              style: const TextStyle(fontSize: 13),
-            ),
+            l.paywallTermsFooterApple,
+            textAlign: TextAlign.center,
+            style: tt.bodySmall?.copyWith(
+                fontSize: 13, color: cs.onSurfaceVariant, height: 1.35),
           ),
         ],
-      ),
+      ],
     );
-  }
-}
-
-class _BenefitsList extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    final l = AppLocalizations.of(context);
-    final items = [
-      (Icons.playlist_add_check,
-          l.paywallBenefitUnlimitedPlaylists, l.paywallBenefitUnlimitedPlaylistsDesc),
-      (Icons.subtitles,
-          l.paywallBenefitAiSubtitles, l.paywallBenefitAiSubtitlesDesc),
-      (Icons.cloud_sync,
-          l.paywallBenefitCloudSync, l.paywallBenefitCloudSyncDesc),
-      (Icons.tv,
-          l.paywallBenefitTvApps, l.paywallBenefitTvAppsDesc),
-    ];
-    return Column(
-      children: items
-          .map((it) => Padding(
-                padding: const EdgeInsets.symmetric(vertical: 6),
-                child: Row(
-                  children: [
-                    Icon(it.$1,
-                        color: Theme.of(context).colorScheme.primary,
-                        size: 28),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(it.$2,
-                              style: const TextStyle(
-                                  fontSize: 15, fontWeight: FontWeight.w600)),
-                          Text(it.$3,
-                              style: TextStyle(
-                                  fontSize: 13,
-                                  color: Theme.of(context)
-                                      .colorScheme
-                                      .onSurfaceVariant)),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ))
-          .toList(),
-    );
-  }
-}
-
-class _PackageCard extends StatelessWidget {
-  final Package pkg;
-  final bool highlighted;
-  final String? badge;
-  final VoidCallback? onPressed;
-  final bool loading;
-
-  const _PackageCard({
-    required this.pkg,
-    required this.highlighted,
-    required this.badge,
-    required this.onPressed,
-    required this.loading,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    final priceStr = pkg.storeProduct.priceString;
-    final title = _humanTitle(context, pkg);
-
-    return Material(
-      color: highlighted
-          ? cs.primaryContainer
-          : cs.surfaceContainerHighest,
-      borderRadius: BorderRadius.circular(12),
-      child: InkWell(
-        onTap: onPressed,
-        borderRadius: BorderRadius.circular(12),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Row(
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Text(title,
-                            style: const TextStyle(
-                                fontSize: 16, fontWeight: FontWeight.w700)),
-                        if (badge != null) ...[
-                          const SizedBox(width: 8),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 6, vertical: 2),
-                            decoration: BoxDecoration(
-                              color: cs.primary,
-                              borderRadius: BorderRadius.circular(4),
-                            ),
-                            child: Text(badge!,
-                                style: TextStyle(
-                                    fontSize: 10,
-                                    fontWeight: FontWeight.w700,
-                                    color: cs.onPrimary)),
-                          ),
-                        ],
-                      ],
-                    ),
-                    const SizedBox(height: 4),
-                    Text(priceStr,
-                        style: TextStyle(
-                            fontSize: 14,
-                            color: cs.onSurfaceVariant)),
-                  ],
-                ),
-              ),
-              if (loading)
-                const SizedBox(
-                    width: 22,
-                    height: 22,
-                    child: CircularProgressIndicator(strokeWidth: 2))
-              else
-                const Icon(Icons.arrow_forward_ios, size: 18),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  String _humanTitle(BuildContext ctx, Package pkg) {
-    final l = AppLocalizations.of(ctx);
-    final id = pkg.identifier.toLowerCase();
-    if (id.contains('lifetime')) return l.paywallPlanLifetime;
-    if (id.contains('annual') || id.contains('yearly')) {
-      return l.paywallPlanYearly;
-    }
-    if (id.contains('monthly')) return l.paywallPlanMonthly;
-    return pkg.storeProduct.title;
   }
 }

@@ -1,123 +1,34 @@
-import 'dart:convert';
-import 'package:flutter/foundation.dart';
 import 'package:uuid/uuid.dart';
-import '../../core/utils/device_tier.dart';
-import '../../core/utils/http_client.dart';
+import '../../core/utils/search_normalizer.dart';
 import '../models/channel_model.dart';
 import '../models/playlist_model.dart';
 
 class M3uParser {
-  static const _uuid = Uuid();
-
-  /// Fetches and parses an M3U playlist. Returns parsed channels.
-  /// Cihaz tier'ina gore adaptive parse:
-  /// - High/Mid: isolate'da parse (UI donmaz)
-  /// - Low: ana thread'de parse (isolate spawn overhead'i atlanir)
-  ///        AMA 5000+ kanal varsa low'da bile isolate kullanilir.
-  static Future<List<ChannelModel>> fetchAndParse(PlaylistModel playlist) async {
-    // ignore: avoid_print
-    print('[M3uParser] Fetching: ${playlist.url}');
-    final response = await AppHttp.get(
-      Uri.parse(playlist.url),
-      timeout: const Duration(seconds: 30),
-      retries: 3,
-    );
-    // ignore: avoid_print
-    print('[M3uParser] HTTP ${response.statusCode}, '
-        '${response.bodyBytes.length}B');
-    if (response.statusCode != 200) {
-      throw HttpStatusException(response.statusCode, playlist.url);
-    }
-    final content = utf8.decode(response.bodyBytes);
-
-    // Kaba satir sayisi tahmini: isolate karari icin
-    final estimatedLines = '\n'.allMatches(content).length;
-    final useIsolate = DeviceProfile.useIsolateForParse ||
-        estimatedLines > DeviceProfile.isolateThreshold;
-
-    if (kDebugMode) {
-      debugPrint('[M3uParser] lines~$estimatedLines, '
-          'isolate=$useIsolate, tier=${DeviceProfile.tier}');
-    }
-
-    final List<ChannelModel> result;
-    if (useIsolate) {
-      result = await compute(_parseInIsolate, _ParseArgs(playlist, content));
-    } else {
-      result = parse(playlist, content);
-    }
-    // ignore: avoid_print
-    print('[M3uParser] Parsed ${result.length} channels');
-    return result;
-  }
-
-  static List<ChannelModel> _parseInIsolate(_ParseArgs args) =>
-      parse(args.playlist, args.content);
-
+  /// Tüm içeriği tek seferde parse eder (küçük listeler / testler).
+  /// Büyük listeler [M3uLineParser] ile akışlı işlenir (bkz. M3uStreamLoader).
   static List<ChannelModel> parse(PlaylistModel playlist, String content) {
-    final lines   = content.split('\n');
+    final parser = M3uLineParser(
+      playlistId:   playlist.id,
+      allowedTypes: playlist.allowedTypes.split(',').toSet(),
+    );
     final channels = <ChannelModel>[];
-    final allowed  = playlist.allowedTypes.split(',');
-
-    String? name, logo, category, tvgId, seriesName;
-    List<String> categories = const [];
-    int seasonNum = 0, epNum = 0, sortIdx = 0;
-
-    for (var i = 0; i < lines.length; i++) {
-      final line = lines[i].trim();
-      if (line.isEmpty) continue;
-
-      if (line.startsWith('#EXTINF')) {
-        name = _attr(line, 'tvg-name')    ?? _displayName(line);
-        logo = _attr(line, 'tvg-logo')    ?? '';
-        tvgId= _attr(line, 'tvg-id')      ?? '';
-        // v6: çoklu kategori — `group-title="Aksiyon,Komedi"` virgülle
-        // ayrılmışsa kanal birden fazla kategoriye ait sayılır. Tek değer
-        // ise legacy davranış: liste tek elemanlı, display = aynısı.
-        final rawGroup = _attr(line, 'group-title') ?? 'Genel';
-        categories = _splitCategories(rawGroup);
-        category = categories.isNotEmpty ? categories.first : 'Genel';
-        // streamType nihai olarak URL geldikten sonra `_detectStreamType` ile
-        // belirlenir (URL extension/path en güçlü sinyal). 2026-05-11.
-        seriesName = '';
-        seasonNum  = 0;
-        epNum      = 0;
-      } else if (!line.startsWith('#') && name != null) {
-        final url = line.trim();
-        if (url.isNotEmpty) {
-          // URL bilgisiyle stream type'ı YENİDEN değerlendir — en sağlam
-          // tespit URL extension'dan (.mp4 = movie, .m3u8 = live, vs.) ve
-          // Xtream path segmentinden (/live/, /movie/, /series/) gelir.
-          // 2026-05-11 kullanıcı raporu: "canlı içinde filmler vardı".
-          final finalType = _detectStreamType(category ?? '', name, url);
-          if (finalType == 'series') {
-            final parsed = _parseSeries(name);
-            seriesName = parsed.$1;
-            seasonNum  = parsed.$2;
-            epNum      = parsed.$3;
-          }
-          if (allowed.contains(finalType)) {
-            channels.add(ChannelModel(
-              id:            _uuid.v5(Namespace.url.value, '${playlist.id}:$url'),
-              playlistId:    playlist.id,
-              name:          name,
-              streamUrl:     url,
-              logoUrl:       logo ?? '',
-              category:      category ?? 'Genel',
-              categoryIds:   categories,
-              streamType:    finalType,
-              tvgId:         tvgId ?? '',
-              sortOrder:     sortIdx++,
-              seriesName:    seriesName ?? '',
-              seasonNumber:  seasonNum,
-              episodeNumber: epNum,
-            ));
-          }
-        }
-        name = null;
-      }
+    for (final line in content.split('\n')) {
+      final ch = parser.addLine(line);
+      if (ch != null) channels.add(ch);
     }
     return channels;
+  }
+
+  /// `#EXTM3U url-tvg="..."` / `x-tvg-url="..."` başlığından EPG adresi.
+  /// Virgülle birden fazla adres verilmişse ilki alınır. Yoksa null.
+  static String? headerEpgUrl(String line) {
+    final raw = _attr(line, 'url-tvg') ?? _attr(line, 'x-tvg-url');
+    if (raw == null) return null;
+    for (final part in raw.split(',')) {
+      final v = part.trim();
+      if (v.isNotEmpty) return v;
+    }
+    return null;
   }
 
   // ---------------------------------------------------------------------------
@@ -152,18 +63,21 @@ class M3uParser {
     return out.toList();
   }
 
-  // Stream type detection. Sira kritik:
-  //   1) Series kategori sinyali (en guclu)
-  //   2) Series isim pattern (Sxx Exx / Bolum / Episode)
-  //   3) Movie kategori sinyali
-  //   4) Movie isim pattern (yil parantezi)
-  //   5) Default live
+  // Stream type detection — Android M3uParser.kt detectStreamType paritesi.
+  // Hiyerarsi (en gucluden zayifa):
+  //   1) URL path   — /series/ /movie/ /live/ (provider explicit)
+  //   2) Per-item ad — guclu isaret (S01E05, 1x05, Sezon/Season N) her
+  //      grupta dizi; zayif isaret (Bolum/Episode N) film grubunda degil
+  //   3) VOD uzantisi + group film/dizi keyword
+  //   4) Uzantisiz akis — CANLI; group keyword'u kanit degil
+  //      (tek istisna: adda "(2024)" yil kalibi → movie)
   //
-  // Onceki implementasyon movie'yi seriyi onunde kontrol ediyordu —
-  // "Dirilis Ertugrul (2014)" gibi yil parantezli diziler movie'ye
-  // gidiyordu ve dizi sekmesinde gorunmuyordu. Ayrica series sadece
-  // season>0 ile yakalanip "Yargi - Bolum 5" (season=0, episode=5)
-  // live'a dusuyordu.
+  // Bug fix (2026-11-03): tip tespiti `_parseSeries` cagiriyordu; onun
+  // "son care" sondaki-sayi adimi "TRT 1", "Kanal 7 HD", "Rocky 2" gibi
+  // adlari dizi yapiyordu. Tespit artik `_hasSeriesHint` kullanir; sondaki
+  // sayi kurali yalniz tip zaten series iken ad/bolum ayirmak icindir.
+  // Uzantisiz akista kategori keyword fallback'i de kaldirildi (Android
+  // 2026-08-13: "▱ SINEMA"/"▱ BELGESEL" canli kategorileri movie sayiliyordu).
   /// Public wrapper — DB migration / runtime re-classify için kullanılır.
   /// Mevcut DB'de yanlış stream type'la kaydedilmiş kanallar için reclassify.
   static String detectStreamType(String category, String name,
@@ -171,49 +85,28 @@ class M3uParser {
 
   static String _detectStreamType(String category, String name,
       [String url = '']) {
-    final cat = category.toLowerCase();
-    final nm  = name.toLowerCase();
-    final u   = url.toLowerCase();
-
-    // Sıra kritik (2026-05-11 v3, Kotlin StreamBox referansı):
-    // URL path > Name pattern > URL extension > Kategori > Year > Default.
-    // URL path provider'ın endpoint'i; en güvenilir sinyal.
+    final u = url.toLowerCase();
 
     // 1) URL path — provider explicit endpoint
-    if (u.isNotEmpty) {
-      if (u.contains('/series/')) return 'series';
-      if (u.contains('/movie/')  || u.contains('/movies/') ||
-          u.contains('/vod/')) {
-        // Series isim pattern movie endpoint'inde de olabilir (Xtream bazı
-        // provider'larda dizileri de /movie/ altına koyar)
-        final p = _parseSeries(name);
-        if (p.$2 > 0 || p.$3 > 0) return 'series';
-        return 'movie';
-      }
-      if (u.contains('/live/')) return 'live';
+    if (u.contains('/series/')) return 'series';
+    if (u.contains('/movie/') || u.contains('/movies/') ||
+        u.contains('/vod/')) {
+      return 'movie';
     }
+    if (u.contains('/live/')) return 'live';
 
-    // 2) Name pattern — S01E01/Bölüm/Sezon (tartışmasız series)
-    final p = _parseSeries(name);
-    if (p.$2 > 0 || p.$3 > 0) return 'series';
+    // 2) Per-item ad pattern — en guclu icerik kaniti
+    if (_hasSeriesHint(name, category)) return 'series';
 
-    // 3) URL extension — VOD dosyaları
     if (u.isNotEmpty) {
-      if (u.endsWith('.mp4')  || u.endsWith('.mkv')  ||
-          u.endsWith('.avi')  || u.endsWith('.mov')  ||
-          u.endsWith('.webm') || u.endsWith('.flv')  ||
-          u.endsWith('.wmv')  || u.endsWith('.divx') ||
-          u.contains('.mp4?') || u.contains('.mkv?') ||
-          u.contains('.avi?')) {
-        // VOD ext + series kategori → series
-        if (cat.contains('series') || cat.contains('dizi') ||
-            cat.contains('anime')  || cat.contains('cartoon') ||
-            cat.contains('çizgi')  || cat.contains('cizgi')) {
-          return 'series';
-        }
+      // 3) VOD uzantisi — group'a bak ("Anime Film" → movie, "Anime" → series)
+      if (_hasVodExtension(u)) {
+        final g = _fold(category);
+        if (_containsAny(g, _movieKeywords)) return 'movie';
+        if (_containsAny(g, _seriesKeywords)) return 'series';
         return 'movie';
       }
-      // Live stream extensions/protocols (HLS chunks, RTMP, vs.)
+      // Canli akis uzantilari/protokolleri (HLS, RTMP, vs.)
       if (u.contains('.m3u8') || u.contains('.ts')    ||
           u.startsWith('rtmp') || u.startsWith('rtsp') ||
           u.startsWith('udp')) {
@@ -221,43 +114,75 @@ class M3uParser {
       }
     }
 
-    // 4) Kategori fallback (URL belirsiz olduğunda)
-    if (cat.contains('series') || cat.contains('dizi') ||
-        cat.contains('show')   || cat.contains('tv shows')) {
-      return 'series';
-    }
-    if (cat.contains('movie')    || cat.contains('film')    ||
-        cat.contains('vod')      || cat.contains('cinema')  ||
-        cat.contains('sinema')   ||
-        cat.contains('aksiyon')  || cat.contains('action')  ||
-        cat.contains('komedi')   || cat.contains('comedy')  ||
-        cat.contains('drama')    ||
-        cat.contains('belgesel') || cat.contains('document') ||
-        cat.contains('macera')   || cat.contains('adventure') ||
-        cat.contains('korku')    || cat.contains('horror')  ||
-        cat.contains('romantik') || cat.contains('romance') ||
-        cat.contains('bilim kurgu') || cat.contains('sci-fi') ||
-        cat.contains('sci fi')   || cat.contains('fantastic') ||
-        cat.contains('animasyon')|| cat.contains('animation') ||
-        cat.contains('cartoon')  || cat.contains('çizgi')   ||
-        cat.contains('cizgi')    ||
-        cat.contains('yabanci')  || cat.contains('yabancı') ||
-        cat.contains('yerli')    || cat.contains('turkish') ||
-        cat.contains('foreign')  || cat.contains('gerilim') ||
-        cat.contains('thriller') || cat.contains('savaş')   ||
-        cat.contains('savas')    || cat.contains('war')     ||
-        cat.contains('tarih')    || cat.contains('history') ||
-        cat.contains('western')  || cat.contains('müzikal') ||
-        cat.contains('muzikal')  || cat.contains('musical')) {
-      return 'movie';
-    }
+    // 4) Uzantisiz akis: CANLI. Yalnizca "Ad (2024)" yil kalibi VOD kaniti.
+    // "(576p)" / "(720p)" cozunurluk sonekleri eslesmez: 4 hane + hepsi rakam.
+    if (_reYearParens.hasMatch(name)) return 'movie';
 
-    // 5) Year parens "Film Adi (2024)"
-    if (RegExp(r'\(\d{4}\)\s*$').hasMatch(nm)) return 'movie';
-
-    // 6) Default
     return 'live';
   }
+
+  /// Tip tespiti icin dizi isareti. `_parseSeries`'ten farkli olarak
+  /// sondaki-sayi ("TRT 1", "Rocky 2") kurali YOK.
+  ///  - Guclu: S01E05, 1x05, "Sezon N" / "N. Sezon" / "Season N" — her grupta.
+  ///  - Zayif: "Bolum N" / "N. Bolum" / "Episode N" — film grubunda sayilmaz
+  ///    ("Dune: Bolum 2" = Part Two, "O: Bolum 2" = It: Chapter Two).
+  static bool _hasSeriesHint(String name, String group) {
+    if (_reSxEx.hasMatch(name) || _reDxD.hasMatch(name)) return true;
+    if (_reSeasonHint.hasMatch(name)) return true;
+    final weak = _reBolumOnly.hasMatch(name) || _reNumBolum.hasMatch(name);
+    return weak && !_isMovieOnlyGroup(group);
+  }
+
+  /// Grup adi acikca film grubu mu? ("DUBLAJ FİLMLER", "VİZYON SİNEMA").
+  /// Grup adinda dizi kelimesi de geciyorsa ("DİZİ FİLMLERİ") film sayilmaz.
+  static bool _isMovieOnlyGroup(String group) {
+    final g = _fold(group);
+    return _containsAny(g, _movieOnlyGroupKeywords) &&
+        !_containsAny(g, _seriesKeywords);
+  }
+
+  static bool _hasVodExtension(String lowerUrl) {
+    var path = lowerUrl;
+    final q = path.indexOf('?');
+    if (q >= 0) path = path.substring(0, q);
+    final dot = path.lastIndexOf('.');
+    if (dot <= 0) return false;
+    return _vodExtensions.contains(path.substring(dot + 1));
+  }
+
+  /// Keyword eslesmesi icin Turkce katlama ("FİLMLER" → "filmler").
+  /// Dart toLowerCase 'İ' → "i̇" (birlesik nokta) verir; contains('film') kacar.
+  static String _fold(String s) => foldSearchText(s);
+
+  static bool _containsAny(String text, List<String> keywords) {
+    for (final k in keywords) {
+      if (text.contains(k)) return true;
+    }
+    return false;
+  }
+
+  // Android M3uParser.kt sabitleri (katlanmis halde).
+  static const _vodExtensions = {
+    'mp4', 'mkv', 'avi', 'mov', 'wmv', 'flv', 'divx', 'webm',
+  };
+  static const _movieOnlyGroupKeywords = [
+    'movie', 'film', 'filim', 'sinema', 'cinema', 'vod', 'vizyon',
+  ];
+  static const _seriesKeywords = [
+    'series', 'serie', 'dizi', 'sezon', 'season',
+    'show', 'tv show', 'episode', 'bolum',
+    'sitcom', 'anime', 'cartoon', 'cizgi',
+  ];
+  static const _movieKeywords = [
+    'movie', 'film', 'filim', 'vod', 'cinema', 'sinema',
+    'belgesel', 'documentary',
+  ];
+
+  static final _reYearParens = RegExp(r'\((\d{4})\)');
+  // "Sezon 2" / "2. Sezon" / "Season 3" — sayi zorunlu ("Season TV" eslesmez).
+  static final _reSeasonHint = RegExp(
+      r'(?:\b(?:sezon|season)\s*\d{1,2})|(?:(?<![\d])\d{1,2}\s*\.?\s*sezon)',
+      caseSensitive: false);
 
   // Android M3uParser.kt:103-203 pattern'lariyla eslesir.
   // Sira onemli: once en spesifik (SxxExx), sonra 1x05, sonra dil tabanli.
@@ -390,9 +315,103 @@ class M3uParser {
   }
 }
 
-/// Isolate'a gecirilen argument tasiyicisi.
-class _ParseArgs {
-  final PlaylistModel playlist;
-  final String content;
-  const _ParseArgs(this.playlist, this.content);
+/// Akışlı M3U satır parser'ı — satır satır beslenir, tamamlanan kanalı
+/// döndürür. Bellek sabit: tüm liste hiç tutulmaz (100K+ kanal).
+/// Isolate içinde de çalışır (Flutter bağımlılığı yok).
+class M3uLineParser {
+  static const _uuid = Uuid();
+
+  final String playlistId;
+  final Set<String> allowedTypes;
+  int _sortIdx;
+
+  /// `#EXTM3U` başlığından okunan EPG adresi (url-tvg / x-tvg-url).
+  String? epgUrl;
+
+  String? _name, _logo, _category, _tvgId;
+  List<String> _categories = const [];
+
+  M3uLineParser({
+    required this.playlistId,
+    required this.allowedTypes,
+    int startSortOrder = 0,
+  }) : _sortIdx = startSortOrder;
+
+  ChannelModel? addLine(String raw) {
+    final line = raw.trim();
+    if (line.isEmpty) return null;
+
+    if (line.startsWith('#EXTM3U')) {
+      epgUrl ??= M3uParser.headerEpgUrl(line);
+      return null;
+    }
+    if (line.startsWith('#EXTINF')) {
+      // Görünen ad (virgül sonrası) öncelikli; boşsa DOLU tvg-name.
+      // tvg-name="" eskiden adı '' yapıyordu.
+      final display = M3uParser._displayName(line);
+      final tvgName = M3uParser._attr(line, 'tvg-name')?.trim() ?? '';
+      _name  = display.isNotEmpty ? display : tvgName;
+      _logo  = M3uParser._attr(line, 'tvg-logo') ?? '';
+      _tvgId = M3uParser._attr(line, 'tvg-id') ?? '';
+      // v6: çoklu kategori — `group-title="Aksiyon,Komedi"` virgülle
+      // ayrılmışsa kanal birden fazla kategoriye ait sayılır.
+      final rawGroup = M3uParser._attr(line, 'group-title') ?? 'Genel';
+      _categories = M3uParser._splitCategories(rawGroup);
+      _category = _categories.isNotEmpty ? _categories.first : 'Genel';
+      return null;
+    }
+    if (line.startsWith('#')) return null;
+    final name = _name;
+    if (name == null) return null;
+    _name = null;
+
+    // URL bilgisiyle stream type'ı belirle — en sağlam tespit URL
+    // extension/path'ten gelir. 2026-05-11 "canlı içinde filmler vardı".
+    final url = line;
+    final category = _category ?? 'Genel';
+    final type = M3uParser._detectStreamType(category, name, url);
+    if (!allowedTypes.contains(type)) return null;
+    var seriesName = '';
+    var season = 0, episode = 0;
+    if (type == 'series') {
+      final parsed = M3uParser._parseSeries(name);
+      seriesName = parsed.$1;
+      season     = parsed.$2;
+      episode    = parsed.$3;
+    }
+    return ChannelModel(
+      id:            _uuid.v5(Namespace.url.value, '$playlistId:$url'),
+      playlistId:    playlistId,
+      name:          name,
+      streamUrl:     url,
+      logoUrl:       _logo ?? '',
+      category:      category,
+      categoryIds:   _categories,
+      streamType:    type,
+      tvgId:         _tvgId ?? '',
+      sortOrder:     _sortIdx++,
+      seriesName:    seriesName,
+      seasonNumber:  season,
+      episodeNumber: episode,
+    );
+  }
+}
+
+/// M3U URL'inden son kullanma tarihi (Android EditPlaylistScreen
+/// parseM3uExpiry paritesi): `exp` / `expiryDate` / `expires` query
+/// parametresi, saniye veya ms. Bulunamazsa null.
+int? parseM3uExpiry(String url) {
+  if (url.trim().isEmpty) return null;
+  final Uri uri;
+  try {
+    uri = Uri.parse(url.trim());
+  } catch (_) {
+    return null;
+  }
+  final q = uri.queryParameters;
+  final raw = q['exp'] ?? q['expiryDate'] ?? q['expires'];
+  if (raw == null) return null;
+  final v = int.tryParse(raw.trim());
+  if (v == null || v <= 0) return null;
+  return v > 1000000000000 ? v : v * 1000;
 }

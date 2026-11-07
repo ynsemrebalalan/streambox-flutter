@@ -216,6 +216,27 @@ class AppLocalizationsTr extends AppLocalizations {
   String get homeMore => 'Daha Fazla';
 
   @override
+  String get homePlaylistSyncing => 'Playlist senkronize ediliyor…';
+
+  @override
+  String get homeSearchTooltip => 'Ara';
+
+  @override
+  String get watchlistAddTooltip => 'Listeme Ekle';
+
+  @override
+  String get watchlistRemoveTooltip => 'Listeden Çıkar';
+
+  @override
+  String get playerPlayAction => 'Oynat';
+
+  @override
+  String get playerPauseAction => 'Duraklat';
+
+  @override
+  String get playlistsActiveLabel => 'Aktif';
+
+  @override
   String get homeCategoryManagement => 'Kategori Yönetimi';
 
   @override
@@ -346,6 +367,51 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String get playlistsTypeXtream => 'Xtream';
+
+  @override
+  String get playlistsTypeStalker => 'Stalker / MAG';
+
+  @override
+  String get playlistsStalkerCardTitle => 'Stalker Portal / MAG Kutu';
+
+  @override
+  String get playlistsStalkerCardBody => 'MAC adresinizin IPTV sağlayıcınıza kayıtlı olması gerekir. Uygulama önce hızlı M3U yolunu dener, başarısız olursa tam Stalker protokolüne geçer.';
+
+  @override
+  String get playlistsStalkerPortalLabel => 'Portal URL';
+
+  @override
+  String get playlistsStalkerPortalHint => 'http://provider.com:8080';
+
+  @override
+  String get playlistsStalkerMacLabel => 'MAC Adresi';
+
+  @override
+  String get playlistsStalkerMacHint => '00:1A:79:XX:XX:XX';
+
+  @override
+  String get playlistsStalkerMacGenerate => 'Üret';
+
+  @override
+  String get playlistsStalkerMacHelp => 'MAC biçimi: XX:XX:XX:XX:XX:XX (büyük harf, iki nokta üst üste ile ayrılmış)';
+
+  @override
+  String get playlistsValidationStalkerMac => 'Geçerli bir MAC adresi girin (XX:XX:XX:XX:XX:XX).';
+
+  @override
+  String get editPlaylistStalkerBadge => 'Stalker / MAG';
+
+  @override
+  String get progressTryingPortalList => 'Liste portaldan alınmaya çalışılıyor…';
+
+  @override
+  String get progressPortalConnecting => 'Portala bağlanılıyor…';
+
+  @override
+  String get loadErrPortalConnect => 'Portala bağlanılamadı. Portal adresini ve MAC adresinizin sağlayıcıya kayıtlı olduğunu kontrol edin.';
+
+  @override
+  String get loadErrPortalList => 'Kanal listesi alınamadı. MAC adresinizin portala kayıtlı olduğunu sağlayıcınızdan doğrulayın.';
 
   @override
   String get playlistsNameLabel => 'Playlist Adı';
@@ -501,6 +567,306 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String get playerSingleQuality => 'Bu yayın tek kalite sunuyor.';
+
+  @override
+  String get playerErrorUnsupportedFormat => 'Bu yayının görüntü veya ses biçimi bu cihazda oynatılamıyor. Başka bir kaynak deneyin ya da harici oynatıcıyı kullanın.';
+
+  @override
+  String get playerErrorCorruptStream => 'Yayın verisi okunamadı. Kanal geçici olarak bozuk olabilir; biraz sonra tekrar deneyin.';
+
+  @override
+  String get aiSubErrUnavailable => 'AI altyazı servisi şu anda kullanılamıyor. Lütfen daha sonra tekrar deneyin.';
+
+  @override
+  String get aiSubErrProRequired => 'AI altyazı denemen bitti. Devam etmek için Pro sürümüne geç.';
+
+  @override
+  String get aiSubErrQuota => 'AI altyazı kullanım kotası doldu.';
+
+  @override
+  String get aiSubErrBusy => 'AI altyazı servisi şu an çok yoğun. Biraz bekleyip tekrar deneyin.';
+
+  @override
+  String get aiSubErrInvalidKey => 'AI altyazı API anahtarı geçersiz veya süresi dolmuş. Ayarlar > AI Altyazı bölümünden kontrol edin.';
+
+  @override
+  String get aiSubErrRejected => 'AI altyazı servisi isteği kabul etmedi. Lütfen daha sonra tekrar deneyin.';
+
+  @override
+  String get aiSubErrEmptyResponse => 'AI altyazı servisi boş yanıt gönderdi. Lütfen tekrar deneyin.';
+
+  @override
+  String get aiSubErrNoSpeech => 'Bu bölümde konuşma algılanamadı. Videonun farklı bir anında tekrar deneyin.';
+
+  @override
+  String get aiSubErrGeneric => 'Altyazı oluşturulamadı. Lütfen tekrar deneyin.';
+
+  @override
+  String get aiSubErrUnreachable => 'AI altyazı servisine ulaşılamıyor. İnternet bağlantınızı kontrol edin.';
+
+  @override
+  String get aiSubErrConnectTimeout => 'AI altyazı servisine bağlanırken zaman aşımı oldu. Lütfen tekrar deneyin.';
+
+  @override
+  String get aiSubErrExtract => 'AI altyazı için ses alınamadı. Bu yayının biçimi bazı cihazlarda desteklenmiyor. Daha düşük kaliteli bir kaynak deneyin ya da harici oynatıcıda izleyin.';
+
+  @override
+  String get aiSubErrNoOpenAiKey => 'OpenAI API anahtarı girilmedi. Ayarlar > AI Altyazı bölümünden ekleyin.';
+
+  @override
+  String aiTrialStarted(int days) {
+    return '$days günlük ücretsiz AI altyazı denemen başladı';
+  }
+
+  @override
+  String get paywallAiTrialEnded => 'AI altyazı denemesi bitti. Kullanmaya devam etmek için Pro\'ya geç.';
+
+  @override
+  String get playerAiPreparing => 'AI altyazı hazırlanıyor';
+
+  @override
+  String playerSecondsShort(int seconds) {
+    return '$seconds sn';
+  }
+
+  @override
+  String playerBannerWhisper(String lang) {
+    return 'AI altyazı (ses tanıma): $lang';
+  }
+
+  @override
+  String get playerOrientationLock => 'Ekran yönünü kilitle';
+
+  @override
+  String playerResumeQuestion(String position) {
+    return '$position konumundan devam edilsin mi?';
+  }
+
+  @override
+  String get playerResumeContinue => 'Devam Et';
+
+  @override
+  String get playerResumeFromBeginning => 'Baştan Başla';
+
+  @override
+  String get playerErrorStreamUnavailable => 'Kanal şu anda açılamadı. Yayın kaynağı yanıt vermiyor ya da bağlantı koptu.';
+
+  @override
+  String get playerErrorBackToList => 'Kanal listesine dön';
+
+  @override
+  String get playerReportError => 'Hatayı Bildir';
+
+  @override
+  String get errorReportTitle => 'Hatayı Bildir';
+
+  @override
+  String get errorReportThanks => 'Teşekkürler!';
+
+  @override
+  String get errorReportReceived => 'Hata raporunuz iletildi.';
+
+  @override
+  String errorReportChannel(String name) {
+    return 'Kanal: $name';
+  }
+
+  @override
+  String errorReportError(String error) {
+    return 'Hata: $error';
+  }
+
+  @override
+  String errorReportDevice(String device) {
+    return 'Cihaz: $device';
+  }
+
+  @override
+  String errorReportVersion(String version) {
+    return 'Versiyon: $version';
+  }
+
+  @override
+  String get errorReportNoteLabel => 'Ek not (isteğe bağlı):';
+
+  @override
+  String get errorReportNotePlaceholder => 'Ne yapıyordunuz?';
+
+  @override
+  String get errorReportSend => 'Gönder';
+
+  @override
+  String playerPanelChannels(int count) {
+    return 'Kanallar ($count)';
+  }
+
+  @override
+  String get playerSeekForward => '▶▶ +10sn';
+
+  @override
+  String get playerSeekBackward => '◀◀ -10sn';
+
+  @override
+  String get playerWatchlistAdded => 'Listeye eklendi';
+
+  @override
+  String get playerWatchlistRemoved => 'Listeden çıkarıldı';
+
+  @override
+  String get playerWatchlistTooltip => 'Daha Sonra İzle';
+
+  @override
+  String get settingsAiSection => 'AI Altyazı';
+
+  @override
+  String get settingsAiTargetLangTitle => 'AI Altyazı Hedef Dili';
+
+  @override
+  String get settingsAiTargetLangSubtitle => 'Çeviri sonucu hangi dilde gözüksün';
+
+  @override
+  String get settingsAiTargetLangAuto => 'Otomatik (cihaz dili)';
+
+  @override
+  String get settingsAiTargetLangDialogTitle => 'Hedef Dil Seç';
+
+  @override
+  String get settingsAiBannerTitle => 'AI Altyazı Banner';
+
+  @override
+  String get settingsAiBannerSubtitle => 'Üstte kaynak/hedef dil bilgisi gözüksün';
+
+  @override
+  String get settingsAiWhisperTitle => 'AI Whisper Altyazı';
+
+  @override
+  String get settingsAiWhisperSubtitle => 'Oynatıcıda otomatik altyazı üretimi için';
+
+  @override
+  String get settingsAiProviderGroq => 'Groq';
+
+  @override
+  String get settingsAiProviderGroqBadge => 'Pro';
+
+  @override
+  String get settingsAiProviderOpenai => 'OpenAI';
+
+  @override
+  String get settingsAiProviderOpenaiBadge => 'Ücretli';
+
+  @override
+  String settingsAiGroqInfo(int days) {
+    return 'Yerleşik Groq servisi — Pro özelliği, ilk $days gün ücretsiz deneme';
+  }
+
+  @override
+  String get settingsAiOpenaiCost => 'Tahmini maliyet: ~\$0.006/istek · ~\$0.006/dk · openai.com/account/billing';
+
+  @override
+  String get settingsAiOpenaiKeyLabel => 'OpenAI API Key';
+
+  @override
+  String get settingsAiOpenaiKeyPlaceholder => 'sk-...';
+
+  @override
+  String get settingsAiOpenaiKeySaved => '✓ OpenAI anahtarı kayıtlı';
+
+  @override
+  String get settingsSubtitleDefaultOn => 'Altyazı varsayılan açık';
+
+  @override
+  String get settingsSubtitleDefaultOnSubtitle => 'Oynatıcı açılınca altyazı aktif olsun';
+
+  @override
+  String get settingsBufferDuration => 'Önbellek süresi';
+
+  @override
+  String settingsBufferSeconds(int seconds) {
+    return '$seconds saniye';
+  }
+
+  @override
+  String aiTrialDaysLeft(int days) {
+    String _temp0 = intl.Intl.pluralLogic(
+      days,
+      locale: localeName,
+      other: 'AI altyazı denemesi: $days gün kaldı',
+      one: 'AI altyazı denemesi: $days gün kaldı',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get playerPaused => 'Duraklatıldı';
+
+  @override
+  String get playerPlaying => 'Oynatılıyor';
+
+  @override
+  String get playerMuted => 'Sessiz';
+
+  @override
+  String get playerUnmuted => 'Ses açık';
+
+  @override
+  String playerFeedbackAudio(String label) {
+    return 'Ses: $label';
+  }
+
+  @override
+  String playerFeedbackSpeed(String speed) {
+    return 'Hız $speed';
+  }
+
+  @override
+  String get playerFeedbackSubtitleOff => 'Altyazı kapalı';
+
+  @override
+  String playerFeedbackSubtitle(String lang) {
+    return 'Altyazı: $lang';
+  }
+
+  @override
+  String get playerFeedbackSubtitleLoading => 'Altyazı yükleniyor…';
+
+  @override
+  String playerFeedbackResolution(String value) {
+    return 'Çözünürlük: $value';
+  }
+
+  @override
+  String playerFeedbackFit(String mode) {
+    return 'Görüntü: $mode';
+  }
+
+  @override
+  String get playerFavoriteAdd => 'Favorilere Ekle';
+
+  @override
+  String get playerFavoriteRemove => 'Favoriden Çıkar';
+
+  @override
+  String get playerNextChannel => 'Sonraki kanal';
+
+  @override
+  String get playerPrevChannel => 'Önceki kanal';
+
+  @override
+  String get playerOrientationUnlocked => 'Ekran yönü serbest';
+
+  @override
+  String playerNextEpisode(String title) {
+    return 'Sıradaki bölüm: $title';
+  }
+
+  @override
+  String get playerOpenExternal => 'Harici oynatıcıda aç (VLC)';
+
+  @override
+  String get playerExternalNotFound => 'Harici oynatıcı bulunamadı. App Store\'dan VLC kurun.';
+
+  @override
+  String get playerChannelPanelTooltip => 'Kanal listesi';
 
   @override
   String get disclaimerWelcome => 'Welcome';
@@ -1234,4 +1600,391 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String get otherAppsContinue => 'Devam';
+
+  @override
+  String get editPlaylistTitle => 'Playlist Düzenle';
+
+  @override
+  String get editPlaylistNotFound => 'Playlist bulunamadı';
+
+  @override
+  String get editPlaylistXtreamBadge => 'Xtream Codes';
+
+  @override
+  String get editPlaylistM3uBadge => 'M3U Playlist';
+
+  @override
+  String get editPlaylistAddedAt => 'Eklenme tarihi';
+
+  @override
+  String get editPlaylistExpiry => 'Son kullanma tarihi';
+
+  @override
+  String get editPlaylistExpiredLabel => '⚠ Geçmiş';
+
+  @override
+  String get editPlaylistValidLabel => '✓ Geçerli';
+
+  @override
+  String get editPlaylistUrlLabel => 'Sunucu URL';
+
+  @override
+  String get editPlaylistRefreshButton => 'Kanalları Yenile';
+
+  @override
+  String get editPlaylistDeleteButton => 'Playlistı Sil';
+
+  @override
+  String get deletePlaylistDialogTitle => 'Playlist Sil';
+
+  @override
+  String get deletePlaylistDialogQuestion => 'Nasıl silmek istiyorsunuz?';
+
+  @override
+  String get deleteDeviceExplain => 'Yalnızca bu cihazdan kaldırılır. Bulut kaydı durur; istediğinizde \"Buluttan İndir\" ile geri alabilirsiniz.';
+
+  @override
+  String get deleteDeviceExplainLocal => 'Bu cihazdan kaldırılır. Bu liste bulutta kayıtlı değil; geri almak için yeniden eklemeniz gerekir.';
+
+  @override
+  String get deletePlaylistFromCloud => 'Buluttan Sil';
+
+  @override
+  String get deletePlaylistFromDevice => 'Cihazdan Sil';
+
+  @override
+  String get deleteCloudExplain => 'Hem bu cihazdan hem buluttan kalıcı olarak silinir; diğer cihazlarınıza da bir daha gelmez.';
+
+  @override
+  String get progressDownloadingList => 'Kanal listesi indiriliyor…';
+
+  @override
+  String progressRetrying(int attempt) {
+    return 'Yeniden deneniyor ($attempt/3)…';
+  }
+
+  @override
+  String get progressParsingList => 'Kanal listesi işleniyor…';
+
+  @override
+  String progressChannelsSaved(int count) {
+    return '$count kanal kaydedildi…';
+  }
+
+  @override
+  String get progressServerConnecting => 'Sunucuya bağlanılıyor…';
+
+  @override
+  String get progressLoadingLive => 'Canlı kanallar yükleniyor…';
+
+  @override
+  String get progressLoadingMovies => 'Filmler yükleniyor…';
+
+  @override
+  String get progressLoadingSeries => 'Diziler yükleniyor…';
+
+  @override
+  String get loadErrM3uNotFound => 'Bu adreste kanal listesi bulunamadı. Adresin bir M3U listesine ait olduğundan emin olun.';
+
+  @override
+  String loadErrIncomplete(int count, int total) {
+    return 'Liste eksik geldi ($count / $total kanal) — bağlantı yarıda kesilmiş olabilir. Mevcut listeniz korundu, tekrar deneyin.';
+  }
+
+  @override
+  String get loadErrServerEmpty => 'Sunucu boş bir liste gönderdi. Aboneliğinizde kanal tanımlı olduğundan emin olun; sorun sürerse sağlayıcınıza danışın.';
+
+  @override
+  String get loadErrSeriesInfo => 'Bu dizinin bilgisi alınamadı. Listeyi yenileyip tekrar deneyin.';
+
+  @override
+  String get loadErrNoEpisodes => 'Sağlayıcı bu dizi için bölüm göndermedi.';
+
+  @override
+  String loadErrDrasticShrink(int count, int total) {
+    return 'Sunucu yalnızca $count kanal gönderdi (önceden $total). Aboneliğinizin süresi dolmuş olabilir; mevcut listeniz korundu.';
+  }
+
+  @override
+  String syncShrinkKept(String type) {
+    return '$type: sunucu öncekinden çok daha az içerik gönderdi, mevcut içerik korundu.';
+  }
+
+  @override
+  String get playlistSyncQueued => 'Değişiklikler kaydedildi. Liste, süren güncelleme bitince yeniden indirilecek.';
+
+  @override
+  String get errorReportPreviewLabel => 'Gönderilecek metin (giriş bilgileri gizlendi):';
+
+  @override
+  String paywallPricePerMonths(String price, int months) {
+    return '$price / $months ay';
+  }
+
+  @override
+  String paywallPlanMonths(int months) {
+    return '$months Aylık';
+  }
+
+  @override
+  String paywallIntroPriceThen(String intro, String price) {
+    return '$intro tanıtım fiyatı, sonra $price';
+  }
+
+  @override
+  String get watchlistClearAll => 'Listeyi temizle';
+
+  @override
+  String get watchlistClearConfirm => 'Tüm öğeler silinsin mi?';
+
+  @override
+  String get categoryFilterPlaylist => 'Playlist';
+
+  @override
+  String get settingsRefreshOff => 'Kapalı';
+
+  @override
+  String get settingsRefreshOnOpen => 'Her Açılışta';
+
+  @override
+  String get settingsRefresh1Day => 'Her 1 Gün';
+
+  @override
+  String get settingsRefresh1Week => 'Her 1 Hafta';
+
+  @override
+  String get settingsRefresh1Month => 'Her 1 Ay';
+
+  @override
+  String get settingsRefresh1Year => 'Her 1 Yıl';
+
+  @override
+  String get settingsClearHistoryTitle => 'Geçmişi Temizle';
+
+  @override
+  String get settingsClearHistorySubtitle => 'Son İzlenenler, Nerede Kaldım ve İzlenenler listelerini temizler. Favorileriniz silinmez';
+
+  @override
+  String get settingsClearHistoryDialogTitle => 'İzleme geçmişi temizlensin mi?';
+
+  @override
+  String get settingsClearHistoryDialogMessage => 'Son İzlenenler, Nerede Kaldım ve İzlenenler listelerindeki tüm kayıtlar silinecek. Bu işlem geri alınamaz.';
+
+  @override
+  String get settingsClearHistoryAction => 'Temizle';
+
+  @override
+  String epgNextProgram(String title) {
+    return 'Sonra: $title';
+  }
+
+  @override
+  String get xtreamBadLogin => 'Kullanıcı adı veya şifre hatalı. Bilgileri sağlayıcınızdan kontrol edip tekrar deneyin.';
+
+  @override
+  String get xtreamExpired => 'Aboneliğinizin süresi dolmuş. Yenilemek için sağlayıcınızla iletişime geçin.';
+
+  @override
+  String xtreamExpiredOn(String date) {
+    return 'Aboneliğinizin süresi $date tarihinde dolmuş. Yenilemek için sağlayıcınızla iletişime geçin.';
+  }
+
+  @override
+  String get xtreamDisabled => 'Hesabınız sağlayıcı tarafından kapatılmış. Sağlayıcınızla iletişime geçin.';
+
+  @override
+  String get epgAutoRefreshAuto => 'Otomatik — rehber bitmek üzereyken yenilenir';
+
+  @override
+  String xtreamPartialLoad(String type) {
+    return 'Bazı içerikler yüklenemedi: $type';
+  }
+
+  @override
+  String get settingsPlaylistAutoRefreshTitle => 'Playlist otomatik yenileme';
+
+  @override
+  String settingsEpgUrlForPlaylist(String name) {
+    return 'Aktif playlist için: $name';
+  }
+
+  @override
+  String get settingsClearHistoryDone => 'İzleme geçmişi temizlendi';
+
+  @override
+  String get settingsSupportSection => 'Destek';
+
+  @override
+  String get settingsFeedbackTitle => 'Geri Bildirim Gönder';
+
+  @override
+  String get settingsFeedbackSubtitle => 'Öneri, hata bildirimi veya genel görüş';
+
+  @override
+  String get feedbackDialogTitle => 'Geri Bildirim';
+
+  @override
+  String get feedbackThanks => 'Teşekkürler!';
+
+  @override
+  String get feedbackReceived => 'Geri bildiriminiz iletildi.';
+
+  @override
+  String get feedbackChooseType => 'Türü seçin:';
+
+  @override
+  String get feedbackTypeSuggestion => 'Öneri';
+
+  @override
+  String get feedbackTypeBug => 'Hata Bildirimi';
+
+  @override
+  String get feedbackTypeGeneral => 'Genel';
+
+  @override
+  String get feedbackNameLabel => 'Ad Soyad';
+
+  @override
+  String get feedbackNamePlaceholder => 'İsteğe bağlı';
+
+  @override
+  String get feedbackEmailLabel => 'E-posta *';
+
+  @override
+  String get feedbackEmailPlaceholder => 'ornek@mail.com';
+
+  @override
+  String get feedbackEmailInvalid => 'Geçerli bir e-posta adresi girin';
+
+  @override
+  String get feedbackMessageLabel => 'Mesajınız *';
+
+  @override
+  String get feedbackMessagePlaceholder => 'Düşüncelerinizi yazın...';
+
+  @override
+  String get feedbackScreenshotLabel => 'Ekran görüntüsü (en fazla 3)';
+
+  @override
+  String get feedbackAddImage => 'Resim Ekle';
+
+  @override
+  String feedbackError(String details) {
+    return 'Gönderilemedi: $details';
+  }
+
+  @override
+  String get feedbackImageTooLarge => '5 MB\'tan büyük görseller eklenemez';
+
+  @override
+  String get commonSend => 'Gönder';
+
+  @override
+  String get commonSending => 'Gönderiliyor...';
+
+  @override
+  String get settingsRateApp => 'Uygulamayı değerlendir';
+
+  @override
+  String get settingsRateAppSubtitle => 'App Store\'da puan ver ve yorum yaz';
+
+  @override
+  String paywallBenefitPlaylistsUpTo(int count) {
+    return '$count playlist\'e kadar';
+  }
+
+  @override
+  String get paywallBenefitAiWhisper => 'AI Whisper altyazı';
+
+  @override
+  String get paywallBenefitCloudSyncDevices => 'Bulut senkronu (cihazlar arası)';
+
+  @override
+  String get paywallBenefitThemes => 'Premium temalar';
+
+  @override
+  String get paywallBenefitWatchlist => 'İzleme listem';
+
+  @override
+  String get paywallBenefitEpgAuto => 'TV rehberi otomatik yenileme';
+
+  @override
+  String paywallPricePerYear(String price) {
+    return '$price / yıl';
+  }
+
+  @override
+  String paywallPricePerMonth(String price) {
+    return '$price / ay';
+  }
+
+  @override
+  String paywallPricePerWeek(String price) {
+    return '$price / hafta';
+  }
+
+  @override
+  String paywallPriceOneTime(String price) {
+    return '$price tek seferlik';
+  }
+
+  @override
+  String paywallMonthlyEquivalent(String price) {
+    return 'Aylık yalnızca $price';
+  }
+
+  @override
+  String paywallTrialThen(int days, String price) {
+    String _temp0 = intl.Intl.pluralLogic(
+      days,
+      locale: localeName,
+      other: 'İlk $days gün ücretsiz',
+    );
+    return '$_temp0, ardından $price. İstediğin zaman iptal et.';
+  }
+
+  @override
+  String get paywallLifetimeHint => '✦ Tek seferlik ödeme · Ömür boyu erişim';
+
+  @override
+  String get paywallPurchase => 'Satın Al';
+
+  @override
+  String get paywallTermsFooterApple => 'Ödeme, satın alma onayında Apple Kimliğinizden tahsil edilir. Abonelik, mevcut dönemin bitiminden en az 24 saat önce iptal edilmezse otomatik olarak yenilenir. App Store hesap ayarlarından yönetebilir veya iptal edebilirsiniz.';
+
+  @override
+  String get paywallActivationPending => 'Satın alma tamamlandı ancak Pro henüz etkinleşmedi. Satın alımları geri yüklemeyi deneyin; sorun sürerse destekle iletişime geçin.';
+
+  @override
+  String get paywallLoadError => 'Planlar yüklenemedi. Bağlantınızı kontrol edip tekrar deneyin.';
+
+  @override
+  String playlistDeviceLimit(int count) {
+    return 'Bu cihaz en fazla $count playlist destekliyor.';
+  }
+
+  @override
+  String get authReauthTitle => 'Kimliğini doğrula';
+
+  @override
+  String get authReauthPasswordMessage => 'Hesabını silmek için şifreni gir.';
+
+  @override
+  String get authAccountDeleted => 'Hesabın silindi.';
+
+  @override
+  String get playerUrlMissing => 'Yayın URL\'si bulunamadı';
+
+  @override
+  String parentalPinWrongAttempts(int remaining) {
+    return 'Yanlış PIN. $remaining deneme hakkınız kaldı.';
+  }
+
+  @override
+  String parentalPinCooldown(int seconds) {
+    return 'Çok fazla yanlış giriş. $seconds saniye bekleyin.';
+  }
+
+  @override
+  String get paywallRestoreNothing => 'Bu Apple Kimliği için geri yüklenecek satın alma bulunamadı.';
 }

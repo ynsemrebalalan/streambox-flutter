@@ -1,3 +1,5 @@
+import '../../core/utils/search_normalizer.dart';
+
 class ChannelModel {
   final String id;
   final String playlistId;
@@ -45,6 +47,14 @@ class ChannelModel {
     this.categoryIds = const [],
   }) : addedAt = addedAt ?? 0;
 
+  /// Xtream dizi container'ı: bölümler henüz çekilmedi (sezon/bölüm 0,
+  /// URL `get_series_info`). Açılışta lazy yüklenir — Android paritesi.
+  bool get isSeriesContainer =>
+      streamType == 'series' &&
+      seasonNumber == 0 &&
+      episodeNumber == 0 &&
+      streamUrl.contains('action=get_series_info');
+
   factory ChannelModel.fromMap(Map<String, dynamic> map) => ChannelModel(
         id:            map['id'] as String,
         playlistId:    map['playlistId'] as String,
@@ -85,6 +95,10 @@ class ChannelModel {
         'addedAt':       addedAt,
         'isWatched':     isWatched ? 1 : 0,
         'duration':      duration,
+        // v8 — Türkçe katlanmış arama anahtarı (name + seriesName). Tüm yazma
+        // yolları (bulkInsert / replaceAllForPlaylist / Xtream sync) toMap
+        // kullandığı için her satırda dolu olur.
+        'searchKey':     buildSearchKey(name, seriesName),
       };
 
   ChannelModel copyWith({

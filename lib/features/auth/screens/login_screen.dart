@@ -31,6 +31,15 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     super.dispose();
   }
 
+  /// Giris tamam: geldigi ekrana (Ayarlar/Hesap) don; yigin yoksa Home.
+  void _finish() {
+    if (context.canPop()) {
+      context.pop(true);
+    } else {
+      context.go(AppRoutes.home);
+    }
+  }
+
   Future<void> _signInWithEmail() async {
     if (_busy) return;
     if (!(_formKey.currentState?.validate() ?? false)) return;
@@ -40,7 +49,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             email: _emailCtrl.text.trim(),
             password: _passCtrl.text,
           );
-      if (mounted) context.go(AppRoutes.home);
+      if (mounted) _finish();
     } on FirebaseAuthException catch (e) {
       if (mounted) _showError(_authErrorMessage(e));
     } catch (e) {
@@ -55,7 +64,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     setState(() => _busy = true);
     try {
       await ref.read(authRepositoryProvider).signInWithGoogle();
-      if (mounted) context.go(AppRoutes.home);
+      if (mounted) _finish();
     } on FirebaseAuthException catch (e) {
       if (e.code != 'cancelled' && mounted) _showError(_authErrorMessage(e));
     } catch (e) {
@@ -70,7 +79,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     setState(() => _busy = true);
     try {
       await ref.read(authRepositoryProvider).signInWithApple();
-      if (mounted) context.go(AppRoutes.home);
+      if (mounted) _finish();
     } on FirebaseAuthException catch (e) {
       if (e.code != 'cancelled' && mounted) _showError(_authErrorMessage(e));
     } catch (e) {
@@ -219,11 +228,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     child: FilledButton(
                       onPressed: _busy ? null : _signInWithEmail,
                       child: _busy
-                          ? const SizedBox(
+                          ? SizedBox(
                               width: 20,
                               height: 20,
                               child: CircularProgressIndicator(
-                                  strokeWidth: 2, color: Colors.white))
+                                  strokeWidth: 2,
+                                  color: Theme.of(context).colorScheme.onPrimary))
                           : Text(l.authSignInButton),
                     ),
                   ),

@@ -1,6 +1,8 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 
+import '../../../core/utils/ref_counter.dart';
+
 /// iOS ses oturumu (AVAudioSession) kontrolu.
 ///
 /// **Neden var:** `AppDelegate` acilista `.playback` kategorisini kuruyor ama
@@ -22,11 +24,19 @@ class AudioSessionService {
 
   bool get _isIOS => defaultTargetPlatform == TargetPlatform.iOS;
 
-  /// Oynatmadan hemen once cagir.
-  Future<void> activate() => _setActive(true);
+  /// Ust uste binen player orneklerini (kanal degisimi pushReplacement)
+  /// sayar: oturum yalniz 0->1'de aktif, 1->0'da birakilir.
+  final RefCounter _refs = RefCounter();
 
-  /// Player kapanirken cagir.
-  Future<void> deactivate() => _setActive(false);
+  /// Oynatmadan hemen once cagir (her player bir kez).
+  Future<void> activate() async {
+    if (_refs.acquire()) await _setActive(true);
+  }
+
+  /// Player kapanirken cagir (her activate icin bir kez).
+  Future<void> deactivate() async {
+    if (_refs.release()) await _setActive(false);
+  }
 
   Future<void> _setActive(bool active) async {
     if (!_isIOS) return;

@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -6,201 +5,23 @@ import 'package:go_router/go_router.dart';
 import 'package:uuid/uuid.dart';
 import '../../core/providers/app_providers.dart';
 import '../../core/router/app_router.dart';
-import '../../core/analytics/analytics.dart';
-import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_tokens.dart';
 import '../../core/utils/responsive.dart';
-import '../../core/utils/http_client.dart';
+import '../../core/widgets/empty_state.dart';
+import '../../core/widgets/large_title_scaffold.dart';
+import '../../core/widgets/skeleton.dart';
 import '../../data/models/playlist_model.dart';
-import '../../data/services/m3u_parser.dart';
-import '../../data/services/xtream_service.dart';
+import '../../data/services/stalker/stalker_protocol.dart';
 import '../../l10n/generated/app_localizations.dart';
 import '../billing/widgets/paywall_trigger.dart';
 import '../home/home_provider.dart';
+import 'edit_playlist_screen.dart';
+import 'playlist_auto_refresh.dart';
+import 'playlists_provider.dart';
+import 'widgets/delete_playlist_dialog.dart';
+import 'widgets/stalker_fields.dart';
 
-// ── provider ─────────────────────────────────────────────────────────────────
-
-final playlistsProvider =
-    AsyncNotifierProvider<PlaylistsNotifier, List<PlaylistModel>>(
-  PlaylistsNotifier.new,
-);
-
-class PlaylistsNotifier extends AsyncNotifier<List<PlaylistModel>> {
-  final _syncing = <String>{};
-  final _lastError = <String, String>{};
-  // Son sync'in kaç kanal döndürdüğü — UI'da SnackBar ile gösterilir.
-  int _lastSyncCount = 0;
-  int get lastSyncCount => _lastSyncCount;
-
-  // Progress notifiers (2026-05-11 perf) — UI bunu izleyerek "X/Y" gösterir.
-  final ValueNotifier<String> _progressMessage = ValueNotifier('');
-  ValueListenable<String> get progressMessage => _progressMessage;
-
-  bool isSyncing(String id) => _syncing.contains(id);
-  String? lastError(String id) => _lastError[id];
-
-  @override
-  Future<List<PlaylistModel>> build() =>
-      ref.read(playlistRepoProvider).getAll();
-
-  Future<void> reload() async {
-    final current = state.value;
-    state = current != null
-        ? AsyncData(current)   // keep list visible while refreshing
-        : const AsyncLoading();
-    final fresh = await ref.read(playlistRepoProvider).getAll();
-    state = AsyncData(fresh);
-  }
-
-  Future<void> add(PlaylistModel p) async {
-    final repo  = ref.read(playlistRepoProvider);
-    final saved = await repo.insert(p);
-    state = AsyncData([...?state.value, saved]);
-
-    final active = ref.read(activePlaylistProvider);
-    if (active.isEmpty) {
-      ref.read(activePlaylistProvider.notifier).set(saved.id);
-    }
-
-    // Background sync pattern (2026-05-11 Kotlin paritesi):
-    // add() sync'i beklemez → dialog ANINDA kapanır → kullanıcı Home'a
-    // yönlendirilir → kanallar arka planda gelir. UI playlist row'da
-    // spinner + Home'da sync progress mesajı gösterir.
-    _syncing.add(saved.id);
-    _lastError.remove(saved.id);
-    if (state.value != null) state = AsyncData(List.of(state.value!));
-    // Fire-and-forget: kullanıcı 30sn dialog'da beklemiyor.
-    // ignore: unawaited_futures
-    _doSyncInBackground(saved);
-  }
-
-  /// Background sync wrapper — UI bloklamadan kanal yükler.
-  /// Hata _lastError'a düşer, kullanıcı yenile butonuna bastığında görür.
-  Future<void> _doSyncInBackground(PlaylistModel saved) async {
-    try {
-      await _doSync(saved);
-      ref.invalidate(homeProvider);
-    } catch (e) {
-      _lastError[saved.id] = e.toString();
-    } finally {
-      _syncing.remove(saved.id);
-      await reload();
-    }
-  }
-
-  /// Returns: null on success, user-facing error message on failure.
-  Future<String?> sync(PlaylistModel p, AppLocalizations l) async {
-    if (_syncing.contains(p.id)) return null;
-    _syncing.add(p.id);
-    _lastError.remove(p.id);
-    // Rebuild so UI shows spinner on this row
-    if (state.value != null) state = AsyncData(List.of(state.value!));
-    String? errorMessage;
-    try {
-      await _doSync(p);
-    } catch (e) {
-      errorMessage = _errorToUserMessage(e, p, l);
-      _lastError[p.id] = errorMessage;
-    } finally {
-      _syncing.remove(p.id);
-      await reload();
-    }
-    return errorMessage;
-  }
-
-  String _errorToUserMessage(Object e, PlaylistModel p, AppLocalizations l) {
-    if (e is _EmptyPlaylistException) {
-      return l.playlistsErrorEmptyResponse;
-    }
-    if (e is HttpStatusException) {
-      return e.userMessage;
-    }
-    final msg = e.toString().toLowerCase();
-    if (msg.contains('handshake') ||
-        msg.contains('tls') ||
-        msg.contains('certificate') ||
-        msg.contains('ssl')) {
-      return l.playlistsErrorTlsHandshake;
-    }
-    if (msg.contains('timeout') || msg.contains('timedout')) {
-      return l.playlistsErrorTimeout;
-    }
-    if (msg.contains('socket') ||
-        msg.contains('failed host lookup') ||
-        msg.contains('connection')) {
-      return l.playlistsErrorConnection;
-    }
-    return l.playlistsErrorUpdateGeneric('$e');
-  }
-
-  Future<void> delete(String id) async {
-    // Optimistic UI: state'ten hemen çıkar.
-    final filtered = (state.value ?? []).where((p) => p.id != id).toList();
-    state = AsyncData(filtered);
-
-    final repo = ref.read(playlistRepoProvider);
-    await repo.delete(id);
-    await ref.read(channelRepoProvider).deleteByPlaylist(id);
-
-    // Active playlist'i güncelle. 2026-05-11: Silinen active'di VEYA
-    // tek playlist'ti (filtered boş kaldı) → active'i sıfırla/değiştir.
-    final active = ref.read(activePlaylistProvider);
-    if (active == id || filtered.isEmpty) {
-      ref.read(activePlaylistProvider.notifier).set(
-            filtered.isEmpty ? '' : filtered.first.id,
-          );
-    }
-    // Home'daki kanal listesi bu playlist'ten besleniyordu — rebuild.
-    ref.invalidate(homeProvider);
-  }
-
-  /// Tek playlist'te maksimum kanal sayısı. Üstünde truncate edilir,
-  /// OOM/UI donmasından korur. 2026-05-11 perf guard.
-  static const int _maxChannelsPerPlaylist = 50000;
-
-  Future<void> _doSync(PlaylistModel p) async {
-    // ignore: avoid_print
-    print('[_doSync] start: id=${p.id} type=${p.type} url=${p.url}');
-    _progressMessage.value = 'Kanallar indiriliyor...';
-
-    var channels = p.type == 'xtream'
-        ? await XtreamService.fetchAll(p)
-        : await M3uParser.fetchAndParse(p);
-    // ignore: avoid_print
-    print('[_doSync] fetched ${channels.length} channels');
-
-    // Limit guard: çok büyük playlist OOM riski, kullanıcıyı uyar + kes.
-    if (channels.length > _maxChannelsPerPlaylist) {
-      // ignore: avoid_print
-      print('[_doSync] playlist çok büyük (${channels.length}), '
-          '$_maxChannelsPerPlaylist ile sınırlandı');
-      _progressMessage.value =
-          'Playlist çok büyük — ilk $_maxChannelsPerPlaylist kanal alındı';
-      channels = channels.take(_maxChannelsPerPlaylist).toList();
-    }
-
-    _lastSyncCount = channels.length;
-    _progressMessage.value = '${channels.length} kanal işleniyor...';
-
-    if (channels.isEmpty) {
-      throw const _EmptyPlaylistException();
-    }
-
-    // Fetch basarili → atomik olarak eski kanallari sil + yenilerini yaz.
-    // Progress callback ile UI'da "1500/5234 kanal yazıldı" canlı sayı.
-    final repo = ref.read(channelRepoProvider);
-    await repo.replaceAllForPlaylist(p.id, channels, onProgress: (w, t) {
-      _progressMessage.value = '$w / $t kanal yazıldı';
-    });
-    // ignore: avoid_print
-    print('[_doSync] DB write done');
-    _progressMessage.value = '';
-  }
-}
-
-class _EmptyPlaylistException implements Exception {
-  const _EmptyPlaylistException();
-}
+export 'playlists_provider.dart';
 
 // ── screen ────────────────────────────────────────────────────────────────────
 
@@ -214,79 +35,105 @@ class PlaylistsScreen extends ConsumerWidget {
     final cs        = Theme.of(context).colorScheme;
     final l         = AppLocalizations.of(context);
 
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(l.playlistsTitle),
-        leading: BackButton(onPressed: () => context.go(AppRoutes.home)),
-        actions: [
-          IconButton(
-            iconSize: 28,
-            icon: const Icon(Icons.add),
-            onPressed: () => _showAddDialog(context, ref),
+    final theme     = Theme.of(context);
+    // Tablet: icerik formMaxWidth'e ortalanir (eski ResponsiveCenter).
+    final maxW   = Responsive.formMaxWidth(context);
+    final screenW = MediaQuery.sizeOf(context).width;
+    final hPad   = screenW > maxW ? (screenW - maxW) / 2 + Spacing.lg : Spacing.lg;
+
+    Widget fill(Widget child) =>
+        SliverFillRemaining(hasScrollBody: false, child: child);
+
+    return LargeTitleScaffold(
+      title: l.playlistsTitle,
+      leading: BackButton(onPressed: () => context.go(AppRoutes.home)),
+      actions: [
+        IconButton(
+          iconSize: 28,
+          tooltip: l.homeAddPlaylist,
+          icon: const Icon(Icons.add),
+          onPressed: () => _showAddDialog(context, ref),
+        ),
+      ],
+      slivers: playlists.when(
+        loading: () => [
+          SliverPadding(
+            padding: EdgeInsets.symmetric(horizontal: hPad - Spacing.lg),
+            sliver: SliverToBoxAdapter(
+              child: SkeletonPulse(
+                child: Column(
+                  children: List.generate(4, (_) => const ChannelRowSkeleton()),
+                ),
+              ),
+            ),
           ),
         ],
-      ),
-      body: playlists.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error:   (e, _) => Center(child: Text(l.errorWithDetails('$e'))),
+        error: (e, _) => [
+          fill(EmptyState.error(
+            title:       l.errorWithDetails('$e'),
+            actionLabel: l.retry,
+            onAction:    () => ref.invalidate(playlistsProvider),
+          )),
+        ],
         data: (list) {
           if (list.isEmpty) {
-            return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Icons.playlist_add, size: 64, color: cs.onSurfaceVariant),
-                  const SizedBox(height: Spacing.lg),
-                  Text(l.playlistsEmpty,
-                      style: TextStyle(color: cs.onSurfaceVariant)),
-                  const SizedBox(height: Spacing.md),
-                  FilledButton.icon(
-                    icon: const Icon(Icons.add),
-                    label: Text(l.homeAddPlaylist),
-                    onPressed: () => _showAddDialog(context, ref),
-                  ),
-                ],
-              ),
-            );
+            return [
+              fill(EmptyState(
+                icon:        Icons.playlist_add,
+                title:       l.playlistsEmpty,
+                actionLabel: l.homeAddPlaylist,
+                actionIcon:  Icons.add,
+                autofocusAction: true,
+                onAction:    () => _showAddDialog(context, ref),
+              )),
+            ];
           }
-          return ResponsiveCenter(
-            maxWidth: Responsive.formMaxWidth(context),
-            child: ListView.separated(
-            padding: const EdgeInsets.all(Spacing.lg),
-            itemCount: list.length,
-            separatorBuilder: (_, __) => const SizedBox(height: Spacing.sm),
-            itemBuilder: (ctx, i) {
+          return [
+            SliverPadding(
+              padding: EdgeInsets.fromLTRB(hPad, Spacing.sm, hPad, Spacing.lg),
+              sliver: SliverList.separated(
+                itemCount: list.length,
+                separatorBuilder: (_, __) => const SizedBox(height: Spacing.sm),
+                itemBuilder: (ctx, i) {
               final p = list[i];
               final isActive = p.id == active;
               return Card(
                 color: isActive
-                    ? AppColors.accent.withValues(alpha: 0.15)
-                    : cs.surface,
+                    ? cs.primary.withValues(alpha: 0.12)
+                    : cs.surfaceContainer,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(AppRadius.md),
+                  side: isActive
+                      ? BorderSide(color: cs.primary.withValues(alpha: 0.5))
+                      : BorderSide.none,
+                ),
                 child: ListTile(
                   leading: CircleAvatar(
                     backgroundColor:
-                        isActive ? AppColors.accent : cs.surfaceContainerHighest,
+                        isActive ? cs.primary : cs.surfaceContainerHigh,
                     child: Icon(
                       Icons.list_alt,
                       color: isActive ? cs.onPrimary : cs.onSurfaceVariant,
                     ),
                   ),
                   title: Text(p.name,
-                      style: TextStyle(
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.titleSmall?.copyWith(
                           fontWeight:
-                              isActive ? FontWeight.w600 : FontWeight.normal)),
+                              isActive ? FontWeight.w600 : FontWeight.w500)),
                   subtitle: Text(p.url,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                          fontSize: TextSize.caption,
-                          color: cs.onSurfaceVariant)),
+                      style: theme.textTheme.bodySmall
+                          ?.copyWith(color: cs.onSurfaceVariant)),
                   trailing: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       if (isActive)
                         Icon(Icons.check_circle,
-                            color: AppColors.accent, size: 20),
+                            color: cs.primary, size: 20,
+                            semanticLabel: l.playlistsActiveLabel),
                       Builder(builder: (_) {
                         final syncing = ref
                             .read(playlistsProvider.notifier)
@@ -335,6 +182,17 @@ class PlaylistsScreen extends ConsumerWidget {
                               );
                       }),
                       IconButton(
+                        iconSize: 26,
+                        icon: const Icon(Icons.edit_outlined),
+                        tooltip: l.editPlaylistTitle,
+                        onPressed: () => Navigator.of(context).push(
+                          MaterialPageRoute<void>(
+                            builder: (_) =>
+                                EditPlaylistScreen(playlistId: p.id),
+                          ),
+                        ),
+                      ),
+                      IconButton(
                         iconSize: 28,
                         icon: Icon(Icons.delete_outline, color: cs.error),
                         tooltip: l.delete,
@@ -342,35 +200,35 @@ class PlaylistsScreen extends ConsumerWidget {
                       ),
                     ],
                   ),
+                  selected: isActive,
                   onTap: () {
+                    if (!isActive) HapticFeedback.selectionClick();
                     ref.read(activePlaylistProvider.notifier).set(p.id);
                     // Reload home
                     ref.invalidate(homeProvider);
+                    // Android selectPlaylist: aralık dolduysa arka planda yenile.
+                    ref
+                        .read(playlistAutoRefreshProvider.notifier)
+                        .onPlaylistSelected(p.id);
                     context.go(AppRoutes.home);
                   },
                 ),
               );
-            },
-          ),
-          );
+                },
+              ),
+            ),
+          ];
         },
       ),
     );
   }
 
   Future<void> _showAddDialog(BuildContext context, WidgetRef ref) async {
-    // Adim 22 Phase D: 2. playlist gate. Mevcut listede 1+ varsa Pro
-    // gerekli — anon ise once login akisi, sonra paywall.
-    final existing = ref.read(playlistsProvider).valueOrNull ?? const [];
-    if (existing.isNotEmpty) {
-      final allowed = await requirePro(
-        context,
-        ref,
-        PaywallTrigger.secondPlaylist,
-      );
-      if (!allowed || !context.mounted) return;
-    }
-    if (!context.mounted) return;
+    // Playlist limiti (Android maxPlaylistCount: Free/Pro x cihaz katmani):
+    // limit altiysa gecer, Pro gerekiyorsa paywall, cihaz limiti doluysa
+    // snackbar.
+    final allowed = await ensurePlaylistAddAllowed(context, ref);
+    if (!allowed || !context.mounted) return;
     final added = await showDialog<bool>(
       context: context,
       builder: (_) => FocusTraversalGroup(
@@ -380,55 +238,20 @@ class PlaylistsScreen extends ConsumerWidget {
         ),
       ),
     );
-    // Playlist başarıyla eklendi (sync bitti) → Home'a yönlendir, kullanıcı
-    // kanalları görsün. İptal'de added null/false, playlist screen'de kal.
+    // Playlist eklendi → Home'a yönlendir; kanallar arka planda akışlı dolar
+    // (üstteki ilerleme çubuğu "X kanal kaydedildi" gösterir).
     if (added == true && context.mounted) {
-      // Diagnostic: kullanıcıya sync'in kaç kanal döndürdüğünü göster.
-      // Logcat erişimi yoksa bug teşhisi için kritik. 2026-05-11.
-      final count = ref.read(playlistsProvider.notifier).lastSyncCount;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('$count kanal yüklendi'),
-          duration: const Duration(seconds: 4),
-        ),
-      );
       context.go(AppRoutes.home);
     }
   }
 
-  void _confirmDelete(BuildContext context, WidgetRef ref, PlaylistModel p) {
-    final l = AppLocalizations.of(context);
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(l.playlistsDeleteTitle),
-        content: Text(l.playlistsDeleteConfirm(p.name)),
-        actions: [
-          TextButton(
-            autofocus: true,
-            onPressed: () => Navigator.pop(ctx),
-            child: Text(l.cancel),
-          ),
-          FilledButton(
-            style: FilledButton.styleFrom(
-                backgroundColor: Theme.of(context).colorScheme.error),
-            onPressed: () async {
-              Navigator.pop(ctx);
-              await ref.read(playlistsProvider.notifier).delete(p.id);
-              // 2026-05-11: Son playlist silindiyse boş Home'a yönlendir,
-              // kullanıcı eski playlist içeriğini görmeye devam etmesin.
-              if (!context.mounted) return;
-              final remaining =
-                  ref.read(playlistsProvider).valueOrNull ?? const [];
-              if (remaining.isEmpty) {
-                context.go(AppRoutes.home);
-              }
-            },
-            child: Text(l.delete),
-          ),
-        ],
-      ),
-    );
+  Future<void> _confirmDelete(
+      BuildContext context, WidgetRef ref, PlaylistModel p) async {
+    final deleted = await showDeletePlaylistDialog(context, ref, p);
+    // Son playlist silindiyse boş Home'a yönlendir.
+    if (!deleted || !context.mounted) return;
+    final remaining = ref.read(playlistsProvider).valueOrNull ?? const [];
+    if (remaining.isEmpty) context.go(AppRoutes.home);
   }
 }
 
@@ -452,7 +275,7 @@ class _AddPlaylistDialogState extends State<_AddPlaylistDialog> {
   bool    _loading = false;
   String? _error;
 
-  // Xtream allowed content types
+  // İçerik türleri (M3U + Xtream — Android paritesi)
   bool _allowLive   = true;
   bool _allowMovie  = true;
   bool _allowSeries = true;
@@ -483,6 +306,7 @@ class _AddPlaylistDialogState extends State<_AddPlaylistDialog> {
                 segments: [
                   ButtonSegment(value: 'm3u',    label: Text(l.playlistsTypeM3u)),
                   ButtonSegment(value: 'xtream', label: Text(l.playlistsTypeXtream)),
+                  ButtonSegment(value: 'stalker', label: Text(l.playlistsTypeStalker)),
                 ],
                 selected:  {_type},
                 onSelectionChanged: (s) => setState(() => _type = s.first),
@@ -534,6 +358,8 @@ class _AddPlaylistDialogState extends State<_AddPlaylistDialog> {
                     },
                   ),
                 ),
+              ] else if (_type == 'stalker') ...[
+                StalkerFields(urlCtrl: _urlCtrl, macCtrl: _userCtrl),
               ] else ...[
                 TextField(
                   controller: _urlCtrl,
@@ -561,14 +387,17 @@ class _AddPlaylistDialogState extends State<_AddPlaylistDialog> {
                     border:    const OutlineInputBorder(),
                   ),
                 ),
-                const SizedBox(height: Spacing.md),
-                Align(
-                  alignment: Alignment.centerLeft,
-                  child: Text(l.playlistsContentTypes,
-                      style: const TextStyle(fontSize: TextSize.label,
-                          fontWeight: FontWeight.w600)),
-                ),
-                Row(
+              ],
+              // Stalker yalniz canli kanal (Android: icerik turu secimi yok).
+              if (_type != 'stalker') ...[
+              const SizedBox(height: Spacing.md),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: Text(l.playlistsContentTypes,
+                    style: const TextStyle(fontSize: TextSize.label,
+                        fontWeight: FontWeight.w600)),
+              ),
+              Row(
                   children: [
                     Expanded(
                       child: CheckboxListTile(
@@ -661,19 +490,24 @@ class _AddPlaylistDialogState extends State<_AddPlaylistDialog> {
       setState(() => _error = l.playlistsValidationXtreamCreds);
       return;
     }
+    final isStalker = _type == 'stalker';
+    final mac = isStalker ? StalkerMac.normalize(_userCtrl.text) : null;
+    if (isStalker && mac == null) {
+      setState(() => _error = l.playlistsValidationStalkerMac);
+      return;
+    }
     setState(() { _loading = true; _error = null; });
     try {
       final p = PlaylistModel(
         id:           const Uuid().v4(),
         name:         name,
         type:         _type,
-        url:          url,
-        username:     _userCtrl.text.trim(),
-        password:     _passCtrl.text.trim(),
-        allowedTypes: _type == 'xtream' ? _allowedTypes : 'live,movie,series',
+        url:          isStalker ? StalkerUrls.clean(url) : url,
+        username:     mac ?? _userCtrl.text.trim(),
+        password:     isStalker ? '' : _passCtrl.text.trim(),
+        allowedTypes: isStalker ? 'live,movie,series' : _allowedTypes,
       );
       await widget.onAdd(p);
-      Analytics.playlistAdded(type: _type, channelCount: 0);
       // pop(context, true) → _showAddDialog awaiter true alır, Home'a yönlendirir.
       if (mounted) Navigator.pop(context, true);
     } catch (e) {

@@ -1,6 +1,7 @@
 import 'package:path/path.dart';
 import 'package:sqflite/sqflite.dart';
 import '../utils/device_tier.dart';
+import '../utils/search_normalizer.dart';
 
 class AppDatabase {
   // v7 — CloudSync conflict resolution + Anon→linked local migration:
@@ -9,7 +10,18 @@ class AppDatabase {
   //     kolonlari eklendi.
   //   - `sync_tombstones` tablosu: silmelerin Firestore'a propagate edilebilmesi
   //     icin tombstone log.
-  static const _version = 7;
+  // v8 — Arama: `channels.searchKey` (Türkçe katlanmış name + seriesName).
+  //   FTS4 (`channel_fts`) artık bakımı yapılmıyor; tablo yerinde kalır.
+  // v9 — Android içerik paritesi:
+  //   - playlists: `epgUrl` (playlist başına EPG, eski global ayar taşındı),
+  //     `lastRefreshAt` / `lastRefreshAttemptAt` (otomatik yenileme aralığı).
+  //   - channels: `syncGen` (akışlı M3U/Xtream yazımı: yerinde upsert, sonunda
+  //     eski nesil silinir — 100K+ liste RAM'de iki kez tutulmaz).
+  //   - watchlist: kanal snapshot kolonları (cross-playlist liste, kanal
+  //     silinse bile kayıt görünür).
+  //   - epg_programmes: `syncGen` (akışlı XMLTV yazımı, bayat program temizliği).
+  //   - Gizli kategoriler global → aktif playlist anahtarına taşındı.
+  static const _version = 9;
   static const _name    = 'iptvai.db';
 
   static Database? _db;
@@ -90,7 +102,10 @@ class AppDatabase {
         lastModified TEXT DEFAULT '',
         ownerUid     TEXT,
         updatedAt    INTEGER DEFAULT 0,
-        lastSyncedAt INTEGER
+        lastSyncedAt INTEGER,
+        epgUrl       TEXT DEFAULT '',
+        lastRefreshAt        INTEGER DEFAULT 0,
+        lastRefreshAttemptAt INTEGER DEFAULT 0
       )
     ''');
 
@@ -116,7 +131,9 @@ class AppDatabase {
         duration      INTEGER DEFAULT 0,
         ownerUid      TEXT,
         updatedAt     INTEGER DEFAULT 0,
-        lastSyncedAt  INTEGER
+        lastSyncedAt  INTEGER,
+        searchKey     TEXT DEFAULT '',
+        syncGen       INTEGER DEFAULT 0
       )
     ''');
 
@@ -138,6 +155,10 @@ class AppDatabase {
     await db.execute('''
       CREATE INDEX idx_channels_recent ON channels(playlistId, lastWatched DESC);
     ''');
+    // v9 — global "Son İzlenenler" (Android getRecentChannels) için.
+    await db.execute('''
+      CREATE INDEX idx_channels_lastwatched ON channels(lastWatched);
+    ''');
 
     await db.execute('''
       CREATE TABLE epg_channels (
@@ -158,7 +179,8 @@ class AppDatabase {
         startTime   INTEGER NOT NULL,
         stopTime    INTEGER NOT NULL,
         category    TEXT DEFAULT '',
-        icon        TEXT DEFAULT ''
+        icon        TEXT DEFAULT '',
+        syncGen     INTEGER DEFAULT 0
       )
     ''');
 
@@ -204,8 +226,19 @@ class AppDatabase {
         ownerUid     TEXT,
         updatedAt    INTEGER DEFAULT 0,
         lastSyncedAt INTEGER,
+        name          TEXT DEFAULT '',
+        streamUrl     TEXT DEFAULT '',
+        logoUrl       TEXT DEFAULT '',
+        streamType    TEXT DEFAULT 'live',
+        category      TEXT DEFAULT '',
+        seriesName    TEXT DEFAULT '',
+        seasonNumber  INTEGER DEFAULT 0,
+        episodeNumber INTEGER DEFAULT 0,
         PRIMARY KEY (channelId, playlistId)
       )
+    ''');
+    await db.execute('''
+      CREATE INDEX idx_watchlist_added_all ON watchlist(addedAt DESC)
     ''');
     await db.execute('''
       CREATE INDEX idx_watchlist_added ON watchlist(playlistId, addedAt DESC)
@@ -511,6 +544,27 @@ class AppDatabase {
       await _createSyncTombstones(db);
     }
 
+    // v7 → v8: Arama anahtarı. Burada YALNIZ kolon eklenir: 50k kanallık
+    // backfill onUpgrade'de (DB açılışını bloklayan transaction) yapılırsa
+    // açılış saniyelerce takılır / iOS watchdog'a takılabilir. Katlama
+    // (İ/ı/ş/ğ...) main.dart'taki açılış sonrası backfillSearchKeys ile
+    // Dart'ta doldurulur (idempotent).
+    if (oldVersion < 8) {
+      await _addColumnIfMissing(db, 'channels', 'searchKey', "TEXT DEFAULT ''");
+      // Eski FTS index'i bayat token'larla dolu — boşalt (tablo yerinde kalır).
+      try {
+        await db.execute(
+            "INSERT INTO channel_fts(channel_fts) VALUES('delete-all')");
+      } catch (_) {
+        // FTS tablosu yoksa atla.
+      }
+    }
+
+    // v8 → v9: Android içerik paritesi (bkz. _version notu).
+    if (oldVersion < 9) {
+      await _upgradeToV9(db);
+    }
+
     // Ensure all tables exist even if upgrading from a corrupted/partial state
     if (oldVersion < newVersion) {
       await db.execute('''
@@ -530,7 +584,10 @@ class AppDatabase {
           addedAt      INTEGER DEFAULT 0,
           allowedTypes TEXT DEFAULT 'live,movie,series',
           etag         TEXT DEFAULT '',
-          lastModified TEXT DEFAULT ''
+          lastModified TEXT DEFAULT '',
+          epgUrl       TEXT DEFAULT '',
+          lastRefreshAt        INTEGER DEFAULT 0,
+          lastRefreshAttemptAt INTEGER DEFAULT 0
         )
       ''');
       await db.execute('''
@@ -552,9 +609,117 @@ class AppDatabase {
           tvgId         TEXT DEFAULT '',
           addedAt       INTEGER DEFAULT 0,
           isWatched     INTEGER DEFAULT 0,
-          duration      INTEGER DEFAULT 0
+          duration      INTEGER DEFAULT 0,
+          searchKey     TEXT DEFAULT '',
+          syncGen       INTEGER DEFAULT 0
         )
       ''');
     }
+  }
+
+  /// v9 şema + veri taşıma. Her adım idempotent; biri patlarsa diğerleri
+  /// yine uygulanır (DB açılışı düşmesin).
+  static Future<void> _upgradeToV9(Database db) async {
+    await _addColumnIfMissing(db, 'playlists', 'epgUrl', "TEXT DEFAULT ''");
+    await _addColumnIfMissing(
+        db, 'playlists', 'lastRefreshAt', 'INTEGER DEFAULT 0');
+    await _addColumnIfMissing(
+        db, 'playlists', 'lastRefreshAttemptAt', 'INTEGER DEFAULT 0');
+    await _addColumnIfMissing(db, 'channels', 'syncGen', 'INTEGER DEFAULT 0');
+    await _addColumnIfMissing(
+        db, 'epg_programmes', 'syncGen', 'INTEGER DEFAULT 0');
+    const wlCols = <String, String>{
+      'name':          "TEXT DEFAULT ''",
+      'streamUrl':     "TEXT DEFAULT ''",
+      'logoUrl':       "TEXT DEFAULT ''",
+      'streamType':    "TEXT DEFAULT 'live'",
+      'category':      "TEXT DEFAULT ''",
+      'seriesName':    "TEXT DEFAULT ''",
+      'seasonNumber':  'INTEGER DEFAULT 0',
+      'episodeNumber': 'INTEGER DEFAULT 0',
+    };
+    for (final e in wlCols.entries) {
+      await _addColumnIfMissing(db, 'watchlist', e.key, e.value);
+    }
+    Future<void> tryExec(String sql) async {
+      try {
+        await db.execute(sql);
+      } catch (_) {
+        // Defansif: tablo/kayıt yoksa atla.
+      }
+    }
+
+    await tryExec('CREATE INDEX IF NOT EXISTS idx_channels_lastwatched '
+        'ON channels(lastWatched)');
+    await tryExec('CREATE INDEX IF NOT EXISTS idx_watchlist_added_all '
+        'ON watchlist(addedAt DESC)');
+    // Watchlist snapshot backfill — mevcut kayıtlar kanal tablosundan dolar.
+    await tryExec('''
+      UPDATE watchlist SET
+        name          = COALESCE((SELECT c.name FROM channels c WHERE c.id = watchlist.channelId), name),
+        streamUrl     = COALESCE((SELECT c.streamUrl FROM channels c WHERE c.id = watchlist.channelId), streamUrl),
+        logoUrl       = COALESCE((SELECT c.logoUrl FROM channels c WHERE c.id = watchlist.channelId), logoUrl),
+        streamType    = COALESCE((SELECT c.streamType FROM channels c WHERE c.id = watchlist.channelId), streamType),
+        category      = COALESCE((SELECT c.category FROM channels c WHERE c.id = watchlist.channelId), category),
+        seriesName    = COALESCE((SELECT c.seriesName FROM channels c WHERE c.id = watchlist.channelId), seriesName),
+        seasonNumber  = COALESCE((SELECT c.seasonNumber FROM channels c WHERE c.id = watchlist.channelId), seasonNumber),
+        episodeNumber = COALESCE((SELECT c.episodeNumber FROM channels c WHERE c.id = watchlist.channelId), episodeNumber)
+      WHERE name IS NULL OR name = ''
+    ''');
+    // Global EPG URL → (boş olan) tüm playlist'ler. Eski sürümde tek URL
+    // hangi playlist aktifse onun için kullanılıyordu.
+    await tryExec('''
+      UPDATE playlists SET epgUrl = (
+        SELECT value FROM settings WHERE key = 'epg_url'
+      )
+      WHERE (epgUrl IS NULL OR epgUrl = '')
+        AND EXISTS (SELECT 1 FROM settings WHERE key = 'epg_url' AND value != '')
+    ''');
+    // Global gizli kategoriler → aktif playlist'in anahtarı.
+    await tryExec('''
+      INSERT OR IGNORE INTO settings (key, value)
+      SELECT 'hidden_categories_' || a.value, h.value
+      FROM settings h, settings a
+      WHERE h.key = 'hidden_categories' AND a.key = 'active_playlist_id'
+        AND a.value != ''
+    ''');
+  }
+
+  /// `searchKey` boş/NULL olan kanalları Dart'ta katlanmış anahtarla doldurur.
+  /// Chunk'lı: bellek sabit kalır, 50k kanalda bile tek seferde yüklenmez.
+  /// Dönüş: güncellenen satır sayısı.
+  /// rowid imleçli sayfa sorgusu: her tur yalnız ilerideki satırlara bakar
+  /// (aynı boş satırları tekrar tekrar taramaz, sonsuz döngü riski yok).
+  static const searchKeyBackfillSql =
+      'SELECT rowid AS rid, name, seriesName FROM channels '
+      "WHERE rowid > ? AND (searchKey IS NULL OR searchKey = '') "
+      'ORDER BY rowid LIMIT ?';
+
+  static Future<int> backfillSearchKeys(DatabaseExecutor db,
+      {int chunkSize = 1000}) async {
+    var total = 0;
+    var lastRowid = 0;
+    while (true) {
+      final rows =
+          await db.rawQuery(searchKeyBackfillSql, [lastRowid, chunkSize]);
+      if (rows.isEmpty) break;
+      final batch = db.batch();
+      for (final r in rows) {
+        var key = buildSearchKey(
+          (r['name'] as String?) ?? '',
+          (r['seriesName'] as String?) ?? '',
+        );
+        // Boş ad: tek boşluk = "işlendi" (sonraki açılışlarda yeniden taranmaz).
+        if (key.isEmpty) key = ' ';
+        final rid = r['rid'] as int;
+        batch.update('channels', {'searchKey': key},
+            where: 'rowid = ?', whereArgs: [rid]);
+        if (rid > lastRowid) lastRowid = rid;
+      }
+      await batch.commit(noResult: true);
+      total += rows.length;
+      if (rows.length < chunkSize) break;
+    }
+    return total;
   }
 }

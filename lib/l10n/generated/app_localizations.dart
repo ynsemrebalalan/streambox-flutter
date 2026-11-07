@@ -507,6 +507,48 @@ abstract class AppLocalizations {
   /// **'Daha Fazla'**
   String get homeMore;
 
+  /// No description provided for @homePlaylistSyncing.
+  ///
+  /// In tr, this message translates to:
+  /// **'Playlist senkronize ediliyor…'**
+  String get homePlaylistSyncing;
+
+  /// No description provided for @homeSearchTooltip.
+  ///
+  /// In tr, this message translates to:
+  /// **'Ara'**
+  String get homeSearchTooltip;
+
+  /// No description provided for @watchlistAddTooltip.
+  ///
+  /// In tr, this message translates to:
+  /// **'Listeme Ekle'**
+  String get watchlistAddTooltip;
+
+  /// No description provided for @watchlistRemoveTooltip.
+  ///
+  /// In tr, this message translates to:
+  /// **'Listeden Çıkar'**
+  String get watchlistRemoveTooltip;
+
+  /// No description provided for @playerPlayAction.
+  ///
+  /// In tr, this message translates to:
+  /// **'Oynat'**
+  String get playerPlayAction;
+
+  /// No description provided for @playerPauseAction.
+  ///
+  /// In tr, this message translates to:
+  /// **'Duraklat'**
+  String get playerPauseAction;
+
+  /// No description provided for @playlistsActiveLabel.
+  ///
+  /// In tr, this message translates to:
+  /// **'Aktif'**
+  String get playlistsActiveLabel;
+
   /// No description provided for @homeCategoryManagement.
   ///
   /// In tr, this message translates to:
@@ -758,6 +800,96 @@ abstract class AppLocalizations {
   /// In tr, this message translates to:
   /// **'Xtream'**
   String get playlistsTypeXtream;
+
+  /// No description provided for @playlistsTypeStalker.
+  ///
+  /// In tr, this message translates to:
+  /// **'Stalker / MAG'**
+  String get playlistsTypeStalker;
+
+  /// No description provided for @playlistsStalkerCardTitle.
+  ///
+  /// In tr, this message translates to:
+  /// **'Stalker Portal / MAG Kutu'**
+  String get playlistsStalkerCardTitle;
+
+  /// No description provided for @playlistsStalkerCardBody.
+  ///
+  /// In tr, this message translates to:
+  /// **'MAC adresinizin IPTV sağlayıcınıza kayıtlı olması gerekir. Uygulama önce hızlı M3U yolunu dener, başarısız olursa tam Stalker protokolüne geçer.'**
+  String get playlistsStalkerCardBody;
+
+  /// No description provided for @playlistsStalkerPortalLabel.
+  ///
+  /// In tr, this message translates to:
+  /// **'Portal URL'**
+  String get playlistsStalkerPortalLabel;
+
+  /// No description provided for @playlistsStalkerPortalHint.
+  ///
+  /// In tr, this message translates to:
+  /// **'http://provider.com:8080'**
+  String get playlistsStalkerPortalHint;
+
+  /// No description provided for @playlistsStalkerMacLabel.
+  ///
+  /// In tr, this message translates to:
+  /// **'MAC Adresi'**
+  String get playlistsStalkerMacLabel;
+
+  /// No description provided for @playlistsStalkerMacHint.
+  ///
+  /// In tr, this message translates to:
+  /// **'00:1A:79:XX:XX:XX'**
+  String get playlistsStalkerMacHint;
+
+  /// No description provided for @playlistsStalkerMacGenerate.
+  ///
+  /// In tr, this message translates to:
+  /// **'Üret'**
+  String get playlistsStalkerMacGenerate;
+
+  /// No description provided for @playlistsStalkerMacHelp.
+  ///
+  /// In tr, this message translates to:
+  /// **'MAC biçimi: XX:XX:XX:XX:XX:XX (büyük harf, iki nokta üst üste ile ayrılmış)'**
+  String get playlistsStalkerMacHelp;
+
+  /// No description provided for @playlistsValidationStalkerMac.
+  ///
+  /// In tr, this message translates to:
+  /// **'Geçerli bir MAC adresi girin (XX:XX:XX:XX:XX:XX).'**
+  String get playlistsValidationStalkerMac;
+
+  /// No description provided for @editPlaylistStalkerBadge.
+  ///
+  /// In tr, this message translates to:
+  /// **'Stalker / MAG'**
+  String get editPlaylistStalkerBadge;
+
+  /// No description provided for @progressTryingPortalList.
+  ///
+  /// In tr, this message translates to:
+  /// **'Liste portaldan alınmaya çalışılıyor…'**
+  String get progressTryingPortalList;
+
+  /// No description provided for @progressPortalConnecting.
+  ///
+  /// In tr, this message translates to:
+  /// **'Portala bağlanılıyor…'**
+  String get progressPortalConnecting;
+
+  /// No description provided for @loadErrPortalConnect.
+  ///
+  /// In tr, this message translates to:
+  /// **'Portala bağlanılamadı. Portal adresini ve MAC adresinizin sağlayıcıya kayıtlı olduğunu kontrol edin.'**
+  String get loadErrPortalConnect;
+
+  /// No description provided for @loadErrPortalList.
+  ///
+  /// In tr, this message translates to:
+  /// **'Kanal listesi alınamadı. MAC adresinizin portala kayıtlı olduğunu sağlayıcınızdan doğrulayın.'**
+  String get loadErrPortalList;
 
   /// No description provided for @playlistsNameLabel.
   ///
@@ -1052,6 +1184,522 @@ abstract class AppLocalizations {
   /// In tr, this message translates to:
   /// **'Bu yayın tek kalite sunuyor.'**
   String get playerSingleQuality;
+
+  /// No description provided for @playerErrorUnsupportedFormat.
+  ///
+  /// In tr, this message translates to:
+  /// **'Bu yayının görüntü veya ses biçimi bu cihazda oynatılamıyor. Başka bir kaynak deneyin ya da harici oynatıcıyı kullanın.'**
+  String get playerErrorUnsupportedFormat;
+
+  /// No description provided for @playerErrorCorruptStream.
+  ///
+  /// In tr, this message translates to:
+  /// **'Yayın verisi okunamadı. Kanal geçici olarak bozuk olabilir; biraz sonra tekrar deneyin.'**
+  String get playerErrorCorruptStream;
+
+  /// No description provided for @aiSubErrUnavailable.
+  ///
+  /// In tr, this message translates to:
+  /// **'AI altyazı servisi şu anda kullanılamıyor. Lütfen daha sonra tekrar deneyin.'**
+  String get aiSubErrUnavailable;
+
+  /// No description provided for @aiSubErrProRequired.
+  ///
+  /// In tr, this message translates to:
+  /// **'AI altyazı denemen bitti. Devam etmek için Pro sürümüne geç.'**
+  String get aiSubErrProRequired;
+
+  /// No description provided for @aiSubErrQuota.
+  ///
+  /// In tr, this message translates to:
+  /// **'AI altyazı kullanım kotası doldu.'**
+  String get aiSubErrQuota;
+
+  /// No description provided for @aiSubErrBusy.
+  ///
+  /// In tr, this message translates to:
+  /// **'AI altyazı servisi şu an çok yoğun. Biraz bekleyip tekrar deneyin.'**
+  String get aiSubErrBusy;
+
+  /// No description provided for @aiSubErrInvalidKey.
+  ///
+  /// In tr, this message translates to:
+  /// **'AI altyazı API anahtarı geçersiz veya süresi dolmuş. Ayarlar > AI Altyazı bölümünden kontrol edin.'**
+  String get aiSubErrInvalidKey;
+
+  /// No description provided for @aiSubErrRejected.
+  ///
+  /// In tr, this message translates to:
+  /// **'AI altyazı servisi isteği kabul etmedi. Lütfen daha sonra tekrar deneyin.'**
+  String get aiSubErrRejected;
+
+  /// No description provided for @aiSubErrEmptyResponse.
+  ///
+  /// In tr, this message translates to:
+  /// **'AI altyazı servisi boş yanıt gönderdi. Lütfen tekrar deneyin.'**
+  String get aiSubErrEmptyResponse;
+
+  /// No description provided for @aiSubErrNoSpeech.
+  ///
+  /// In tr, this message translates to:
+  /// **'Bu bölümde konuşma algılanamadı. Videonun farklı bir anında tekrar deneyin.'**
+  String get aiSubErrNoSpeech;
+
+  /// No description provided for @aiSubErrGeneric.
+  ///
+  /// In tr, this message translates to:
+  /// **'Altyazı oluşturulamadı. Lütfen tekrar deneyin.'**
+  String get aiSubErrGeneric;
+
+  /// No description provided for @aiSubErrUnreachable.
+  ///
+  /// In tr, this message translates to:
+  /// **'AI altyazı servisine ulaşılamıyor. İnternet bağlantınızı kontrol edin.'**
+  String get aiSubErrUnreachable;
+
+  /// No description provided for @aiSubErrConnectTimeout.
+  ///
+  /// In tr, this message translates to:
+  /// **'AI altyazı servisine bağlanırken zaman aşımı oldu. Lütfen tekrar deneyin.'**
+  String get aiSubErrConnectTimeout;
+
+  /// No description provided for @aiSubErrExtract.
+  ///
+  /// In tr, this message translates to:
+  /// **'AI altyazı için ses alınamadı. Bu yayının biçimi bazı cihazlarda desteklenmiyor. Daha düşük kaliteli bir kaynak deneyin ya da harici oynatıcıda izleyin.'**
+  String get aiSubErrExtract;
+
+  /// No description provided for @aiSubErrNoOpenAiKey.
+  ///
+  /// In tr, this message translates to:
+  /// **'OpenAI API anahtarı girilmedi. Ayarlar > AI Altyazı bölümünden ekleyin.'**
+  String get aiSubErrNoOpenAiKey;
+
+  /// No description provided for @aiTrialStarted.
+  ///
+  /// In tr, this message translates to:
+  /// **'{days} günlük ücretsiz AI altyazı denemen başladı'**
+  String aiTrialStarted(int days);
+
+  /// No description provided for @paywallAiTrialEnded.
+  ///
+  /// In tr, this message translates to:
+  /// **'AI altyazı denemesi bitti. Kullanmaya devam etmek için Pro\'ya geç.'**
+  String get paywallAiTrialEnded;
+
+  /// No description provided for @playerAiPreparing.
+  ///
+  /// In tr, this message translates to:
+  /// **'AI altyazı hazırlanıyor'**
+  String get playerAiPreparing;
+
+  /// No description provided for @playerSecondsShort.
+  ///
+  /// In tr, this message translates to:
+  /// **'{seconds} sn'**
+  String playerSecondsShort(int seconds);
+
+  /// No description provided for @playerBannerWhisper.
+  ///
+  /// In tr, this message translates to:
+  /// **'AI altyazı (ses tanıma): {lang}'**
+  String playerBannerWhisper(String lang);
+
+  /// No description provided for @playerOrientationLock.
+  ///
+  /// In tr, this message translates to:
+  /// **'Ekran yönünü kilitle'**
+  String get playerOrientationLock;
+
+  /// No description provided for @playerResumeQuestion.
+  ///
+  /// In tr, this message translates to:
+  /// **'{position} konumundan devam edilsin mi?'**
+  String playerResumeQuestion(String position);
+
+  /// No description provided for @playerResumeContinue.
+  ///
+  /// In tr, this message translates to:
+  /// **'Devam Et'**
+  String get playerResumeContinue;
+
+  /// No description provided for @playerResumeFromBeginning.
+  ///
+  /// In tr, this message translates to:
+  /// **'Baştan Başla'**
+  String get playerResumeFromBeginning;
+
+  /// No description provided for @playerErrorStreamUnavailable.
+  ///
+  /// In tr, this message translates to:
+  /// **'Kanal şu anda açılamadı. Yayın kaynağı yanıt vermiyor ya da bağlantı koptu.'**
+  String get playerErrorStreamUnavailable;
+
+  /// No description provided for @playerErrorBackToList.
+  ///
+  /// In tr, this message translates to:
+  /// **'Kanal listesine dön'**
+  String get playerErrorBackToList;
+
+  /// No description provided for @playerReportError.
+  ///
+  /// In tr, this message translates to:
+  /// **'Hatayı Bildir'**
+  String get playerReportError;
+
+  /// No description provided for @errorReportTitle.
+  ///
+  /// In tr, this message translates to:
+  /// **'Hatayı Bildir'**
+  String get errorReportTitle;
+
+  /// No description provided for @errorReportThanks.
+  ///
+  /// In tr, this message translates to:
+  /// **'Teşekkürler!'**
+  String get errorReportThanks;
+
+  /// No description provided for @errorReportReceived.
+  ///
+  /// In tr, this message translates to:
+  /// **'Hata raporunuz iletildi.'**
+  String get errorReportReceived;
+
+  /// No description provided for @errorReportChannel.
+  ///
+  /// In tr, this message translates to:
+  /// **'Kanal: {name}'**
+  String errorReportChannel(String name);
+
+  /// No description provided for @errorReportError.
+  ///
+  /// In tr, this message translates to:
+  /// **'Hata: {error}'**
+  String errorReportError(String error);
+
+  /// No description provided for @errorReportDevice.
+  ///
+  /// In tr, this message translates to:
+  /// **'Cihaz: {device}'**
+  String errorReportDevice(String device);
+
+  /// No description provided for @errorReportVersion.
+  ///
+  /// In tr, this message translates to:
+  /// **'Versiyon: {version}'**
+  String errorReportVersion(String version);
+
+  /// No description provided for @errorReportNoteLabel.
+  ///
+  /// In tr, this message translates to:
+  /// **'Ek not (isteğe bağlı):'**
+  String get errorReportNoteLabel;
+
+  /// No description provided for @errorReportNotePlaceholder.
+  ///
+  /// In tr, this message translates to:
+  /// **'Ne yapıyordunuz?'**
+  String get errorReportNotePlaceholder;
+
+  /// No description provided for @errorReportSend.
+  ///
+  /// In tr, this message translates to:
+  /// **'Gönder'**
+  String get errorReportSend;
+
+  /// No description provided for @playerPanelChannels.
+  ///
+  /// In tr, this message translates to:
+  /// **'Kanallar ({count})'**
+  String playerPanelChannels(int count);
+
+  /// No description provided for @playerSeekForward.
+  ///
+  /// In tr, this message translates to:
+  /// **'▶▶ +10sn'**
+  String get playerSeekForward;
+
+  /// No description provided for @playerSeekBackward.
+  ///
+  /// In tr, this message translates to:
+  /// **'◀◀ -10sn'**
+  String get playerSeekBackward;
+
+  /// No description provided for @playerWatchlistAdded.
+  ///
+  /// In tr, this message translates to:
+  /// **'Listeye eklendi'**
+  String get playerWatchlistAdded;
+
+  /// No description provided for @playerWatchlistRemoved.
+  ///
+  /// In tr, this message translates to:
+  /// **'Listeden çıkarıldı'**
+  String get playerWatchlistRemoved;
+
+  /// No description provided for @playerWatchlistTooltip.
+  ///
+  /// In tr, this message translates to:
+  /// **'Daha Sonra İzle'**
+  String get playerWatchlistTooltip;
+
+  /// No description provided for @settingsAiSection.
+  ///
+  /// In tr, this message translates to:
+  /// **'AI Altyazı'**
+  String get settingsAiSection;
+
+  /// No description provided for @settingsAiTargetLangTitle.
+  ///
+  /// In tr, this message translates to:
+  /// **'AI Altyazı Hedef Dili'**
+  String get settingsAiTargetLangTitle;
+
+  /// No description provided for @settingsAiTargetLangSubtitle.
+  ///
+  /// In tr, this message translates to:
+  /// **'Çeviri sonucu hangi dilde gözüksün'**
+  String get settingsAiTargetLangSubtitle;
+
+  /// No description provided for @settingsAiTargetLangAuto.
+  ///
+  /// In tr, this message translates to:
+  /// **'Otomatik (cihaz dili)'**
+  String get settingsAiTargetLangAuto;
+
+  /// No description provided for @settingsAiTargetLangDialogTitle.
+  ///
+  /// In tr, this message translates to:
+  /// **'Hedef Dil Seç'**
+  String get settingsAiTargetLangDialogTitle;
+
+  /// No description provided for @settingsAiBannerTitle.
+  ///
+  /// In tr, this message translates to:
+  /// **'AI Altyazı Banner'**
+  String get settingsAiBannerTitle;
+
+  /// No description provided for @settingsAiBannerSubtitle.
+  ///
+  /// In tr, this message translates to:
+  /// **'Üstte kaynak/hedef dil bilgisi gözüksün'**
+  String get settingsAiBannerSubtitle;
+
+  /// No description provided for @settingsAiWhisperTitle.
+  ///
+  /// In tr, this message translates to:
+  /// **'AI Whisper Altyazı'**
+  String get settingsAiWhisperTitle;
+
+  /// No description provided for @settingsAiWhisperSubtitle.
+  ///
+  /// In tr, this message translates to:
+  /// **'Oynatıcıda otomatik altyazı üretimi için'**
+  String get settingsAiWhisperSubtitle;
+
+  /// No description provided for @settingsAiProviderGroq.
+  ///
+  /// In tr, this message translates to:
+  /// **'Groq'**
+  String get settingsAiProviderGroq;
+
+  /// No description provided for @settingsAiProviderGroqBadge.
+  ///
+  /// In tr, this message translates to:
+  /// **'Pro'**
+  String get settingsAiProviderGroqBadge;
+
+  /// No description provided for @settingsAiProviderOpenai.
+  ///
+  /// In tr, this message translates to:
+  /// **'OpenAI'**
+  String get settingsAiProviderOpenai;
+
+  /// No description provided for @settingsAiProviderOpenaiBadge.
+  ///
+  /// In tr, this message translates to:
+  /// **'Ücretli'**
+  String get settingsAiProviderOpenaiBadge;
+
+  /// No description provided for @settingsAiGroqInfo.
+  ///
+  /// In tr, this message translates to:
+  /// **'Yerleşik Groq servisi — Pro özelliği, ilk {days} gün ücretsiz deneme'**
+  String settingsAiGroqInfo(int days);
+
+  /// No description provided for @settingsAiOpenaiCost.
+  ///
+  /// In tr, this message translates to:
+  /// **'Tahmini maliyet: ~\$0.006/istek · ~\$0.006/dk · openai.com/account/billing'**
+  String get settingsAiOpenaiCost;
+
+  /// No description provided for @settingsAiOpenaiKeyLabel.
+  ///
+  /// In tr, this message translates to:
+  /// **'OpenAI API Key'**
+  String get settingsAiOpenaiKeyLabel;
+
+  /// No description provided for @settingsAiOpenaiKeyPlaceholder.
+  ///
+  /// In tr, this message translates to:
+  /// **'sk-...'**
+  String get settingsAiOpenaiKeyPlaceholder;
+
+  /// No description provided for @settingsAiOpenaiKeySaved.
+  ///
+  /// In tr, this message translates to:
+  /// **'✓ OpenAI anahtarı kayıtlı'**
+  String get settingsAiOpenaiKeySaved;
+
+  /// No description provided for @settingsSubtitleDefaultOn.
+  ///
+  /// In tr, this message translates to:
+  /// **'Altyazı varsayılan açık'**
+  String get settingsSubtitleDefaultOn;
+
+  /// No description provided for @settingsSubtitleDefaultOnSubtitle.
+  ///
+  /// In tr, this message translates to:
+  /// **'Oynatıcı açılınca altyazı aktif olsun'**
+  String get settingsSubtitleDefaultOnSubtitle;
+
+  /// No description provided for @settingsBufferDuration.
+  ///
+  /// In tr, this message translates to:
+  /// **'Önbellek süresi'**
+  String get settingsBufferDuration;
+
+  /// No description provided for @settingsBufferSeconds.
+  ///
+  /// In tr, this message translates to:
+  /// **'{seconds} saniye'**
+  String settingsBufferSeconds(int seconds);
+
+  /// No description provided for @aiTrialDaysLeft.
+  ///
+  /// In tr, this message translates to:
+  /// **'{days, plural, one{AI altyazı denemesi: {days} gün kaldı} other{AI altyazı denemesi: {days} gün kaldı}}'**
+  String aiTrialDaysLeft(int days);
+
+  /// No description provided for @playerPaused.
+  ///
+  /// In tr, this message translates to:
+  /// **'Duraklatıldı'**
+  String get playerPaused;
+
+  /// No description provided for @playerPlaying.
+  ///
+  /// In tr, this message translates to:
+  /// **'Oynatılıyor'**
+  String get playerPlaying;
+
+  /// No description provided for @playerMuted.
+  ///
+  /// In tr, this message translates to:
+  /// **'Sessiz'**
+  String get playerMuted;
+
+  /// No description provided for @playerUnmuted.
+  ///
+  /// In tr, this message translates to:
+  /// **'Ses açık'**
+  String get playerUnmuted;
+
+  /// No description provided for @playerFeedbackAudio.
+  ///
+  /// In tr, this message translates to:
+  /// **'Ses: {label}'**
+  String playerFeedbackAudio(String label);
+
+  /// No description provided for @playerFeedbackSpeed.
+  ///
+  /// In tr, this message translates to:
+  /// **'Hız {speed}'**
+  String playerFeedbackSpeed(String speed);
+
+  /// No description provided for @playerFeedbackSubtitleOff.
+  ///
+  /// In tr, this message translates to:
+  /// **'Altyazı kapalı'**
+  String get playerFeedbackSubtitleOff;
+
+  /// No description provided for @playerFeedbackSubtitle.
+  ///
+  /// In tr, this message translates to:
+  /// **'Altyazı: {lang}'**
+  String playerFeedbackSubtitle(String lang);
+
+  /// No description provided for @playerFeedbackSubtitleLoading.
+  ///
+  /// In tr, this message translates to:
+  /// **'Altyazı yükleniyor…'**
+  String get playerFeedbackSubtitleLoading;
+
+  /// No description provided for @playerFeedbackResolution.
+  ///
+  /// In tr, this message translates to:
+  /// **'Çözünürlük: {value}'**
+  String playerFeedbackResolution(String value);
+
+  /// No description provided for @playerFeedbackFit.
+  ///
+  /// In tr, this message translates to:
+  /// **'Görüntü: {mode}'**
+  String playerFeedbackFit(String mode);
+
+  /// No description provided for @playerFavoriteAdd.
+  ///
+  /// In tr, this message translates to:
+  /// **'Favorilere Ekle'**
+  String get playerFavoriteAdd;
+
+  /// No description provided for @playerFavoriteRemove.
+  ///
+  /// In tr, this message translates to:
+  /// **'Favoriden Çıkar'**
+  String get playerFavoriteRemove;
+
+  /// No description provided for @playerNextChannel.
+  ///
+  /// In tr, this message translates to:
+  /// **'Sonraki kanal'**
+  String get playerNextChannel;
+
+  /// No description provided for @playerPrevChannel.
+  ///
+  /// In tr, this message translates to:
+  /// **'Önceki kanal'**
+  String get playerPrevChannel;
+
+  /// No description provided for @playerOrientationUnlocked.
+  ///
+  /// In tr, this message translates to:
+  /// **'Ekran yönü serbest'**
+  String get playerOrientationUnlocked;
+
+  /// No description provided for @playerNextEpisode.
+  ///
+  /// In tr, this message translates to:
+  /// **'Sıradaki bölüm: {title}'**
+  String playerNextEpisode(String title);
+
+  /// No description provided for @playerOpenExternal.
+  ///
+  /// In tr, this message translates to:
+  /// **'Harici oynatıcıda aç (VLC)'**
+  String get playerOpenExternal;
+
+  /// No description provided for @playerExternalNotFound.
+  ///
+  /// In tr, this message translates to:
+  /// **'Harici oynatıcı bulunamadı. App Store\'dan VLC kurun.'**
+  String get playerExternalNotFound;
+
+  /// No description provided for @playerChannelPanelTooltip.
+  ///
+  /// In tr, this message translates to:
+  /// **'Kanal listesi'**
+  String get playerChannelPanelTooltip;
 
   /// No description provided for @disclaimerWelcome.
   ///
@@ -2450,6 +3098,678 @@ abstract class AppLocalizations {
   /// In tr, this message translates to:
   /// **'Devam'**
   String get otherAppsContinue;
+
+  /// No description provided for @editPlaylistTitle.
+  ///
+  /// In tr, this message translates to:
+  /// **'Playlist Düzenle'**
+  String get editPlaylistTitle;
+
+  /// No description provided for @editPlaylistNotFound.
+  ///
+  /// In tr, this message translates to:
+  /// **'Playlist bulunamadı'**
+  String get editPlaylistNotFound;
+
+  /// No description provided for @editPlaylistXtreamBadge.
+  ///
+  /// In tr, this message translates to:
+  /// **'Xtream Codes'**
+  String get editPlaylistXtreamBadge;
+
+  /// No description provided for @editPlaylistM3uBadge.
+  ///
+  /// In tr, this message translates to:
+  /// **'M3U Playlist'**
+  String get editPlaylistM3uBadge;
+
+  /// No description provided for @editPlaylistAddedAt.
+  ///
+  /// In tr, this message translates to:
+  /// **'Eklenme tarihi'**
+  String get editPlaylistAddedAt;
+
+  /// No description provided for @editPlaylistExpiry.
+  ///
+  /// In tr, this message translates to:
+  /// **'Son kullanma tarihi'**
+  String get editPlaylistExpiry;
+
+  /// No description provided for @editPlaylistExpiredLabel.
+  ///
+  /// In tr, this message translates to:
+  /// **'⚠ Geçmiş'**
+  String get editPlaylistExpiredLabel;
+
+  /// No description provided for @editPlaylistValidLabel.
+  ///
+  /// In tr, this message translates to:
+  /// **'✓ Geçerli'**
+  String get editPlaylistValidLabel;
+
+  /// No description provided for @editPlaylistUrlLabel.
+  ///
+  /// In tr, this message translates to:
+  /// **'Sunucu URL'**
+  String get editPlaylistUrlLabel;
+
+  /// No description provided for @editPlaylistRefreshButton.
+  ///
+  /// In tr, this message translates to:
+  /// **'Kanalları Yenile'**
+  String get editPlaylistRefreshButton;
+
+  /// No description provided for @editPlaylistDeleteButton.
+  ///
+  /// In tr, this message translates to:
+  /// **'Playlistı Sil'**
+  String get editPlaylistDeleteButton;
+
+  /// No description provided for @deletePlaylistDialogTitle.
+  ///
+  /// In tr, this message translates to:
+  /// **'Playlist Sil'**
+  String get deletePlaylistDialogTitle;
+
+  /// No description provided for @deletePlaylistDialogQuestion.
+  ///
+  /// In tr, this message translates to:
+  /// **'Nasıl silmek istiyorsunuz?'**
+  String get deletePlaylistDialogQuestion;
+
+  /// No description provided for @deleteDeviceExplain.
+  ///
+  /// In tr, this message translates to:
+  /// **'Yalnızca bu cihazdan kaldırılır. Bulut kaydı durur; istediğinizde \"Buluttan İndir\" ile geri alabilirsiniz.'**
+  String get deleteDeviceExplain;
+
+  /// No description provided for @deleteDeviceExplainLocal.
+  ///
+  /// In tr, this message translates to:
+  /// **'Bu cihazdan kaldırılır. Bu liste bulutta kayıtlı değil; geri almak için yeniden eklemeniz gerekir.'**
+  String get deleteDeviceExplainLocal;
+
+  /// No description provided for @deletePlaylistFromCloud.
+  ///
+  /// In tr, this message translates to:
+  /// **'Buluttan Sil'**
+  String get deletePlaylistFromCloud;
+
+  /// No description provided for @deletePlaylistFromDevice.
+  ///
+  /// In tr, this message translates to:
+  /// **'Cihazdan Sil'**
+  String get deletePlaylistFromDevice;
+
+  /// No description provided for @deleteCloudExplain.
+  ///
+  /// In tr, this message translates to:
+  /// **'Hem bu cihazdan hem buluttan kalıcı olarak silinir; diğer cihazlarınıza da bir daha gelmez.'**
+  String get deleteCloudExplain;
+
+  /// No description provided for @progressDownloadingList.
+  ///
+  /// In tr, this message translates to:
+  /// **'Kanal listesi indiriliyor…'**
+  String get progressDownloadingList;
+
+  /// No description provided for @progressRetrying.
+  ///
+  /// In tr, this message translates to:
+  /// **'Yeniden deneniyor ({attempt}/3)…'**
+  String progressRetrying(int attempt);
+
+  /// No description provided for @progressParsingList.
+  ///
+  /// In tr, this message translates to:
+  /// **'Kanal listesi işleniyor…'**
+  String get progressParsingList;
+
+  /// No description provided for @progressChannelsSaved.
+  ///
+  /// In tr, this message translates to:
+  /// **'{count} kanal kaydedildi…'**
+  String progressChannelsSaved(int count);
+
+  /// No description provided for @progressServerConnecting.
+  ///
+  /// In tr, this message translates to:
+  /// **'Sunucuya bağlanılıyor…'**
+  String get progressServerConnecting;
+
+  /// No description provided for @progressLoadingLive.
+  ///
+  /// In tr, this message translates to:
+  /// **'Canlı kanallar yükleniyor…'**
+  String get progressLoadingLive;
+
+  /// No description provided for @progressLoadingMovies.
+  ///
+  /// In tr, this message translates to:
+  /// **'Filmler yükleniyor…'**
+  String get progressLoadingMovies;
+
+  /// No description provided for @progressLoadingSeries.
+  ///
+  /// In tr, this message translates to:
+  /// **'Diziler yükleniyor…'**
+  String get progressLoadingSeries;
+
+  /// No description provided for @loadErrM3uNotFound.
+  ///
+  /// In tr, this message translates to:
+  /// **'Bu adreste kanal listesi bulunamadı. Adresin bir M3U listesine ait olduğundan emin olun.'**
+  String get loadErrM3uNotFound;
+
+  /// No description provided for @loadErrIncomplete.
+  ///
+  /// In tr, this message translates to:
+  /// **'Liste eksik geldi ({count} / {total} kanal) — bağlantı yarıda kesilmiş olabilir. Mevcut listeniz korundu, tekrar deneyin.'**
+  String loadErrIncomplete(int count, int total);
+
+  /// No description provided for @loadErrServerEmpty.
+  ///
+  /// In tr, this message translates to:
+  /// **'Sunucu boş bir liste gönderdi. Aboneliğinizde kanal tanımlı olduğundan emin olun; sorun sürerse sağlayıcınıza danışın.'**
+  String get loadErrServerEmpty;
+
+  /// No description provided for @loadErrSeriesInfo.
+  ///
+  /// In tr, this message translates to:
+  /// **'Bu dizinin bilgisi alınamadı. Listeyi yenileyip tekrar deneyin.'**
+  String get loadErrSeriesInfo;
+
+  /// No description provided for @loadErrNoEpisodes.
+  ///
+  /// In tr, this message translates to:
+  /// **'Sağlayıcı bu dizi için bölüm göndermedi.'**
+  String get loadErrNoEpisodes;
+
+  /// No description provided for @loadErrDrasticShrink.
+  ///
+  /// In tr, this message translates to:
+  /// **'Sunucu yalnızca {count} kanal gönderdi (önceden {total}). Aboneliğinizin süresi dolmuş olabilir; mevcut listeniz korundu.'**
+  String loadErrDrasticShrink(int count, int total);
+
+  /// No description provided for @syncShrinkKept.
+  ///
+  /// In tr, this message translates to:
+  /// **'{type}: sunucu öncekinden çok daha az içerik gönderdi, mevcut içerik korundu.'**
+  String syncShrinkKept(String type);
+
+  /// No description provided for @playlistSyncQueued.
+  ///
+  /// In tr, this message translates to:
+  /// **'Değişiklikler kaydedildi. Liste, süren güncelleme bitince yeniden indirilecek.'**
+  String get playlistSyncQueued;
+
+  /// No description provided for @errorReportPreviewLabel.
+  ///
+  /// In tr, this message translates to:
+  /// **'Gönderilecek metin (giriş bilgileri gizlendi):'**
+  String get errorReportPreviewLabel;
+
+  /// No description provided for @paywallPricePerMonths.
+  ///
+  /// In tr, this message translates to:
+  /// **'{price} / {months} ay'**
+  String paywallPricePerMonths(String price, int months);
+
+  /// No description provided for @paywallPlanMonths.
+  ///
+  /// In tr, this message translates to:
+  /// **'{months} Aylık'**
+  String paywallPlanMonths(int months);
+
+  /// No description provided for @paywallIntroPriceThen.
+  ///
+  /// In tr, this message translates to:
+  /// **'{intro} tanıtım fiyatı, sonra {price}'**
+  String paywallIntroPriceThen(String intro, String price);
+
+  /// No description provided for @watchlistClearAll.
+  ///
+  /// In tr, this message translates to:
+  /// **'Listeyi temizle'**
+  String get watchlistClearAll;
+
+  /// No description provided for @watchlistClearConfirm.
+  ///
+  /// In tr, this message translates to:
+  /// **'Tüm öğeler silinsin mi?'**
+  String get watchlistClearConfirm;
+
+  /// No description provided for @categoryFilterPlaylist.
+  ///
+  /// In tr, this message translates to:
+  /// **'Playlist'**
+  String get categoryFilterPlaylist;
+
+  /// No description provided for @settingsRefreshOff.
+  ///
+  /// In tr, this message translates to:
+  /// **'Kapalı'**
+  String get settingsRefreshOff;
+
+  /// No description provided for @settingsRefreshOnOpen.
+  ///
+  /// In tr, this message translates to:
+  /// **'Her Açılışta'**
+  String get settingsRefreshOnOpen;
+
+  /// No description provided for @settingsRefresh1Day.
+  ///
+  /// In tr, this message translates to:
+  /// **'Her 1 Gün'**
+  String get settingsRefresh1Day;
+
+  /// No description provided for @settingsRefresh1Week.
+  ///
+  /// In tr, this message translates to:
+  /// **'Her 1 Hafta'**
+  String get settingsRefresh1Week;
+
+  /// No description provided for @settingsRefresh1Month.
+  ///
+  /// In tr, this message translates to:
+  /// **'Her 1 Ay'**
+  String get settingsRefresh1Month;
+
+  /// No description provided for @settingsRefresh1Year.
+  ///
+  /// In tr, this message translates to:
+  /// **'Her 1 Yıl'**
+  String get settingsRefresh1Year;
+
+  /// No description provided for @settingsClearHistoryTitle.
+  ///
+  /// In tr, this message translates to:
+  /// **'Geçmişi Temizle'**
+  String get settingsClearHistoryTitle;
+
+  /// No description provided for @settingsClearHistorySubtitle.
+  ///
+  /// In tr, this message translates to:
+  /// **'Son İzlenenler, Nerede Kaldım ve İzlenenler listelerini temizler. Favorileriniz silinmez'**
+  String get settingsClearHistorySubtitle;
+
+  /// No description provided for @settingsClearHistoryDialogTitle.
+  ///
+  /// In tr, this message translates to:
+  /// **'İzleme geçmişi temizlensin mi?'**
+  String get settingsClearHistoryDialogTitle;
+
+  /// No description provided for @settingsClearHistoryDialogMessage.
+  ///
+  /// In tr, this message translates to:
+  /// **'Son İzlenenler, Nerede Kaldım ve İzlenenler listelerindeki tüm kayıtlar silinecek. Bu işlem geri alınamaz.'**
+  String get settingsClearHistoryDialogMessage;
+
+  /// No description provided for @settingsClearHistoryAction.
+  ///
+  /// In tr, this message translates to:
+  /// **'Temizle'**
+  String get settingsClearHistoryAction;
+
+  /// No description provided for @epgNextProgram.
+  ///
+  /// In tr, this message translates to:
+  /// **'Sonra: {title}'**
+  String epgNextProgram(String title);
+
+  /// No description provided for @xtreamBadLogin.
+  ///
+  /// In tr, this message translates to:
+  /// **'Kullanıcı adı veya şifre hatalı. Bilgileri sağlayıcınızdan kontrol edip tekrar deneyin.'**
+  String get xtreamBadLogin;
+
+  /// No description provided for @xtreamExpired.
+  ///
+  /// In tr, this message translates to:
+  /// **'Aboneliğinizin süresi dolmuş. Yenilemek için sağlayıcınızla iletişime geçin.'**
+  String get xtreamExpired;
+
+  /// No description provided for @xtreamExpiredOn.
+  ///
+  /// In tr, this message translates to:
+  /// **'Aboneliğinizin süresi {date} tarihinde dolmuş. Yenilemek için sağlayıcınızla iletişime geçin.'**
+  String xtreamExpiredOn(String date);
+
+  /// No description provided for @xtreamDisabled.
+  ///
+  /// In tr, this message translates to:
+  /// **'Hesabınız sağlayıcı tarafından kapatılmış. Sağlayıcınızla iletişime geçin.'**
+  String get xtreamDisabled;
+
+  /// No description provided for @epgAutoRefreshAuto.
+  ///
+  /// In tr, this message translates to:
+  /// **'Otomatik — rehber bitmek üzereyken yenilenir'**
+  String get epgAutoRefreshAuto;
+
+  /// No description provided for @xtreamPartialLoad.
+  ///
+  /// In tr, this message translates to:
+  /// **'Bazı içerikler yüklenemedi: {type}'**
+  String xtreamPartialLoad(String type);
+
+  /// No description provided for @settingsPlaylistAutoRefreshTitle.
+  ///
+  /// In tr, this message translates to:
+  /// **'Playlist otomatik yenileme'**
+  String get settingsPlaylistAutoRefreshTitle;
+
+  /// No description provided for @settingsEpgUrlForPlaylist.
+  ///
+  /// In tr, this message translates to:
+  /// **'Aktif playlist için: {name}'**
+  String settingsEpgUrlForPlaylist(String name);
+
+  /// No description provided for @settingsClearHistoryDone.
+  ///
+  /// In tr, this message translates to:
+  /// **'İzleme geçmişi temizlendi'**
+  String get settingsClearHistoryDone;
+
+  /// No description provided for @settingsSupportSection.
+  ///
+  /// In tr, this message translates to:
+  /// **'Destek'**
+  String get settingsSupportSection;
+
+  /// No description provided for @settingsFeedbackTitle.
+  ///
+  /// In tr, this message translates to:
+  /// **'Geri Bildirim Gönder'**
+  String get settingsFeedbackTitle;
+
+  /// No description provided for @settingsFeedbackSubtitle.
+  ///
+  /// In tr, this message translates to:
+  /// **'Öneri, hata bildirimi veya genel görüş'**
+  String get settingsFeedbackSubtitle;
+
+  /// No description provided for @feedbackDialogTitle.
+  ///
+  /// In tr, this message translates to:
+  /// **'Geri Bildirim'**
+  String get feedbackDialogTitle;
+
+  /// No description provided for @feedbackThanks.
+  ///
+  /// In tr, this message translates to:
+  /// **'Teşekkürler!'**
+  String get feedbackThanks;
+
+  /// No description provided for @feedbackReceived.
+  ///
+  /// In tr, this message translates to:
+  /// **'Geri bildiriminiz iletildi.'**
+  String get feedbackReceived;
+
+  /// No description provided for @feedbackChooseType.
+  ///
+  /// In tr, this message translates to:
+  /// **'Türü seçin:'**
+  String get feedbackChooseType;
+
+  /// No description provided for @feedbackTypeSuggestion.
+  ///
+  /// In tr, this message translates to:
+  /// **'Öneri'**
+  String get feedbackTypeSuggestion;
+
+  /// No description provided for @feedbackTypeBug.
+  ///
+  /// In tr, this message translates to:
+  /// **'Hata Bildirimi'**
+  String get feedbackTypeBug;
+
+  /// No description provided for @feedbackTypeGeneral.
+  ///
+  /// In tr, this message translates to:
+  /// **'Genel'**
+  String get feedbackTypeGeneral;
+
+  /// No description provided for @feedbackNameLabel.
+  ///
+  /// In tr, this message translates to:
+  /// **'Ad Soyad'**
+  String get feedbackNameLabel;
+
+  /// No description provided for @feedbackNamePlaceholder.
+  ///
+  /// In tr, this message translates to:
+  /// **'İsteğe bağlı'**
+  String get feedbackNamePlaceholder;
+
+  /// No description provided for @feedbackEmailLabel.
+  ///
+  /// In tr, this message translates to:
+  /// **'E-posta *'**
+  String get feedbackEmailLabel;
+
+  /// No description provided for @feedbackEmailPlaceholder.
+  ///
+  /// In tr, this message translates to:
+  /// **'ornek@mail.com'**
+  String get feedbackEmailPlaceholder;
+
+  /// No description provided for @feedbackEmailInvalid.
+  ///
+  /// In tr, this message translates to:
+  /// **'Geçerli bir e-posta adresi girin'**
+  String get feedbackEmailInvalid;
+
+  /// No description provided for @feedbackMessageLabel.
+  ///
+  /// In tr, this message translates to:
+  /// **'Mesajınız *'**
+  String get feedbackMessageLabel;
+
+  /// No description provided for @feedbackMessagePlaceholder.
+  ///
+  /// In tr, this message translates to:
+  /// **'Düşüncelerinizi yazın...'**
+  String get feedbackMessagePlaceholder;
+
+  /// No description provided for @feedbackScreenshotLabel.
+  ///
+  /// In tr, this message translates to:
+  /// **'Ekran görüntüsü (en fazla 3)'**
+  String get feedbackScreenshotLabel;
+
+  /// No description provided for @feedbackAddImage.
+  ///
+  /// In tr, this message translates to:
+  /// **'Resim Ekle'**
+  String get feedbackAddImage;
+
+  /// No description provided for @feedbackError.
+  ///
+  /// In tr, this message translates to:
+  /// **'Gönderilemedi: {details}'**
+  String feedbackError(String details);
+
+  /// No description provided for @feedbackImageTooLarge.
+  ///
+  /// In tr, this message translates to:
+  /// **'5 MB\'tan büyük görseller eklenemez'**
+  String get feedbackImageTooLarge;
+
+  /// No description provided for @commonSend.
+  ///
+  /// In tr, this message translates to:
+  /// **'Gönder'**
+  String get commonSend;
+
+  /// No description provided for @commonSending.
+  ///
+  /// In tr, this message translates to:
+  /// **'Gönderiliyor...'**
+  String get commonSending;
+
+  /// No description provided for @settingsRateApp.
+  ///
+  /// In tr, this message translates to:
+  /// **'Uygulamayı değerlendir'**
+  String get settingsRateApp;
+
+  /// No description provided for @settingsRateAppSubtitle.
+  ///
+  /// In tr, this message translates to:
+  /// **'App Store\'da puan ver ve yorum yaz'**
+  String get settingsRateAppSubtitle;
+
+  /// No description provided for @paywallBenefitPlaylistsUpTo.
+  ///
+  /// In tr, this message translates to:
+  /// **'{count} playlist\'e kadar'**
+  String paywallBenefitPlaylistsUpTo(int count);
+
+  /// No description provided for @paywallBenefitAiWhisper.
+  ///
+  /// In tr, this message translates to:
+  /// **'AI Whisper altyazı'**
+  String get paywallBenefitAiWhisper;
+
+  /// No description provided for @paywallBenefitCloudSyncDevices.
+  ///
+  /// In tr, this message translates to:
+  /// **'Bulut senkronu (cihazlar arası)'**
+  String get paywallBenefitCloudSyncDevices;
+
+  /// No description provided for @paywallBenefitThemes.
+  ///
+  /// In tr, this message translates to:
+  /// **'Premium temalar'**
+  String get paywallBenefitThemes;
+
+  /// No description provided for @paywallBenefitWatchlist.
+  ///
+  /// In tr, this message translates to:
+  /// **'İzleme listem'**
+  String get paywallBenefitWatchlist;
+
+  /// No description provided for @paywallBenefitEpgAuto.
+  ///
+  /// In tr, this message translates to:
+  /// **'TV rehberi otomatik yenileme'**
+  String get paywallBenefitEpgAuto;
+
+  /// No description provided for @paywallPricePerYear.
+  ///
+  /// In tr, this message translates to:
+  /// **'{price} / yıl'**
+  String paywallPricePerYear(String price);
+
+  /// No description provided for @paywallPricePerMonth.
+  ///
+  /// In tr, this message translates to:
+  /// **'{price} / ay'**
+  String paywallPricePerMonth(String price);
+
+  /// No description provided for @paywallPricePerWeek.
+  ///
+  /// In tr, this message translates to:
+  /// **'{price} / hafta'**
+  String paywallPricePerWeek(String price);
+
+  /// No description provided for @paywallPriceOneTime.
+  ///
+  /// In tr, this message translates to:
+  /// **'{price} tek seferlik'**
+  String paywallPriceOneTime(String price);
+
+  /// No description provided for @paywallMonthlyEquivalent.
+  ///
+  /// In tr, this message translates to:
+  /// **'Aylık yalnızca {price}'**
+  String paywallMonthlyEquivalent(String price);
+
+  /// No description provided for @paywallTrialThen.
+  ///
+  /// In tr, this message translates to:
+  /// **'{days, plural, other{İlk {days} gün ücretsiz}}, ardından {price}. İstediğin zaman iptal et.'**
+  String paywallTrialThen(int days, String price);
+
+  /// No description provided for @paywallLifetimeHint.
+  ///
+  /// In tr, this message translates to:
+  /// **'✦ Tek seferlik ödeme · Ömür boyu erişim'**
+  String get paywallLifetimeHint;
+
+  /// No description provided for @paywallPurchase.
+  ///
+  /// In tr, this message translates to:
+  /// **'Satın Al'**
+  String get paywallPurchase;
+
+  /// No description provided for @paywallTermsFooterApple.
+  ///
+  /// In tr, this message translates to:
+  /// **'Ödeme, satın alma onayında Apple Kimliğinizden tahsil edilir. Abonelik, mevcut dönemin bitiminden en az 24 saat önce iptal edilmezse otomatik olarak yenilenir. App Store hesap ayarlarından yönetebilir veya iptal edebilirsiniz.'**
+  String get paywallTermsFooterApple;
+
+  /// No description provided for @paywallActivationPending.
+  ///
+  /// In tr, this message translates to:
+  /// **'Satın alma tamamlandı ancak Pro henüz etkinleşmedi. Satın alımları geri yüklemeyi deneyin; sorun sürerse destekle iletişime geçin.'**
+  String get paywallActivationPending;
+
+  /// No description provided for @paywallLoadError.
+  ///
+  /// In tr, this message translates to:
+  /// **'Planlar yüklenemedi. Bağlantınızı kontrol edip tekrar deneyin.'**
+  String get paywallLoadError;
+
+  /// No description provided for @playlistDeviceLimit.
+  ///
+  /// In tr, this message translates to:
+  /// **'Bu cihaz en fazla {count} playlist destekliyor.'**
+  String playlistDeviceLimit(int count);
+
+  /// No description provided for @authReauthTitle.
+  ///
+  /// In tr, this message translates to:
+  /// **'Kimliğini doğrula'**
+  String get authReauthTitle;
+
+  /// No description provided for @authReauthPasswordMessage.
+  ///
+  /// In tr, this message translates to:
+  /// **'Hesabını silmek için şifreni gir.'**
+  String get authReauthPasswordMessage;
+
+  /// No description provided for @authAccountDeleted.
+  ///
+  /// In tr, this message translates to:
+  /// **'Hesabın silindi.'**
+  String get authAccountDeleted;
+
+  /// No description provided for @playerUrlMissing.
+  ///
+  /// In tr, this message translates to:
+  /// **'Yayın URL\'si bulunamadı'**
+  String get playerUrlMissing;
+
+  /// No description provided for @parentalPinWrongAttempts.
+  ///
+  /// In tr, this message translates to:
+  /// **'Yanlış PIN. {remaining} deneme hakkınız kaldı.'**
+  String parentalPinWrongAttempts(int remaining);
+
+  /// No description provided for @parentalPinCooldown.
+  ///
+  /// In tr, this message translates to:
+  /// **'Çok fazla yanlış giriş. {seconds} saniye bekleyin.'**
+  String parentalPinCooldown(int seconds);
+
+  /// No description provided for @paywallRestoreNothing.
+  ///
+  /// In tr, this message translates to:
+  /// **'Bu Apple Kimliği için geri yüklenecek satın alma bulunamadı.'**
+  String get paywallRestoreNothing;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

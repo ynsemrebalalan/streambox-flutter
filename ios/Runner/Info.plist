@@ -69,6 +69,13 @@
 	<false/>
 	<key>UISupportsFullScreen</key>
 	<true/>
+	<!-- image_picker (Ayarlar > Geri Bildirim: hata bildirimine ekran goruntusu).
+	     Kamera kullanilmiyor ama image_picker_ios kamera API'sini linkledigi
+	     icin App Store ITMS-90683 aciklama metni istiyor. -->
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Hata bildirimine ekran görüntüsü eklemek için fotoğraflarınıza erişilir. / Photos are used only to attach screenshots to a bug report.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>Hata bildirimine fotoğraf eklemek için kamera kullanılabilir. / The camera may be used to attach a photo to a bug report.</string>
 	<!-- Network access required for IPTV streaming -->
 	<key>NSAppTransportSecurity</key>
 	<dict>

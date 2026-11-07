@@ -216,6 +216,27 @@ class AppLocalizationsAr extends AppLocalizations {
   String get homeMore => 'المزيد';
 
   @override
+  String get homePlaylistSyncing => 'جارٍ مزامنة قائمة التشغيل…';
+
+  @override
+  String get homeSearchTooltip => 'بحث';
+
+  @override
+  String get watchlistAddTooltip => 'إضافة إلى قائمتي';
+
+  @override
+  String get watchlistRemoveTooltip => 'إزالة من قائمتي';
+
+  @override
+  String get playerPlayAction => 'تشغيل';
+
+  @override
+  String get playerPauseAction => 'إيقاف مؤقت';
+
+  @override
+  String get playlistsActiveLabel => 'نشطة';
+
+  @override
   String get homeCategoryManagement => 'إدارة الفئات';
 
   @override
@@ -346,6 +367,51 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get playlistsTypeXtream => 'Xtream';
+
+  @override
+  String get playlistsTypeStalker => 'Stalker / MAG';
+
+  @override
+  String get playlistsStalkerCardTitle => 'Stalker Portal / صندوق MAG';
+
+  @override
+  String get playlistsStalkerCardBody => 'يجب أن يكون عنوان MAC الخاص بك مسجلًا لدى مزود IPTV. يجرب التطبيق أولًا مسار M3U السريع، ثم يتحول إلى بروتوكول Stalker الكامل عند الحاجة.';
+
+  @override
+  String get playlistsStalkerPortalLabel => 'رابط البوابة';
+
+  @override
+  String get playlistsStalkerPortalHint => 'http://provider.com:8080';
+
+  @override
+  String get playlistsStalkerMacLabel => 'عنوان MAC';
+
+  @override
+  String get playlistsStalkerMacHint => '00:1A:79:XX:XX:XX';
+
+  @override
+  String get playlistsStalkerMacGenerate => 'إنشاء';
+
+  @override
+  String get playlistsStalkerMacHelp => 'صيغة MAC: XX:XX:XX:XX:XX:XX (أحرف كبيرة، مفصولة بنقطتين)';
+
+  @override
+  String get playlistsValidationStalkerMac => 'أدخل عنوان MAC صالحًا (XX:XX:XX:XX:XX:XX).';
+
+  @override
+  String get editPlaylistStalkerBadge => 'Stalker / MAG';
+
+  @override
+  String get progressTryingPortalList => 'جارٍ محاولة جلب القائمة من البوابة…';
+
+  @override
+  String get progressPortalConnecting => 'جارٍ الاتصال بالبوابة…';
+
+  @override
+  String get loadErrPortalConnect => 'تعذّر الاتصال بالبوابة. تحقّق من عنوان البوابة ومن أن عنوان MAC الخاص بك مسجّل لدى مزوّد الخدمة.';
+
+  @override
+  String get loadErrPortalList => 'تعذّر جلب قائمة القنوات. تأكّد من مزوّد الخدمة أن عنوان MAC الخاص بك مسجّل في البوابة.';
 
   @override
   String get playlistsNameLabel => 'اسم قائمة التشغيل';
@@ -501,6 +567,310 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get playerSingleQuality => 'يقدم هذا البث جودة واحدة فقط.';
+
+  @override
+  String get playerErrorUnsupportedFormat => 'لا يمكن تشغيل صيغة الفيديو أو الصوت لهذا البث على هذا الجهاز. جرّب مصدرًا آخر أو مشغلًا خارجيًا.';
+
+  @override
+  String get playerErrorCorruptStream => 'تعذّرت قراءة بيانات البث. قد تكون القناة معطلة مؤقتًا؛ حاول لاحقًا.';
+
+  @override
+  String get aiSubErrUnavailable => 'خدمة ترجمة الذكاء الاصطناعي غير متاحة حاليًا. يُرجى المحاولة لاحقًا.';
+
+  @override
+  String get aiSubErrProRequired => 'انتهت الفترة التجريبية لترجمة الذكاء الاصطناعي. انتقل إلى Pro للمتابعة.';
+
+  @override
+  String get aiSubErrQuota => 'تم استنفاد حصة استخدام ترجمة الذكاء الاصطناعي.';
+
+  @override
+  String get aiSubErrBusy => 'خدمة ترجمة الذكاء الاصطناعي مشغولة جدًا حاليًا. انتظر قليلًا ثم حاول مرة أخرى.';
+
+  @override
+  String get aiSubErrInvalidKey => 'مفتاح API لترجمة الذكاء الاصطناعي غير صالح أو منتهي الصلاحية. تحقّق منه في الإعدادات > ترجمة الذكاء الاصطناعي.';
+
+  @override
+  String get aiSubErrRejected => 'لم تقبل خدمة ترجمة الذكاء الاصطناعي الطلب. يُرجى المحاولة لاحقًا.';
+
+  @override
+  String get aiSubErrEmptyResponse => 'أرسلت خدمة ترجمة الذكاء الاصطناعي ردًا فارغًا. يُرجى المحاولة مرة أخرى.';
+
+  @override
+  String get aiSubErrNoSpeech => 'لم يتم التعرّف على كلام في هذا الجزء. حاول مرة أخرى في جزء آخر من الفيديو.';
+
+  @override
+  String get aiSubErrGeneric => 'تعذّر إنشاء الترجمة. يُرجى المحاولة مرة أخرى.';
+
+  @override
+  String get aiSubErrUnreachable => 'تعذّر الوصول إلى خدمة ترجمة الذكاء الاصطناعي. تحقّق من اتصالك بالإنترنت.';
+
+  @override
+  String get aiSubErrConnectTimeout => 'انتهت المهلة أثناء الاتصال بخدمة ترجمة الذكاء الاصطناعي. يُرجى المحاولة مرة أخرى.';
+
+  @override
+  String get aiSubErrExtract => 'تعذّر قراءة الصوت لترجمة الذكاء الاصطناعي. صيغة هذا البث غير مدعومة على بعض الأجهزة. جرّب مصدرًا بجودة أقل أو شاهد في مشغّل خارجي.';
+
+  @override
+  String get aiSubErrNoOpenAiKey => 'لم يتم إدخال مفتاح OpenAI API. أضفه من الإعدادات > ترجمة الذكاء الاصطناعي.';
+
+  @override
+  String aiTrialStarted(int days) {
+    return 'بدأت تجربتك المجانية لترجمة الذكاء الاصطناعي لمدة $days أيام';
+  }
+
+  @override
+  String get paywallAiTrialEnded => 'انتهت تجربة ترجمة الذكاء الاصطناعي. انتقل إلى Pro لمواصلة استخدامها.';
+
+  @override
+  String get playerAiPreparing => 'جارٍ تجهيز ترجمة الذكاء الاصطناعي';
+
+  @override
+  String playerSecondsShort(int seconds) {
+    return '$seconds ث';
+  }
+
+  @override
+  String playerBannerWhisper(String lang) {
+    return 'ترجمة الذكاء الاصطناعي (التعرّف على الكلام): $lang';
+  }
+
+  @override
+  String get playerOrientationLock => 'قفل اتجاه الشاشة';
+
+  @override
+  String playerResumeQuestion(String position) {
+    return 'هل تريد المتابعة من $position؟';
+  }
+
+  @override
+  String get playerResumeContinue => 'متابعة';
+
+  @override
+  String get playerResumeFromBeginning => 'البدء من الأول';
+
+  @override
+  String get playerErrorStreamUnavailable => 'تعذّر فتح هذه القناة. مصدر البث لا يستجيب أو انقطع الاتصال.';
+
+  @override
+  String get playerErrorBackToList => 'العودة إلى قائمة القنوات';
+
+  @override
+  String get playerReportError => 'الإبلاغ عن خطأ';
+
+  @override
+  String get errorReportTitle => 'الإبلاغ عن خطأ';
+
+  @override
+  String get errorReportThanks => 'شكرًا لك!';
+
+  @override
+  String get errorReportReceived => 'تم إرسال بلاغ الخطأ.';
+
+  @override
+  String errorReportChannel(String name) {
+    return 'القناة: $name';
+  }
+
+  @override
+  String errorReportError(String error) {
+    return 'الخطأ: $error';
+  }
+
+  @override
+  String errorReportDevice(String device) {
+    return 'الجهاز: $device';
+  }
+
+  @override
+  String errorReportVersion(String version) {
+    return 'الإصدار: $version';
+  }
+
+  @override
+  String get errorReportNoteLabel => 'ملاحظة إضافية (اختياري):';
+
+  @override
+  String get errorReportNotePlaceholder => 'ماذا كنت تفعل؟';
+
+  @override
+  String get errorReportSend => 'إرسال';
+
+  @override
+  String playerPanelChannels(int count) {
+    return 'القنوات ($count)';
+  }
+
+  @override
+  String get playerSeekForward => '▶▶ +١٠ ث';
+
+  @override
+  String get playerSeekBackward => '◀◀ -١٠ ث';
+
+  @override
+  String get playerWatchlistAdded => 'تمت الإضافة إلى القائمة';
+
+  @override
+  String get playerWatchlistRemoved => 'تمت الإزالة من القائمة';
+
+  @override
+  String get playerWatchlistTooltip => 'المشاهدة لاحقاً';
+
+  @override
+  String get settingsAiSection => 'ترجمة بالذكاء الاصطناعي';
+
+  @override
+  String get settingsAiTargetLangTitle => 'لغة الترجمة المستهدفة';
+
+  @override
+  String get settingsAiTargetLangSubtitle => 'باللغة التي ستظهر بها الترجمة';
+
+  @override
+  String get settingsAiTargetLangAuto => 'تلقائي (لغة الجهاز)';
+
+  @override
+  String get settingsAiTargetLangDialogTitle => 'اختر لغة الهدف';
+
+  @override
+  String get settingsAiBannerTitle => 'شريط ترجمة الذكاء الاصطناعي';
+
+  @override
+  String get settingsAiBannerSubtitle => 'إظهار لغة المصدر/الهدف في الأعلى';
+
+  @override
+  String get settingsAiWhisperTitle => 'ترجمة Whisper بالذكاء الاصطناعي';
+
+  @override
+  String get settingsAiWhisperSubtitle => 'إنشاء ترجمات تلقائية في المشغل';
+
+  @override
+  String get settingsAiProviderGroq => 'Groq';
+
+  @override
+  String get settingsAiProviderGroqBadge => 'Pro';
+
+  @override
+  String get settingsAiProviderOpenai => 'OpenAI';
+
+  @override
+  String get settingsAiProviderOpenaiBadge => 'مدفوع';
+
+  @override
+  String settingsAiGroqInfo(int days) {
+    return 'خدمة Groq المدمجة — ميزة Pro، تجربة مجانية لمدة $days أيام';
+  }
+
+  @override
+  String get settingsAiOpenaiCost => 'التكلفة التقديرية: ~\$0.006/طلب · ~\$0.006/دقيقة · openai.com/account/billing';
+
+  @override
+  String get settingsAiOpenaiKeyLabel => 'مفتاح OpenAI API';
+
+  @override
+  String get settingsAiOpenaiKeyPlaceholder => 'sk-…';
+
+  @override
+  String get settingsAiOpenaiKeySaved => '✓ تم حفظ مفتاح OpenAI';
+
+  @override
+  String get settingsSubtitleDefaultOn => 'تفعيل الترجمة افتراضيًا';
+
+  @override
+  String get settingsSubtitleDefaultOnSubtitle => 'تفعيل الترجمة عند فتح المشغل';
+
+  @override
+  String get settingsBufferDuration => 'مدة التخزين المؤقت';
+
+  @override
+  String settingsBufferSeconds(int seconds) {
+    return '$seconds ثانية';
+  }
+
+  @override
+  String aiTrialDaysLeft(int days) {
+    String _temp0 = intl.Intl.pluralLogic(
+      days,
+      locale: localeName,
+      other: 'تجربة الترجمة بالذكاء الاصطناعي: $days يوم متبقٍ',
+      many: 'تجربة الترجمة بالذكاء الاصطناعي: $days يومًا متبقيًا',
+      few: 'تجربة الترجمة بالذكاء الاصطناعي: $days أيام متبقية',
+      two: 'تجربة الترجمة بالذكاء الاصطناعي: يومان متبقيان',
+      one: 'تجربة الترجمة بالذكاء الاصطناعي: يوم واحد متبقٍ',
+      zero: 'تجربة الترجمة بالذكاء الاصطناعي: $days يوم متبقٍ',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get playerPaused => 'متوقف مؤقتًا';
+
+  @override
+  String get playerPlaying => 'جارٍ التشغيل';
+
+  @override
+  String get playerMuted => 'صامت';
+
+  @override
+  String get playerUnmuted => 'الصوت مفعّل';
+
+  @override
+  String playerFeedbackAudio(String label) {
+    return 'الصوت: $label';
+  }
+
+  @override
+  String playerFeedbackSpeed(String speed) {
+    return 'السرعة $speed';
+  }
+
+  @override
+  String get playerFeedbackSubtitleOff => 'الترجمة متوقفة';
+
+  @override
+  String playerFeedbackSubtitle(String lang) {
+    return 'الترجمة: $lang';
+  }
+
+  @override
+  String get playerFeedbackSubtitleLoading => 'جارٍ تحميل الترجمة…';
+
+  @override
+  String playerFeedbackResolution(String value) {
+    return 'الدقة: $value';
+  }
+
+  @override
+  String playerFeedbackFit(String mode) {
+    return 'العرض: $mode';
+  }
+
+  @override
+  String get playerFavoriteAdd => 'أضف إلى المفضلة';
+
+  @override
+  String get playerFavoriteRemove => 'إزالة من المفضلة';
+
+  @override
+  String get playerNextChannel => 'القناة التالية';
+
+  @override
+  String get playerPrevChannel => 'القناة السابقة';
+
+  @override
+  String get playerOrientationUnlocked => 'تم إلغاء قفل التدوير';
+
+  @override
+  String playerNextEpisode(String title) {
+    return 'الحلقة التالية: $title';
+  }
+
+  @override
+  String get playerOpenExternal => 'افتح في مشغل خارجي (VLC)';
+
+  @override
+  String get playerExternalNotFound => 'لم يتم العثور على مشغل خارجي. ثبّت VLC من App Store.';
+
+  @override
+  String get playerChannelPanelTooltip => 'قائمة القنوات';
 
   @override
   String get disclaimerWelcome => 'مرحبًا';
@@ -1234,4 +1604,395 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get otherAppsContinue => 'متابعة';
+
+  @override
+  String get editPlaylistTitle => 'تعديل قائمة التشغيل';
+
+  @override
+  String get editPlaylistNotFound => 'قائمة التشغيل غير موجودة';
+
+  @override
+  String get editPlaylistXtreamBadge => 'Xtream Codes';
+
+  @override
+  String get editPlaylistM3uBadge => 'قائمة M3U';
+
+  @override
+  String get editPlaylistAddedAt => 'تمت الإضافة في';
+
+  @override
+  String get editPlaylistExpiry => 'تنتهي في';
+
+  @override
+  String get editPlaylistExpiredLabel => '⚠ منتهية';
+
+  @override
+  String get editPlaylistValidLabel => '✓ سارية';
+
+  @override
+  String get editPlaylistUrlLabel => 'رابط الخادم';
+
+  @override
+  String get editPlaylistRefreshButton => 'تحديث القنوات';
+
+  @override
+  String get editPlaylistDeleteButton => 'حذف قائمة التشغيل';
+
+  @override
+  String get deletePlaylistDialogTitle => 'حذف قائمة التشغيل';
+
+  @override
+  String get deletePlaylistDialogQuestion => 'كيف تريد حذفها؟';
+
+  @override
+  String get deleteDeviceExplain => 'تُزال من هذا الجهاز فقط. تبقى النسخة السحابية، ويمكنك استعادتها في أي وقت عبر \"تنزيل من السحابة\".';
+
+  @override
+  String get deleteDeviceExplainLocal => 'تُزال من هذا الجهاز. هذه القائمة غير محفوظة في السحابة، لذا ستحتاج إلى إضافتها من جديد لاستعادتها.';
+
+  @override
+  String get deletePlaylistFromCloud => 'حذف من السحابة';
+
+  @override
+  String get deletePlaylistFromDevice => 'حذف من الجهاز';
+
+  @override
+  String get deleteCloudExplain => 'تُحذف نهائيًا من هذا الجهاز ومن السحابة، ولن تظهر مجددًا على أجهزتك الأخرى.';
+
+  @override
+  String get progressDownloadingList => 'جارٍ تنزيل قائمة القنوات…';
+
+  @override
+  String progressRetrying(int attempt) {
+    return 'جارٍ إعادة المحاولة ($attempt/3)…';
+  }
+
+  @override
+  String get progressParsingList => 'جارٍ معالجة قائمة القنوات…';
+
+  @override
+  String progressChannelsSaved(int count) {
+    return 'تم حفظ $count قناة…';
+  }
+
+  @override
+  String get progressServerConnecting => 'جارٍ الاتصال بالخادم…';
+
+  @override
+  String get progressLoadingLive => 'جارٍ تحميل القنوات المباشرة…';
+
+  @override
+  String get progressLoadingMovies => 'جارٍ تحميل الأفلام…';
+
+  @override
+  String get progressLoadingSeries => 'جارٍ تحميل المسلسلات…';
+
+  @override
+  String get loadErrM3uNotFound => 'لم يُعثر على قائمة قنوات في هذا العنوان. تأكّد من أن العنوان يخص قائمة M3U.';
+
+  @override
+  String loadErrIncomplete(int count, int total) {
+    return 'وصلت القائمة ناقصة ($count / $total قناة) — ربما انقطع الاتصال. تم الاحتفاظ بقائمتك الحالية، حاول مرة أخرى.';
+  }
+
+  @override
+  String get loadErrServerEmpty => 'أرسل الخادم قائمة فارغة. تأكّد من أن اشتراكك يتضمن قنوات، وإذا استمرت المشكلة فتواصل مع مزوّد الخدمة.';
+
+  @override
+  String get loadErrSeriesInfo => 'تعذّر تحميل بيانات هذا المسلسل. حدّث القائمة وحاول مرة أخرى.';
+
+  @override
+  String get loadErrNoEpisodes => 'لم يرسل مزوّد الخدمة أي حلقات لهذا المسلسل.';
+
+  @override
+  String loadErrDrasticShrink(int count, int total) {
+    return 'أرسل الخادم $count قناة فقط (سابقًا $total). ربما انتهى اشتراكك؛ تم الاحتفاظ بقائمتك الحالية.';
+  }
+
+  @override
+  String syncShrinkKept(String type) {
+    return '$type: أرسل الخادم محتوى أقل بكثير من السابق، لذلك تم الاحتفاظ بالمحتوى الحالي.';
+  }
+
+  @override
+  String get playlistSyncQueued => 'تم حفظ التغييرات. سيُعاد تنزيل القائمة عند انتهاء التحديث الجاري.';
+
+  @override
+  String get errorReportPreviewLabel => 'النص الذي سيُرسل (بيانات الدخول مخفية):';
+
+  @override
+  String paywallPricePerMonths(String price, int months) {
+    return '$price / $months أشهر';
+  }
+
+  @override
+  String paywallPlanMonths(int months) {
+    return '$months أشهر';
+  }
+
+  @override
+  String paywallIntroPriceThen(String intro, String price) {
+    return '$intro سعر تمهيدي، ثم $price';
+  }
+
+  @override
+  String get watchlistClearAll => 'مسح القائمة';
+
+  @override
+  String get watchlistClearConfirm => 'حذف جميع العناصر؟';
+
+  @override
+  String get categoryFilterPlaylist => 'قائمة التشغيل';
+
+  @override
+  String get settingsRefreshOff => 'إيقاف';
+
+  @override
+  String get settingsRefreshOnOpen => 'عند كل تشغيل';
+
+  @override
+  String get settingsRefresh1Day => 'كل يوم';
+
+  @override
+  String get settingsRefresh1Week => 'كل أسبوع';
+
+  @override
+  String get settingsRefresh1Month => 'كل شهر';
+
+  @override
+  String get settingsRefresh1Year => 'كل سنة';
+
+  @override
+  String get settingsClearHistoryTitle => 'Geçmişi Temizle';
+
+  @override
+  String get settingsClearHistorySubtitle => 'Son İzlenenler, Nerede Kaldım ve İzlenenler listelerini temizler. Favorileriniz silinmez';
+
+  @override
+  String get settingsClearHistoryDialogTitle => 'İzleme geçmişi temizlensin mi?';
+
+  @override
+  String get settingsClearHistoryDialogMessage => 'Son İzlenenler, Nerede Kaldım ve İzlenenler listelerindeki tüm kayıtlar silinecek. Bu işlem geri alınamaz.';
+
+  @override
+  String get settingsClearHistoryAction => 'Temizle';
+
+  @override
+  String epgNextProgram(String title) {
+    return 'التالي: $title';
+  }
+
+  @override
+  String get xtreamBadLogin => 'اسم المستخدم أو كلمة المرور غير صحيحة. تحقّق من بياناتك لدى مزوّد الخدمة وحاول مرة أخرى.';
+
+  @override
+  String get xtreamExpired => 'انتهت صلاحية اشتراكك. تواصل مع مزوّد الخدمة لتجديده.';
+
+  @override
+  String xtreamExpiredOn(String date) {
+    return 'انتهت صلاحية اشتراكك في $date. تواصل مع مزوّد الخدمة لتجديده.';
+  }
+
+  @override
+  String get xtreamDisabled => 'قام مزوّد الخدمة بإيقاف حسابك. تواصل مع مزوّد الخدمة.';
+
+  @override
+  String get epgAutoRefreshAuto => 'تلقائي — يُحدَّث عندما يوشك الدليل على الانتهاء';
+
+  @override
+  String xtreamPartialLoad(String type) {
+    return 'تعذّر تحميل بعض المحتوى: $type';
+  }
+
+  @override
+  String get settingsPlaylistAutoRefreshTitle => 'التحديث التلقائي لقائمة التشغيل';
+
+  @override
+  String settingsEpgUrlForPlaylist(String name) {
+    return 'لقائمة التشغيل النشطة: $name';
+  }
+
+  @override
+  String get settingsClearHistoryDone => 'تم مسح سجل المشاهدة';
+
+  @override
+  String get settingsSupportSection => 'الدعم';
+
+  @override
+  String get settingsFeedbackTitle => 'إرسال ملاحظات';
+
+  @override
+  String get settingsFeedbackSubtitle => 'اقتراحات أو بلاغات أخطاء أو ملاحظات عامة';
+
+  @override
+  String get feedbackDialogTitle => 'الملاحظات';
+
+  @override
+  String get feedbackThanks => 'شكرًا لك!';
+
+  @override
+  String get feedbackReceived => 'تم استلام ملاحظاتك.';
+
+  @override
+  String get feedbackChooseType => 'اختر النوع:';
+
+  @override
+  String get feedbackTypeSuggestion => 'اقتراح';
+
+  @override
+  String get feedbackTypeBug => 'بلاغ خطأ';
+
+  @override
+  String get feedbackTypeGeneral => 'عام';
+
+  @override
+  String get feedbackNameLabel => 'الاسم';
+
+  @override
+  String get feedbackNamePlaceholder => 'اختياري';
+
+  @override
+  String get feedbackEmailLabel => 'البريد الإلكتروني *';
+
+  @override
+  String get feedbackEmailPlaceholder => 'example@mail.com';
+
+  @override
+  String get feedbackEmailInvalid => 'أدخل بريدًا إلكترونيًا صالحًا';
+
+  @override
+  String get feedbackMessageLabel => 'رسالتك *';
+
+  @override
+  String get feedbackMessagePlaceholder => 'اكتب لنا أفكارك…';
+
+  @override
+  String get feedbackScreenshotLabel => 'لقطات الشاشة (٣ كحد أقصى)';
+
+  @override
+  String get feedbackAddImage => 'إضافة صورة';
+
+  @override
+  String feedbackError(String details) {
+    return 'تعذّر الإرسال: $details';
+  }
+
+  @override
+  String get feedbackImageTooLarge => 'لا يمكن إرفاق صور أكبر من 5 ميغابايت';
+
+  @override
+  String get commonSend => 'إرسال';
+
+  @override
+  String get commonSending => 'جارٍ الإرسال…';
+
+  @override
+  String get settingsRateApp => 'قيّم التطبيق';
+
+  @override
+  String get settingsRateAppSubtitle => 'قيّم واكتب مراجعة في App Store';
+
+  @override
+  String paywallBenefitPlaylistsUpTo(int count) {
+    return 'حتى $count قوائم تشغيل';
+  }
+
+  @override
+  String get paywallBenefitAiWhisper => 'ترجمة Whisper بالذكاء الاصطناعي';
+
+  @override
+  String get paywallBenefitCloudSyncDevices => 'مزامنة سحابية بين الأجهزة';
+
+  @override
+  String get paywallBenefitThemes => 'سمات Premium';
+
+  @override
+  String get paywallBenefitWatchlist => 'قائمة المشاهدة';
+
+  @override
+  String get paywallBenefitEpgAuto => 'تحديث EPG التلقائي';
+
+  @override
+  String paywallPricePerYear(String price) {
+    return '$price / سنة';
+  }
+
+  @override
+  String paywallPricePerMonth(String price) {
+    return '$price / شهر';
+  }
+
+  @override
+  String paywallPricePerWeek(String price) {
+    return '$price / أسبوع';
+  }
+
+  @override
+  String paywallPriceOneTime(String price) {
+    return '$price لمرة واحدة';
+  }
+
+  @override
+  String paywallMonthlyEquivalent(String price) {
+    return 'فقط $price / شهر';
+  }
+
+  @override
+  String paywallTrialThen(int days, String price) {
+    String _temp0 = intl.Intl.pluralLogic(
+      days,
+      locale: localeName,
+      other: 'أول $days يوم مجانًا',
+      many: 'أول $days يومًا مجانًا',
+      few: 'أول $days أيام مجانًا',
+      two: 'أول يومين مجانًا',
+      one: 'أول يوم مجانًا',
+    );
+    return '$_temp0، ثم $price. يمكنك الإلغاء في أي وقت.';
+  }
+
+  @override
+  String get paywallLifetimeHint => '✦ دفعة واحدة · وصول مدى الحياة';
+
+  @override
+  String get paywallPurchase => 'شراء';
+
+  @override
+  String get paywallTermsFooterApple => 'يتم تحصيل الدفعة من حساب Apple ID عند تأكيد الشراء. تتجدد الاشتراكات تلقائيًا ما لم يتم إلغاؤها قبل 24 ساعة على الأقل من نهاية الفترة الحالية. يمكنك إدارتها أو إلغاؤها من إعدادات حساب App Store.';
+
+  @override
+  String get paywallActivationPending => 'تمت عملية الشراء لكن Pro لم يُفعَّل بعد. جرّب استعادة مشترياتك؛ وإذا استمرت المشكلة، تواصل مع الدعم.';
+
+  @override
+  String get paywallLoadError => 'تعذّر تحميل الخطط. تحقق من اتصالك وحاول مرة أخرى.';
+
+  @override
+  String playlistDeviceLimit(int count) {
+    return 'يدعم هذا الجهاز $count قائمة كحدّ أقصى.';
+  }
+
+  @override
+  String get authReauthTitle => 'أكّد هويتك';
+
+  @override
+  String get authReauthPasswordMessage => 'أدخل كلمة المرور لحذف حسابك.';
+
+  @override
+  String get authAccountDeleted => 'تم حذف حسابك.';
+
+  @override
+  String get playerUrlMissing => 'لم يتم العثور على رابط البث';
+
+  @override
+  String parentalPinWrongAttempts(int remaining) {
+    return 'رمز PIN خاطئ. المحاولات المتبقية: $remaining.';
+  }
+
+  @override
+  String parentalPinCooldown(int seconds) {
+    return 'محاولات خاطئة كثيرة. انتظر $seconds ثانية.';
+  }
+
+  @override
+  String get paywallRestoreNothing => 'لم يتم العثور على مشتريات سابقة لحساب Apple ID هذا.';
 }

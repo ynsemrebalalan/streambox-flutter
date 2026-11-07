@@ -86,6 +86,7 @@ class FirebaseSyncService {
   // ── Proxy Secret ───────────────────────────────────────────────────────────
 
   /// Global config'den proxy secret cek ve SecureStorage'a kaydet.
+  /// main.dart bootstrap'ta anonim oturumdan sonra arka planda cagrilir.
   static Future<void> fetchAndCacheProxySecret() async {
     try {
       if (!await _ensureAuth()) return;
@@ -99,10 +100,10 @@ class FirebaseSyncService {
       if (secret.isNotEmpty) {
         await SecureStorage.setProxySecret(secret);
       }
-      final apiKey = data['openAiApiKey'] as String? ?? '';
-      if (apiKey.isNotEmpty) {
-        await SecureStorage.setOpenAiKey(apiKey);
-      }
+      // GUVENLIK (2026-11): uzak `openAiApiKey` artik OKUNMUYOR/SAKLANMIYOR.
+      // Paylasilan bir anahtarin her istemciye dagitilmasi sizinti demekti;
+      // OpenAI yalnizca kullanicinin kendi girdigi anahtarla (BYOK, Ayarlar)
+      // calisir, varsayilan saglayici sunucu tarafli proxy (proxySecret).
     } catch (e) {
       debugPrint('[Sync] fetchProxySecret failed: $e');
     }

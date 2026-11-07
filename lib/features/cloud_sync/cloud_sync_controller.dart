@@ -10,6 +10,7 @@ import '../../data/services/cloud_sync_service.dart';
 import '../auth/data/auth_state.dart';
 import '../auth/providers/auth_providers.dart';
 import '../billing/providers/purchases_providers.dart';
+import '../playlists/playlists_provider.dart';
 
 /// Cloud Sync UI durumu — Settings ekranında gösterilir.
 enum CloudSyncPhase { idle, syncing, error }
@@ -105,6 +106,19 @@ class CloudSyncController extends Notifier<CloudSyncStatus> {
     final cloudPlaylists = await CloudSyncService.pullPlaylists();
     for (final p in cloudPlaylists) {
       await _mergePlaylist(db, p, uid);
+    }
+    // Android paritesi: buluttan gelen ama bu cihazda kanalı olmayan
+    // playlist'lerin kanallarını indir (favori/geçmiş birleştirmesi aşağıda
+    // bu kanallara uygulanabilsin), sonra listeyi + Home'u seçimi koruyarak
+    // yenile (syncPlaylistsWithoutChannels içinde).
+    if (cloudPlaylists.isNotEmpty) {
+      try {
+        await ref
+            .read(playlistsProvider.notifier)
+            .syncPlaylistsWithoutChannels();
+      } catch (e) {
+        debugPrint('[CloudSyncController] channel download fail: $e');
+      }
     }
 
     // 2) Favorites — channels.isFavorite=1 işaretle (kanal local'de varsa).

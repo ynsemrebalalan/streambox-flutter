@@ -216,6 +216,27 @@ class AppLocalizationsEn extends AppLocalizations {
   String get homeMore => 'More';
 
   @override
+  String get homePlaylistSyncing => 'Syncing playlist…';
+
+  @override
+  String get homeSearchTooltip => 'Search';
+
+  @override
+  String get watchlistAddTooltip => 'Add to My List';
+
+  @override
+  String get watchlistRemoveTooltip => 'Remove from My List';
+
+  @override
+  String get playerPlayAction => 'Play';
+
+  @override
+  String get playerPauseAction => 'Pause';
+
+  @override
+  String get playlistsActiveLabel => 'Active';
+
+  @override
   String get homeCategoryManagement => 'Category Management';
 
   @override
@@ -346,6 +367,51 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get playlistsTypeXtream => 'Xtream';
+
+  @override
+  String get playlistsTypeStalker => 'Stalker / MAG';
+
+  @override
+  String get playlistsStalkerCardTitle => 'Stalker Portal / MAG Box';
+
+  @override
+  String get playlistsStalkerCardBody => 'Your MAC address must be registered with your IPTV provider. The app first tries the fast M3U path, then falls back to the full Stalker protocol if needed.';
+
+  @override
+  String get playlistsStalkerPortalLabel => 'Portal URL';
+
+  @override
+  String get playlistsStalkerPortalHint => 'http://provider.com:8080';
+
+  @override
+  String get playlistsStalkerMacLabel => 'MAC Address';
+
+  @override
+  String get playlistsStalkerMacHint => '00:1A:79:XX:XX:XX';
+
+  @override
+  String get playlistsStalkerMacGenerate => 'Generate';
+
+  @override
+  String get playlistsStalkerMacHelp => 'MAC format: XX:XX:XX:XX:XX:XX (uppercase, colon-separated)';
+
+  @override
+  String get playlistsValidationStalkerMac => 'Enter a valid MAC address (XX:XX:XX:XX:XX:XX).';
+
+  @override
+  String get editPlaylistStalkerBadge => 'Stalker / MAG';
+
+  @override
+  String get progressTryingPortalList => 'Trying to fetch the list from the portal…';
+
+  @override
+  String get progressPortalConnecting => 'Connecting to the portal…';
+
+  @override
+  String get loadErrPortalConnect => 'Couldn\'t connect to the portal. Check the portal address and that your MAC address is registered with your provider.';
+
+  @override
+  String get loadErrPortalList => 'Couldn\'t get the channel list. Check with your provider that your MAC address is registered on the portal.';
 
   @override
   String get playlistsNameLabel => 'Playlist Name';
@@ -501,6 +567,306 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get playerSingleQuality => 'This stream offers only one quality.';
+
+  @override
+  String get playerErrorUnsupportedFormat => 'This stream\'s video or audio format can\'t be played on this device. Try another source or use an external player.';
+
+  @override
+  String get playerErrorCorruptStream => 'The stream data couldn\'t be read. The channel may be temporarily broken; try again later.';
+
+  @override
+  String get aiSubErrUnavailable => 'The AI subtitle service is unavailable right now. Please try again later.';
+
+  @override
+  String get aiSubErrProRequired => 'Your AI subtitle trial has ended. Upgrade to Pro to continue.';
+
+  @override
+  String get aiSubErrQuota => 'The AI subtitle usage quota has been used up.';
+
+  @override
+  String get aiSubErrBusy => 'The AI subtitle service is very busy right now. Wait a moment and try again.';
+
+  @override
+  String get aiSubErrInvalidKey => 'The AI subtitle API key is invalid or has expired. Check it in Settings > AI Subtitles.';
+
+  @override
+  String get aiSubErrRejected => 'The AI subtitle service didn\'t accept the request. Please try again later.';
+
+  @override
+  String get aiSubErrEmptyResponse => 'The AI subtitle service sent an empty response. Please try again.';
+
+  @override
+  String get aiSubErrNoSpeech => 'No speech was detected in this part. Try again at a different point in the video.';
+
+  @override
+  String get aiSubErrGeneric => 'Subtitles couldn\'t be created. Please try again.';
+
+  @override
+  String get aiSubErrUnreachable => 'Can\'t reach the AI subtitle service. Check your internet connection.';
+
+  @override
+  String get aiSubErrConnectTimeout => 'Connecting to the AI subtitle service timed out. Please try again.';
+
+  @override
+  String get aiSubErrExtract => 'Couldn\'t read the audio for AI subtitles. This stream\'s format isn\'t supported on some devices. Try a lower-quality source or watch in an external player.';
+
+  @override
+  String get aiSubErrNoOpenAiKey => 'No OpenAI API key has been entered. Add one in Settings > AI Subtitles.';
+
+  @override
+  String aiTrialStarted(int days) {
+    return 'Your $days-day free AI subtitle trial has started';
+  }
+
+  @override
+  String get paywallAiTrialEnded => 'Your AI subtitle trial has ended. Upgrade to Pro to keep using it.';
+
+  @override
+  String get playerAiPreparing => 'Preparing AI subtitles';
+
+  @override
+  String playerSecondsShort(int seconds) {
+    return '$seconds s';
+  }
+
+  @override
+  String playerBannerWhisper(String lang) {
+    return 'AI subtitles (speech recognition): $lang';
+  }
+
+  @override
+  String get playerOrientationLock => 'Lock screen orientation';
+
+  @override
+  String playerResumeQuestion(String position) {
+    return 'Resume from $position?';
+  }
+
+  @override
+  String get playerResumeContinue => 'Resume';
+
+  @override
+  String get playerResumeFromBeginning => 'Start Over';
+
+  @override
+  String get playerErrorStreamUnavailable => 'This channel could not be opened. The stream source is not responding or the connection dropped.';
+
+  @override
+  String get playerErrorBackToList => 'Back to channel list';
+
+  @override
+  String get playerReportError => 'Report Error';
+
+  @override
+  String get errorReportTitle => 'Report Error';
+
+  @override
+  String get errorReportThanks => 'Thank you!';
+
+  @override
+  String get errorReportReceived => 'Your error report has been sent.';
+
+  @override
+  String errorReportChannel(String name) {
+    return 'Channel: $name';
+  }
+
+  @override
+  String errorReportError(String error) {
+    return 'Error: $error';
+  }
+
+  @override
+  String errorReportDevice(String device) {
+    return 'Device: $device';
+  }
+
+  @override
+  String errorReportVersion(String version) {
+    return 'Version: $version';
+  }
+
+  @override
+  String get errorReportNoteLabel => 'Additional note (optional):';
+
+  @override
+  String get errorReportNotePlaceholder => 'What were you doing?';
+
+  @override
+  String get errorReportSend => 'Send';
+
+  @override
+  String playerPanelChannels(int count) {
+    return 'Channels ($count)';
+  }
+
+  @override
+  String get playerSeekForward => '▶▶ +10s';
+
+  @override
+  String get playerSeekBackward => '◀◀ -10s';
+
+  @override
+  String get playerWatchlistAdded => 'Added to list';
+
+  @override
+  String get playerWatchlistRemoved => 'Removed from list';
+
+  @override
+  String get playerWatchlistTooltip => 'Watch Later';
+
+  @override
+  String get settingsAiSection => 'AI Subtitles';
+
+  @override
+  String get settingsAiTargetLangTitle => 'AI Subtitle Target Language';
+
+  @override
+  String get settingsAiTargetLangSubtitle => 'Language for translated subtitles';
+
+  @override
+  String get settingsAiTargetLangAuto => 'Auto (device language)';
+
+  @override
+  String get settingsAiTargetLangDialogTitle => 'Choose Target Language';
+
+  @override
+  String get settingsAiBannerTitle => 'AI Subtitle Banner';
+
+  @override
+  String get settingsAiBannerSubtitle => 'Show source/target language at the top';
+
+  @override
+  String get settingsAiWhisperTitle => 'AI Whisper Subtitles';
+
+  @override
+  String get settingsAiWhisperSubtitle => 'Auto-generated subtitles in the player';
+
+  @override
+  String get settingsAiProviderGroq => 'Groq';
+
+  @override
+  String get settingsAiProviderGroqBadge => 'Pro';
+
+  @override
+  String get settingsAiProviderOpenai => 'OpenAI';
+
+  @override
+  String get settingsAiProviderOpenaiBadge => 'Paid';
+
+  @override
+  String settingsAiGroqInfo(int days) {
+    return 'Built-in Groq service — Pro feature, $days-day free trial';
+  }
+
+  @override
+  String get settingsAiOpenaiCost => 'Estimated cost: ~\$0.006/request · ~\$0.006/min · openai.com/account/billing';
+
+  @override
+  String get settingsAiOpenaiKeyLabel => 'OpenAI API Key';
+
+  @override
+  String get settingsAiOpenaiKeyPlaceholder => 'sk-…';
+
+  @override
+  String get settingsAiOpenaiKeySaved => '✓ OpenAI key saved';
+
+  @override
+  String get settingsSubtitleDefaultOn => 'Subtitles on by default';
+
+  @override
+  String get settingsSubtitleDefaultOnSubtitle => 'Enable subtitles when the player opens';
+
+  @override
+  String get settingsBufferDuration => 'Buffer duration';
+
+  @override
+  String settingsBufferSeconds(int seconds) {
+    return '$seconds seconds';
+  }
+
+  @override
+  String aiTrialDaysLeft(int days) {
+    String _temp0 = intl.Intl.pluralLogic(
+      days,
+      locale: localeName,
+      other: 'AI subtitle trial: $days days left',
+      one: 'AI subtitle trial: $days day left',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get playerPaused => 'Paused';
+
+  @override
+  String get playerPlaying => 'Playing';
+
+  @override
+  String get playerMuted => 'Muted';
+
+  @override
+  String get playerUnmuted => 'Sound on';
+
+  @override
+  String playerFeedbackAudio(String label) {
+    return 'Audio: $label';
+  }
+
+  @override
+  String playerFeedbackSpeed(String speed) {
+    return 'Speed $speed';
+  }
+
+  @override
+  String get playerFeedbackSubtitleOff => 'Subtitles off';
+
+  @override
+  String playerFeedbackSubtitle(String lang) {
+    return 'Subtitles: $lang';
+  }
+
+  @override
+  String get playerFeedbackSubtitleLoading => 'Loading subtitles…';
+
+  @override
+  String playerFeedbackResolution(String value) {
+    return 'Resolution: $value';
+  }
+
+  @override
+  String playerFeedbackFit(String mode) {
+    return 'Display: $mode';
+  }
+
+  @override
+  String get playerFavoriteAdd => 'Add to favorites';
+
+  @override
+  String get playerFavoriteRemove => 'Remove from favorites';
+
+  @override
+  String get playerNextChannel => 'Next channel';
+
+  @override
+  String get playerPrevChannel => 'Previous channel';
+
+  @override
+  String get playerOrientationUnlocked => 'Rotation unlocked';
+
+  @override
+  String playerNextEpisode(String title) {
+    return 'Next episode: $title';
+  }
+
+  @override
+  String get playerOpenExternal => 'Open in external player (VLC)';
+
+  @override
+  String get playerExternalNotFound => 'No external player found. Install VLC from the App Store.';
+
+  @override
+  String get playerChannelPanelTooltip => 'Channel list';
 
   @override
   String get disclaimerWelcome => 'Welcome';
@@ -1234,4 +1600,392 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get otherAppsContinue => 'Continue';
+
+  @override
+  String get editPlaylistTitle => 'Edit Playlist';
+
+  @override
+  String get editPlaylistNotFound => 'Playlist not found';
+
+  @override
+  String get editPlaylistXtreamBadge => 'Xtream Codes';
+
+  @override
+  String get editPlaylistM3uBadge => 'M3U Playlist';
+
+  @override
+  String get editPlaylistAddedAt => 'Added on';
+
+  @override
+  String get editPlaylistExpiry => 'Expires on';
+
+  @override
+  String get editPlaylistExpiredLabel => '⚠ Expired';
+
+  @override
+  String get editPlaylistValidLabel => '✓ Valid';
+
+  @override
+  String get editPlaylistUrlLabel => 'Server URL';
+
+  @override
+  String get editPlaylistRefreshButton => 'Refresh Channels';
+
+  @override
+  String get editPlaylistDeleteButton => 'Delete Playlist';
+
+  @override
+  String get deletePlaylistDialogTitle => 'Delete Playlist';
+
+  @override
+  String get deletePlaylistDialogQuestion => 'How would you like to delete it?';
+
+  @override
+  String get deleteDeviceExplain => 'Removed from this device only. The cloud copy stays; you can get it back any time with \"Download from Cloud\".';
+
+  @override
+  String get deleteDeviceExplainLocal => 'Removed from this device. This playlist isn\'t saved in the cloud, so you\'ll need to add it again to get it back.';
+
+  @override
+  String get deletePlaylistFromCloud => 'Delete from Cloud';
+
+  @override
+  String get deletePlaylistFromDevice => 'Delete from Device';
+
+  @override
+  String get deleteCloudExplain => 'Permanently deleted from this device and the cloud; it won\'t come back to your other devices either.';
+
+  @override
+  String get progressDownloadingList => 'Downloading channel list…';
+
+  @override
+  String progressRetrying(int attempt) {
+    return 'Retrying ($attempt/3)…';
+  }
+
+  @override
+  String get progressParsingList => 'Processing channel list…';
+
+  @override
+  String progressChannelsSaved(int count) {
+    return '$count channels saved…';
+  }
+
+  @override
+  String get progressServerConnecting => 'Connecting to the server…';
+
+  @override
+  String get progressLoadingLive => 'Loading live channels…';
+
+  @override
+  String get progressLoadingMovies => 'Loading movies…';
+
+  @override
+  String get progressLoadingSeries => 'Loading series…';
+
+  @override
+  String get loadErrM3uNotFound => 'No channel list was found at this address. Make sure the address points to an M3U list.';
+
+  @override
+  String loadErrIncomplete(int count, int total) {
+    return 'The list arrived incomplete ($count / $total channels) — the connection may have dropped. Your current list was kept; try again.';
+  }
+
+  @override
+  String get loadErrServerEmpty => 'The server sent an empty list. Make sure your subscription includes channels; if the problem continues, contact your provider.';
+
+  @override
+  String get loadErrSeriesInfo => 'This series\' details couldn\'t be loaded. Refresh the list and try again.';
+
+  @override
+  String get loadErrNoEpisodes => 'Your provider didn\'t send any episodes for this series.';
+
+  @override
+  String loadErrDrasticShrink(int count, int total) {
+    return 'The server sent only $count channels (previously $total). Your subscription may have expired; your current list was kept.';
+  }
+
+  @override
+  String syncShrinkKept(String type) {
+    return '$type: the server sent far fewer items than before, so the existing content was kept.';
+  }
+
+  @override
+  String get playlistSyncQueued => 'Changes saved. The list will be re-downloaded when the current update finishes.';
+
+  @override
+  String get errorReportPreviewLabel => 'Text that will be sent (login details hidden):';
+
+  @override
+  String paywallPricePerMonths(String price, int months) {
+    return '$price / $months months';
+  }
+
+  @override
+  String paywallPlanMonths(int months) {
+    return '$months-Month';
+  }
+
+  @override
+  String paywallIntroPriceThen(String intro, String price) {
+    return '$intro introductory price, then $price';
+  }
+
+  @override
+  String get watchlistClearAll => 'Clear list';
+
+  @override
+  String get watchlistClearConfirm => 'Remove all items?';
+
+  @override
+  String get categoryFilterPlaylist => 'Playlist';
+
+  @override
+  String get settingsRefreshOff => 'Off';
+
+  @override
+  String get settingsRefreshOnOpen => 'Every Launch';
+
+  @override
+  String get settingsRefresh1Day => 'Every Day';
+
+  @override
+  String get settingsRefresh1Week => 'Every Week';
+
+  @override
+  String get settingsRefresh1Month => 'Every Month';
+
+  @override
+  String get settingsRefresh1Year => 'Every Year';
+
+  @override
+  String get settingsClearHistoryTitle => 'Clear History';
+
+  @override
+  String get settingsClearHistorySubtitle => 'Clears Recently Watched, Continue Watching and Watched lists. Your favorites are kept';
+
+  @override
+  String get settingsClearHistoryDialogTitle => 'Clear watch history?';
+
+  @override
+  String get settingsClearHistoryDialogMessage => 'All entries in Recently Watched, Continue Watching and Watched lists will be deleted. This cannot be undone.';
+
+  @override
+  String get settingsClearHistoryAction => 'Clear';
+
+  @override
+  String epgNextProgram(String title) {
+    return 'Next: $title';
+  }
+
+  @override
+  String get xtreamBadLogin => 'The username or password is wrong. Check your details with your provider and try again.';
+
+  @override
+  String get xtreamExpired => 'Your subscription has expired. Contact your provider to renew it.';
+
+  @override
+  String xtreamExpiredOn(String date) {
+    return 'Your subscription expired on $date. Contact your provider to renew it.';
+  }
+
+  @override
+  String get xtreamDisabled => 'Your account has been disabled by your provider. Contact your provider.';
+
+  @override
+  String get epgAutoRefreshAuto => 'Automatic — refreshed when the guide is running out';
+
+  @override
+  String xtreamPartialLoad(String type) {
+    return 'Some content could not be loaded: $type';
+  }
+
+  @override
+  String get settingsPlaylistAutoRefreshTitle => 'Playlist auto-refresh';
+
+  @override
+  String settingsEpgUrlForPlaylist(String name) {
+    return 'For the active playlist: $name';
+  }
+
+  @override
+  String get settingsClearHistoryDone => 'Watch history cleared';
+
+  @override
+  String get settingsSupportSection => 'Support';
+
+  @override
+  String get settingsFeedbackTitle => 'Send Feedback';
+
+  @override
+  String get settingsFeedbackSubtitle => 'Suggestions, bug reports, or general thoughts';
+
+  @override
+  String get feedbackDialogTitle => 'Feedback';
+
+  @override
+  String get feedbackThanks => 'Thank you!';
+
+  @override
+  String get feedbackReceived => 'Your feedback has been received.';
+
+  @override
+  String get feedbackChooseType => 'Select type:';
+
+  @override
+  String get feedbackTypeSuggestion => 'Suggestion';
+
+  @override
+  String get feedbackTypeBug => 'Bug Report';
+
+  @override
+  String get feedbackTypeGeneral => 'General';
+
+  @override
+  String get feedbackNameLabel => 'Name';
+
+  @override
+  String get feedbackNamePlaceholder => 'Optional';
+
+  @override
+  String get feedbackEmailLabel => 'Email *';
+
+  @override
+  String get feedbackEmailPlaceholder => 'example@mail.com';
+
+  @override
+  String get feedbackEmailInvalid => 'Enter a valid email address';
+
+  @override
+  String get feedbackMessageLabel => 'Your message *';
+
+  @override
+  String get feedbackMessagePlaceholder => 'Tell us what\'s on your mind…';
+
+  @override
+  String get feedbackScreenshotLabel => 'Screenshots (max 3)';
+
+  @override
+  String get feedbackAddImage => 'Add Image';
+
+  @override
+  String feedbackError(String details) {
+    return 'Could not send: $details';
+  }
+
+  @override
+  String get feedbackImageTooLarge => 'Images larger than 5 MB can\'t be attached';
+
+  @override
+  String get commonSend => 'Send';
+
+  @override
+  String get commonSending => 'Sending…';
+
+  @override
+  String get settingsRateApp => 'Rate the app';
+
+  @override
+  String get settingsRateAppSubtitle => 'Rate and review on the App Store';
+
+  @override
+  String paywallBenefitPlaylistsUpTo(int count) {
+    return 'Up to $count playlists';
+  }
+
+  @override
+  String get paywallBenefitAiWhisper => 'AI Whisper subtitles';
+
+  @override
+  String get paywallBenefitCloudSyncDevices => 'Cloud sync (cross-device)';
+
+  @override
+  String get paywallBenefitThemes => 'Premium themes';
+
+  @override
+  String get paywallBenefitWatchlist => 'Watchlist';
+
+  @override
+  String get paywallBenefitEpgAuto => 'EPG auto-refresh';
+
+  @override
+  String paywallPricePerYear(String price) {
+    return '$price / year';
+  }
+
+  @override
+  String paywallPricePerMonth(String price) {
+    return '$price / month';
+  }
+
+  @override
+  String paywallPricePerWeek(String price) {
+    return '$price / week';
+  }
+
+  @override
+  String paywallPriceOneTime(String price) {
+    return '$price one-time';
+  }
+
+  @override
+  String paywallMonthlyEquivalent(String price) {
+    return 'Just $price / month';
+  }
+
+  @override
+  String paywallTrialThen(int days, String price) {
+    String _temp0 = intl.Intl.pluralLogic(
+      days,
+      locale: localeName,
+      other: 'First $days days free',
+      one: 'First day free',
+    );
+    return '$_temp0, then $price. Cancel anytime.';
+  }
+
+  @override
+  String get paywallLifetimeHint => '✦ One-time payment · Lifetime access';
+
+  @override
+  String get paywallPurchase => 'Purchase';
+
+  @override
+  String get paywallTermsFooterApple => 'Payment is charged to your Apple ID at confirmation of purchase. Subscriptions renew automatically unless cancelled at least 24 hours before the end of the current period. Manage or cancel in your App Store account settings.';
+
+  @override
+  String get paywallActivationPending => 'Your purchase went through but Pro isn\'t active yet. Try restoring your purchases; if it persists, contact support.';
+
+  @override
+  String get paywallLoadError => 'Plans couldn\'t be loaded. Check your connection and try again.';
+
+  @override
+  String playlistDeviceLimit(int count) {
+    return 'This device supports up to $count playlists.';
+  }
+
+  @override
+  String get authReauthTitle => 'Confirm it\'s you';
+
+  @override
+  String get authReauthPasswordMessage => 'Enter your password to delete your account.';
+
+  @override
+  String get authAccountDeleted => 'Your account has been deleted.';
+
+  @override
+  String get playerUrlMissing => 'Stream URL not found';
+
+  @override
+  String parentalPinWrongAttempts(int remaining) {
+    return 'Wrong PIN. Attempts left: $remaining.';
+  }
+
+  @override
+  String parentalPinCooldown(int seconds) {
+    return 'Too many wrong attempts. Wait $seconds seconds.';
+  }
+
+  @override
+  String get paywallRestoreNothing => 'No previous purchases were found for this Apple ID.';
 }

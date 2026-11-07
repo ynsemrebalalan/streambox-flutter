@@ -1,5 +1,6 @@
 import '../../data/models/channel_model.dart';
 import '../../data/models/playlist_model.dart';
+import 'home_rows.dart';
 
 enum SortOrder { defaultOrder, nameAsc, nameDesc }
 
@@ -123,8 +124,9 @@ class HomeState {
   );
 
   List<ChannelModel> get sortedChannels => switch (sortOrder) {
-    SortOrder.nameAsc  => [...channels]..sort((a, b) => a.name.compareTo(b.name)),
-    SortOrder.nameDesc => [...channels]..sort((a, b) => b.name.compareTo(a.name)),
+    // Türkçe katlanmış, büyük/küçük harf duyarsız (home_rows.sortChannelsByName).
+    SortOrder.nameAsc  => sortChannelsByName(channels),
+    SortOrder.nameDesc => sortChannelsByName(channels, descending: true),
     SortOrder.defaultOrder => channels,
   };
 

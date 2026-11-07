@@ -94,28 +94,100 @@ class _AuthenticatedViewState extends ConsumerState<_AuthenticatedView> {
               child: Text(MaterialLocalizations.of(ctx).cancelButtonLabel)),
           FilledButton(
               style: FilledButton.styleFrom(
-                  backgroundColor: Theme.of(ctx).colorScheme.error),
+                  backgroundColor: Theme.of(ctx).colorScheme.error,
+                  foregroundColor: Theme.of(ctx).colorScheme.onError),
               onPressed: () => Navigator.pop(ctx, true),
               child: Text(l.authDeleteAccountConfirm)),
         ],
       ),
     );
     if (confirmed != true || !mounted) return;
+    await _runDelete();
+  }
+
+  /// Silme + gerekirse yeniden kimlik doğrulama. Apple/Google repository
+  /// içinde yeniden doğrulanır; e-posta/şifre için şifre sorulur.
+  Future<void> _runDelete({String? password}) async {
+    final l = AppLocalizations.of(context);
     setState(() => _busy = true);
     try {
-      await ref.read(authRepositoryProvider).deleteAccount();
-      if (mounted) context.go(AppRoutes.home);
+      await ref.read(authRepositoryProvider).deleteAccount(password: password);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(l.authAccountDeleted)));
+      context.go(AppRoutes.home);
     } on FirebaseAuthException catch (e) {
+      if (!mounted) return;
+      if (e.code == 'cancelled') return;
+      final needsPassword = e.code == 'requires-recent-login' &&
+          password == null &&
+          widget.state.providerIds.contains('password');
+      if (needsPassword) {
+        setState(() => _busy = false);
+        final pw = await _askPassword();
+        if (pw != null && pw.isNotEmpty && mounted) {
+          await _runDelete(password: pw);
+        }
+        return;
+      }
+      final msg = switch (e.code) {
+        'requires-recent-login' => l.authRequiresRecentLogin,
+        'wrong-password' || 'invalid-credential' => l.authErrorWrongPassword,
+        _ => l.authErrorGeneric(e.message ?? e.code),
+      };
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
+    } catch (e) {
       if (mounted) {
-        final msg = e.code == 'requires-recent-login'
-            ? l.authRequiresRecentLogin
-            : l.authErrorGeneric(e.message ?? e.code);
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text(msg)));
+        ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(l.authErrorGeneric('$e'))));
       }
     } finally {
       if (mounted) setState(() => _busy = false);
     }
+  }
+
+  Future<String?> _askPassword() async {
+    final l = AppLocalizations.of(context);
+    final ctrl = TextEditingController();
+    final result = await showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(l.authReauthTitle),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(l.authReauthPasswordMessage),
+            const SizedBox(height: 12),
+            TextField(
+              controller: ctrl,
+              obscureText: true,
+              autofocus: true,
+              autofillHints: const [AutofillHints.password],
+              decoration: InputDecoration(
+                labelText: l.authPasswordLabel,
+                border: const OutlineInputBorder(),
+              ),
+              onSubmitted: (v) => Navigator.pop(ctx, v),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: Text(MaterialLocalizations.of(ctx).cancelButtonLabel)),
+          FilledButton(
+              style: FilledButton.styleFrom(
+                  backgroundColor: Theme.of(ctx).colorScheme.error,
+                  foregroundColor: Theme.of(ctx).colorScheme.onError),
+              onPressed: () => Navigator.pop(ctx, ctrl.text),
+              child: Text(l.authDeleteAccountConfirm)),
+        ],
+      ),
+    );
+    // Dialog kapanis animasyonu bitene kadar TextField controller'i kullanir.
+    Future<void>.delayed(const Duration(milliseconds: 500), ctrl.dispose);
+    return result;
   }
 
   @override

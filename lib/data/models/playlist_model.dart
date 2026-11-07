@@ -14,6 +14,11 @@ class PlaylistModel {
   final String? ownerUid;
   final int updatedAt;
   final int? lastSyncedAt;
+  // v9 — playlist başına EPG URL'i (boş = tanımsız; M3U başlığından otomatik
+  // dolabilir) ve otomatik yenileme damgaları (ms epoch, 0 = hiç).
+  final String epgUrl;
+  final int lastRefreshAt;
+  final int lastRefreshAttemptAt;
 
   const PlaylistModel({
     required this.id,
@@ -29,6 +34,9 @@ class PlaylistModel {
     this.ownerUid,
     int? updatedAt,
     this.lastSyncedAt,
+    this.epgUrl = '',
+    this.lastRefreshAt = 0,
+    this.lastRefreshAttemptAt = 0,
   })  : addedAt = addedAt ?? 0,
         updatedAt = updatedAt ?? 0;
 
@@ -46,6 +54,9 @@ class PlaylistModel {
         ownerUid:     map['ownerUid'] as String?,
         updatedAt:    map['updatedAt'] as int? ?? 0,
         lastSyncedAt: map['lastSyncedAt'] as int?,
+        epgUrl:       map['epgUrl'] as String? ?? '',
+        lastRefreshAt:        map['lastRefreshAt'] as int? ?? 0,
+        lastRefreshAttemptAt: map['lastRefreshAttemptAt'] as int? ?? 0,
       );
 
   Map<String, dynamic> toMap() => {
@@ -62,6 +73,9 @@ class PlaylistModel {
         'ownerUid':     ownerUid,
         'updatedAt':    updatedAt,
         'lastSyncedAt': lastSyncedAt,
+        'epgUrl':       epgUrl,
+        'lastRefreshAt':        lastRefreshAt,
+        'lastRefreshAttemptAt': lastRefreshAttemptAt,
       };
 
   PlaylistModel copyWith({
@@ -78,6 +92,9 @@ class PlaylistModel {
     String? ownerUid,
     int? updatedAt,
     int? lastSyncedAt,
+    String? epgUrl,
+    int? lastRefreshAt,
+    int? lastRefreshAttemptAt,
   }) =>
       PlaylistModel(
         id:           id           ?? this.id,
@@ -93,5 +110,8 @@ class PlaylistModel {
         ownerUid:     ownerUid     ?? this.ownerUid,
         updatedAt:    updatedAt    ?? this.updatedAt,
         lastSyncedAt: lastSyncedAt ?? this.lastSyncedAt,
+        epgUrl:       epgUrl       ?? this.epgUrl,
+        lastRefreshAt:        lastRefreshAt        ?? this.lastRefreshAt,
+        lastRefreshAttemptAt: lastRefreshAttemptAt ?? this.lastRefreshAttemptAt,
       );
 }

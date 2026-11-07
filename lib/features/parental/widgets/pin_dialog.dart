@@ -142,7 +142,7 @@ class _PinDialogState extends ConsumerState<PinDialog> {
       final remaining = _kMaxAttempts - attempts;
       setState(() {
         _error =
-            'Yanlış PIN. $remaining deneme hakkınız kaldı.';
+            AppLocalizations.of(context).parentalPinWrongAttempts(remaining);
         _ctrl1.clear();
         _busy = false;
       });
@@ -305,8 +305,7 @@ class _PinDialogState extends ConsumerState<PinDialog> {
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
-                      'Çok fazla yanlış giriş. '
-                      '$_cooldownRemaining saniye bekleyin.',
+                      l.parentalPinCooldown(_cooldownRemaining),
                       style: TextStyle(
                         color: cs.onErrorContainer,
                         fontSize: 12,

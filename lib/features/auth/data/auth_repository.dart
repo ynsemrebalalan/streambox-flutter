@@ -235,6 +235,27 @@ class AuthRepository {
     return email.toLowerCase().endsWith('@privaterelay.appleid.com');
   }
 
+  // ── Anonymous session ──────────────────────────────────────────────────────
+
+  /// Firebase'de oturum yoksa anonim oturum açar (Android
+  /// `signInAnonymouslyIfNeeded`). Firestore kuralları auth istiyor ve
+  /// RevenueCat App User ID = Firebase UID — bu yüzden her zaman bir UID
+  /// olmalı. [timeout] içinde bitmezse sessizce vazgeçer (offline açılış);
+  /// Firestore çağrıları kendi `_ensureAuth`'ları ile tekrar dener.
+  Future<User?> signInAnonymouslyIfNeeded({
+    Duration timeout = const Duration(seconds: 10),
+  }) async {
+    final current = _auth.currentUser;
+    if (current != null) return current;
+    try {
+      final cred = await _auth.signInAnonymously().timeout(timeout);
+      return cred.user;
+    } catch (e) {
+      debugPrint('[Auth] anonim giris basarisiz: $e');
+      return null;
+    }
+  }
+
   // ── Sign Out / Delete ──────────────────────────────────────────────────────
 
   Future<void> signOut() async {
@@ -243,17 +264,99 @@ class AuthRepository {
       await _google.signOut();
     } catch (_) {}
     await _auth.signOut();
+    // Android paritesi: hemen yeni anonim oturum — Firestore/RC UID'siz kalmasın.
+    await signInAnonymouslyIfNeeded();
   }
 
   /// Apple Guideline 5.1.1(v) zorunlu: hesap silme.
-  /// Backend cleanup (Firestore users/{uid}) Cloud Function "Delete User Data"
-  /// extension ile asenkron yapılır. RevenueCat subscription'ı user iptal etmeli.
-  Future<void> deleteAccount() async {
+  ///
+  /// - **Apple ile giriş:** taze Apple credential alınır → yeniden kimlik
+  ///   doğrulama (requires-recent-login'i de çözer) → Apple token'ı
+  ///   `revokeTokenWithAuthorizationCode` ile iptal edilir → user silinir.
+  /// - **Google:** önce silmeyi dener; `requires-recent-login` gelirse Google
+  ///   ile yeniden doğrulayıp tekrar dener.
+  /// - **E-posta/şifre:** `requires-recent-login` gelirse [password] ile
+  ///   yeniden doğrular; [password] yoksa hatayı fırlatır → UI şifre sorar ve
+  ///   `deleteAccount(password: ...)` ile tekrar çağırır.
+  ///
+  /// Silme sonrası yeni anonim oturum açılır (Android). Firestore users/{uid}
+  /// temizliği Cloud Function "Delete User Data" extension ile asenkron.
+  /// RevenueCat aboneliğini kullanıcı App Store'dan iptal etmeli.
+  Future<void> deleteAccount({String? password}) async {
     final user = _auth.currentUser;
     if (user == null) return;
+    final providers = user.providerData.map((p) => p.providerId).toSet();
 
-    // 'requires-recent-login' fırlatabilir → caller tekrar login isteyip retry eder.
+    if (providers.contains('apple.com') &&
+        (Platform.isIOS || Platform.isMacOS)) {
+      await _deleteAppleUser(user);
+    } else {
+      try {
+        if (password != null && password.isNotEmpty && user.email != null) {
+          await user.reauthenticateWithCredential(EmailAuthProvider.credential(
+              email: user.email!, password: password));
+        }
+        await user.delete();
+      } on FirebaseAuthException catch (e) {
+        if (e.code != 'requires-recent-login' ||
+            !providers.contains('google.com')) {
+          rethrow;
+        }
+        await user.reauthenticateWithCredential(await _freshGoogleCredential());
+        await user.delete();
+      }
+    }
+
+    try {
+      await _google.signOut();
+    } catch (_) {}
+    await signInAnonymouslyIfNeeded();
+  }
+
+  /// Apple: yeniden doğrula → token revoke → sil.
+  Future<void> _deleteAppleUser(User user) async {
+    final rawNonce = _randomNonce();
+    final nonceHash = sha256.convert(utf8.encode(rawNonce)).toString();
+    final AuthorizationCredentialAppleID apple;
+    try {
+      apple = await SignInWithApple.getAppleIDCredential(
+        scopes: const [],
+        nonce: nonceHash,
+      );
+    } on SignInWithAppleAuthorizationException catch (e) {
+      throw FirebaseAuthException(
+        code: e.code == AuthorizationErrorCode.canceled
+            ? 'cancelled'
+            : 'apple-native-error',
+        message: 'Apple [${e.code.name}]: ${e.message}',
+      );
+    }
+    final cred = OAuthProvider('apple.com').credential(
+      idToken: apple.identityToken,
+      rawNonce: rawNonce,
+      accessToken: apple.authorizationCode,
+    );
+    await user.reauthenticateWithCredential(cred);
+    try {
+      await _auth.revokeTokenWithAuthorizationCode(apple.authorizationCode);
+    } catch (e) {
+      // Revoke başarısız olsa da hesap silinmeli (kullanıcı isteği öncelikli);
+      // Apple tarafı token süresi dolunca kendiliğinden düşer.
+      debugPrint('[Auth] Apple token revoke failed: $e');
+    }
     await user.delete();
+  }
+
+  Future<AuthCredential> _freshGoogleCredential() async {
+    final account = await _google.signIn();
+    if (account == null) {
+      throw FirebaseAuthException(code: 'cancelled', message: 'Google cancelled');
+    }
+    final auth = await account.authentication;
+    return GoogleAuthProvider.credential(
+      idToken: auth.idToken,
+      accessToken: auth.accessToken,
+    );
   }
 
   // ── Anon → Linked Migration ────────────────────────────────────────────────

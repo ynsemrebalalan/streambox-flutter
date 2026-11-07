@@ -7,6 +7,7 @@ import 'package:media_kit/media_kit.dart';
 import 'firebase_options.dart';
 import 'core/analytics/analytics.dart';
 import 'core/crash/crash_reporting.dart';
+import 'core/database/app_database.dart';
 import 'core/providers/app_providers.dart';
 import 'core/router/app_router.dart';
 import 'core/theme/app_theme.dart';
@@ -15,12 +16,15 @@ import 'core/utils/secure_storage.dart';
 import 'data/repositories/channel_repository.dart';
 import 'data/repositories/playlist_repository.dart';
 import 'data/repositories/settings_repository.dart';
+import 'data/services/firebase_sync_service.dart';
+import 'features/auth/data/auth_repository.dart';
 import 'features/auth/data/auth_state.dart';
 import 'features/auth/providers/auth_providers.dart';
 import 'features/billing/data/purchases_service.dart';
 import 'features/billing/providers/purchases_providers.dart';
 import 'features/cloud_sync/cloud_sync_controller.dart';
 import 'features/epg/epg_auto_refresh_controller.dart';
+import 'features/playlists/playlist_auto_refresh.dart';
 import 'l10n/generated/app_localizations.dart';
 
 void main() {
@@ -106,7 +110,12 @@ Future<void> _bootstrapInBackground() async {
     _initMediaKit(),
   ], eagerError: false);
 
+  // Anonim Firebase oturumu + uzak config (proxy secret). Android
+  // StreamBoxApp.onCreate paritesi — UI'i ve diger init'leri bloklamaz.
+  unawaited(_initAnonymousAuthAndConfig());
+
   await _migrateSecrets();
+  await _purgeSharedOpenAiKey();
 
   // One-time DB migration (2026-05-11): mevcut yanlış classify edilmiş
   // kanalları yeni _detectStreamType ile yeniden değerlendir.
@@ -152,21 +161,34 @@ Future<void> _cleanupDemoPlaylist() async {
 Future<void> _runStreamTypeMigration() async {
   try {
     final settings = SettingsRepository();
-    // v3 zorla yeniden classify (URL-first mantık ile). Eski v2 flag varsa
-    // bile v3 ayrı kontrol — yeni mantık tüm DB'yi yeniden değerlendirir.
-    final done = await settings.get(SettingsKeys.streamTypeMigratedV3);
-    if (done == 'true') return;
-    final repo = ChannelRepository();
-    // ignore: avoid_print
-    print('[migration] streamType v3 başlıyor...');
-    final changed = await repo.reclassifyAll().timeout(
-        const Duration(seconds: 60));
-    // ignore: avoid_print
-    print('[migration] streamType v3: $changed channels reclassified');
-    await settings.set(SettingsKeys.streamTypeMigratedV3, 'true');
+    // v4 zorla yeniden classify (2026-11-03): tip tespiti artık
+    // `_hasSeriesHint` kullanıyor — "TRT 1" / "Rocky 2" gibi sondaki sayılı
+    // adlar dizi sayılmıyor, uzantısız akışta kategori keyword'ü movie
+    // yapmıyor. Eski v3 flag'i olsa bile v4 ayrı kontrol edilir.
+    final done = await settings.get(SettingsKeys.streamTypeMigratedV4);
+    if (done != 'true') {
+      final repo = ChannelRepository();
+      // ignore: avoid_print
+      print('[migration] streamType v4 başlıyor...');
+      final changed = await repo.reclassifyAll().timeout(
+          const Duration(seconds: 60));
+      // ignore: avoid_print
+      print('[migration] streamType v4: $changed channels reclassified');
+      await settings.set(SettingsKeys.streamTypeMigratedV4, 'true');
+    }
   } catch (e) {
     // ignore: avoid_print
-    print('[migration] streamType v3 failed: $e');
+    print('[migration] streamType v4 failed: $e');
+  }
+  // DB v8 onUpgrade backfill'i yarıda kaldıysa boş searchKey'leri tamamla.
+  // Idempotent: boş satır yoksa tek hızlı sorgu.
+  try {
+    final db = await AppDatabase.instance;
+    await AppDatabase.backfillSearchKeys(db)
+        .timeout(const Duration(seconds: 60));
+  } catch (e) {
+    // ignore: avoid_print
+    print('[migration] searchKey backfill failed: $e');
   }
 }
 
@@ -205,6 +227,22 @@ Future<void> _initFirebaseAndAnalytics() async {
   }
 }
 
+/// Firebase hazirsa: oturum yoksa anonim giris (RC App User ID = Firebase UID;
+/// auth listener logIn(uid)'i uygular), ardindan proxy secret'i cek.
+/// Anon -> kalici gecis `AuthRepository.linkAnonToCredential` ile UID'yi korur.
+Future<void> _initAnonymousAuthAndConfig() async {
+  if (Firebase.apps.isEmpty) return; // init basarisiz / timeout
+  try {
+    final user = await AuthRepository()
+        .signInAnonymouslyIfNeeded(timeout: const Duration(seconds: 10));
+    if (user == null) return;
+    await FirebaseSyncService.fetchAndCacheProxySecret()
+        .timeout(const Duration(seconds: 15));
+  } catch (e) {
+    debugPrint('Anonymous auth / remote config failed: $e');
+  }
+}
+
 Future<void> _initMediaKit() async {
   try {
     // ensureInitialized() sync ama native tarafta takilma ihtimaline karsi
@@ -226,6 +264,21 @@ Future<void> _migrateSecrets() async {
     await repo.set(SettingsKeys.secureStorageMigrated, 'true');
   } catch (e) {
     debugPrint('Secret migration failed: $e');
+  }
+}
+
+/// One-time (H4): eski sürümler uzak paylaşılan OpenAI anahtarını
+/// `openai_api_key`'e yazıyordu → "kendi anahtarı" sayılıp Pro/deneme
+/// kapısını atlatıyordu. Kullanıcı bayrağı olmayan anahtar silinir.
+Future<void> _purgeSharedOpenAiKey() async {
+  try {
+    final repo = SettingsRepository();
+    final done = await repo.get(SettingsKeys.byokKeyPurged) == 'true';
+    if (done) return;
+    await SecureStorage.purgeLegacySharedOpenAiKey(migrationDone: done);
+    await repo.set(SettingsKeys.byokKeyPurged, 'true');
+  } catch (e) {
+    debugPrint('BYOK key purge failed: $e');
   }
 }
 
@@ -295,6 +348,20 @@ class _IPTVAIPlayerAppState extends ConsumerState<IPTVAIPlayerApp>
       } catch (e) {
         debugPrint('Profile load failed: $e');
       }
+      // Playlist otomatik yenileme (aralık: Kapalı/Her açılışta/1G/1H/1A/1Y)
+      // + EPG kapsam bazlı tazeleme (Pro). Arka planda — açılışı bekletmez.
+      unawaited(Future(() async {
+        try {
+          await ref.read(playlistAutoRefreshProvider.notifier).onLaunch();
+        } catch (e) {
+          debugPrint('Playlist auto-refresh failed: $e');
+        }
+        try {
+          await ref.read(epgAutoRefreshProvider.notifier).maybeRefresh();
+        } catch (e) {
+          debugPrint('EPG auto-refresh failed: $e');
+        }
+      }));
       try {
         final repo = ref.read(settingsRepoProvider);
         final accepted = await repo.get(SettingsKeys.disclaimerAccepted);
@@ -334,6 +401,7 @@ class _IPTVAIPlayerAppState extends ConsumerState<IPTVAIPlayerApp>
       ref.read(cloudSyncControllerProvider.notifier).syncNow();
       // ignore: unawaited_futures
       ref.read(epgAutoRefreshProvider.notifier).maybeRefresh();
+      ref.read(playlistAutoRefreshProvider.notifier).onResume();
     }
   }
 
@@ -386,6 +454,13 @@ class _IPTVAIPlayerAppState extends ConsumerState<IPTVAIPlayerApp>
       theme:                      isPremium ? AppTheme.of(themeVariant) : AppTheme.light,
       darkTheme:                  isPremium ? AppTheme.of(themeVariant) : AppTheme.dark,
       routerConfig:               appRouter,
+      // Dynamic Type: honour the user's text size but cap at 130% so
+      // fixed-height rows (channel list, poster captions, player bars)
+      // never overflow.
+      builder: (context, child) => MediaQuery.withClampedTextScaling(
+        maxScaleFactor: 1.3,
+        child: child ?? const SizedBox.shrink(),
+      ),
 
       // Localization — `locale: null` means follow system.
       locale:                     locale,

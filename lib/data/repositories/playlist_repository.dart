@@ -89,6 +89,33 @@ class PlaylistRepository {
     CloudSyncService.deletePlaylist(id);
   }
 
+  /// Yalnız bu cihazdan sil (Android "Cihazdan Sil"): tombstone YAZILMAZ,
+  /// bulut kaydı durur — "Buluttan İndir"/sync ile geri gelir.
+  Future<void> deleteLocalOnly(String id) async {
+    final db = await AppDatabase.instance;
+    await db.transaction((txn) async {
+      await txn.delete('channel_categories', where: 'playlistId = ?', whereArgs: [id]);
+      await txn.delete('channels', where: 'playlistId = ?', whereArgs: [id]);
+      await txn.delete(_table, where: 'id = ?', whereArgs: [id]);
+    });
+  }
+
+  /// Otomatik yenileme damgaları — cihaz yerel metadata, cloud'a gitmez.
+  Future<void> markRefreshAttempt(String id, int ms) => _updateLocal(
+      id, {'lastRefreshAttemptAt': ms});
+
+  Future<void> markRefreshed(String id, int ms) =>
+      _updateLocal(id, {'lastRefreshAt': ms, 'lastRefreshAttemptAt': ms});
+
+  /// Playlist'in EPG URL'i (boş = kaldır). Cloud'a yazılmaz; yerel ayar.
+  Future<void> updateEpgUrl(String id, String url) =>
+      _updateLocal(id, {'epgUrl': url.trim()});
+
+  Future<void> _updateLocal(String id, Map<String, Object?> values) async {
+    final db = await AppDatabase.instance;
+    await db.update(_table, values, where: 'id = ?', whereArgs: [id]);
+  }
+
   Future<void> updateEtag(String id, {required String etag, required String lastModified}) async {
     final db = await AppDatabase.instance;
     // ETag/lastModified HTTP cache metadata'sidir — gercek user data degil.

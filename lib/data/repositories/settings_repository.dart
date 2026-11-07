@@ -56,13 +56,22 @@ abstract final class SettingsKeys {
   static const String subtitleTextColor  = 'subtitle_text_color';
   static const String subtitleBgColor    = 'subtitle_bg_color';
   static const String subtitleFontSize   = 'subtitle_font_size';
+  // 2026-11-03 Android oynatıcı/AI paritesi
+  static const String subtitleDefaultOn  = 'subtitle_default_on';   // 'true'|'false' (default false)
+  static const String aiTargetLang       = 'ai_target_lang';        // '' = cihaz dili
+  static const String aiBannerEnabled    = 'ai_banner_enabled';     // 'true'|'false' (default true)
+  static const String aiProvider         = 'ai_provider';           // 'groq'|'openai' (default groq)
+  static const String playerBufferMs     = 'player_buffer_ms';      // 2000..8000 (default 8000)
+  static const String pipAutoEnabled     = 'pip_auto_enabled';      // 'true'|'false' (Android-only)
   static const String refreshIntervalH   = 'refresh_interval_hours'; // 0=off, -1=on_open
   static const String secureStorageMigrated = 'secure_storage_migrated';
+  static const String byokKeyPurged = 'byok_shared_key_purged'; // 2026-11 H4: bayraksız (paylaşılan) OpenAI anahtarı silindi
   static const String language = 'language'; // 'system' | 'tr' | 'en' | 'de' | 'ar'
   static const String welcomeShown = 'welcome_shown'; // 'true' = welcome screen kapatildi
   static const String activeProfileId = 'active_profile_id'; // Phase 6 (default 'default')
   static const String streamTypeMigratedV2 = 'streamtype_migrated_v2'; // 2026-05-11 reclassify migration flag
   static const String streamTypeMigratedV3 = 'streamtype_migrated_v3'; // 2026-05-11 URL-first reclassify (yeni mantık)
+  static const String streamTypeMigratedV4 = 'streamtype_migrated_v4'; // 2026-11-03 _hasSeriesHint reclassify ("TRT 1" dizi değil)
   static const String demoPlaylistCleaned = 'demo_playlist_cleaned'; // 2026-05-11 demo playlist DB'den temizleme migration
   static const String entitlementCache = 'entitlement_cache'; // 2026-08-29 son bilinen Pro durumu (JSON) — cold start flicker fix
 }

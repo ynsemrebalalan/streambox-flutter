@@ -160,11 +160,12 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                     child: FilledButton(
                       onPressed: _busy ? null : _register,
                       child: _busy
-                          ? const SizedBox(
+                          ? SizedBox(
                               width: 20,
                               height: 20,
                               child: CircularProgressIndicator(
-                                  strokeWidth: 2, color: Colors.white))
+                                  strokeWidth: 2,
+                                  color: Theme.of(context).colorScheme.onPrimary))
                           : Text(l.authSignUpButton),
                     ),
                   ),

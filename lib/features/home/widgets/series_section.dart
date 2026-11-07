@@ -1,18 +1,22 @@
-import 'dart:ui' as ui show Radius;
+import 'dart:async';
 
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../../../core/providers/app_providers.dart';
 import '../../../core/router/app_router.dart';
-import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_palette.dart';
 import '../../../core/theme/app_tokens.dart';
-import '../../../core/utils/responsive.dart';
 import '../../../core/utils/tv_focus.dart';
+import '../../../core/widgets/empty_state.dart';
+import '../../../core/widgets/poster_grid.dart';
+import '../../../core/widgets/poster_image.dart';
 import '../../../data/models/channel_model.dart';
+import '../../../data/services/xtream_service.dart';
 import '../../../l10n/generated/app_localizations.dart';
 import '../../parental/parental_guard.dart';
+import '../home_provider.dart';
 
 /// Diziler tab'i — Kotlin paritesi (VodSeriesPosterGrid):
 /// Ust seviye poster grid (her dizi tek kart). Karta tiklayinca alttan
@@ -21,36 +25,42 @@ import '../../parental/parental_guard.dart';
 /// 2026-05-25: Eskiden tum diziler dikey list halinde expand edilen Card'lar
 /// olarak gosteriliyordu — film tab'i poster grid kullanirken dizi tab'i
 /// farkli gorunum sergiliyordu (kullanici raporu).
-class SeriesSection extends StatelessWidget {
+class SeriesSection extends StatefulWidget {
   final List<ChannelModel> channels;
 
   const SeriesSection({super.key, required this.channels});
 
   @override
+  State<SeriesSection> createState() => _SeriesSectionState();
+}
+
+class _SeriesSectionState extends State<SeriesSection> {
+  // Gruplama her build'de degil, yalniz liste degisince yapilir (10k+ bolum).
+  late Map<String, Map<int, List<ChannelModel>>> _groups =
+      groupSeriesEpisodes(widget.channels);
+
+  @override
+  void didUpdateWidget(covariant SeriesSection oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (!identical(oldWidget.channels, widget.channels)) {
+      _groups = groupSeriesEpisodes(widget.channels);
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final groups = _group(channels);
+    final groups = _groups;
     if (groups.isEmpty) {
       final l = AppLocalizations.of(context);
-      return Center(
-        child: Text(
-          l.seriesEmptyCategory,
-          style: TextStyle(
-              color: Theme.of(context).colorScheme.onSurfaceVariant),
-        ),
+      return EmptyState(
+        icon:  Icons.video_library_outlined,
+        title: l.seriesEmptyCategory,
       );
     }
 
     final entries = groups.entries.toList();
-    final columns = Responsive.posterGridColumns(context);
 
-    return GridView.builder(
-      padding:     const EdgeInsets.all(Spacing.md),
-      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount:   columns,
-        childAspectRatio: 0.62,
-        crossAxisSpacing: Spacing.sm,
-        mainAxisSpacing:  Spacing.sm,
-      ),
+    return PosterGridView(
       itemCount:   entries.length,
       itemBuilder: (ctx, i) {
         final entry = entries[i];
@@ -61,31 +71,128 @@ class SeriesSection extends StatelessWidget {
       },
     );
   }
+}
 
-  static Map<String, Map<int, List<ChannelModel>>> _group(
-      List<ChannelModel> channels) {
-    final result = <String, Map<int, List<ChannelModel>>>{};
-    for (final ch in channels) {
-      final key    = ch.seriesName.isNotEmpty ? ch.seriesName : ch.name;
-      final season = ch.seasonNumber;
-      result.putIfAbsent(key, () => {})[season] =
-          [...(result[key]?[season] ?? []), ch];
-    }
-    // Parse edilemeyen (episodeNumber=0) kayitlari sona at; aralarinda
-    // sortOrder (playlist sirasi) ile dengele. "Bolum 10" < "Bolum 2" bug'i
-    // yasanmasin, parse basarisiz olanlar da listeyi bozmasin.
-    int rank(int n) => n == 0 ? 1 << 30 : n;
-    for (final seasons in result.values) {
-      for (final eps in seasons.values) {
-        eps.sort((a, b) {
-          final byEp = rank(a.episodeNumber).compareTo(rank(b.episodeNumber));
-          if (byEp != 0) return byEp;
-          return a.sortOrder.compareTo(b.sortOrder);
-        });
-      }
-    }
-    return result;
+/// Bolumleri dizi adi → sezon → bolum listesi olarak gruplar.
+/// Sezon icinde siralama **sortOrder**: provider sirasi tek guvenilir izleme
+/// sirasidir (bkz. ChannelRepository._orderFor v3.8.2 notu — title'dan
+/// parse edilen episodeNumber yaniltici olabiliyor).
+Map<String, Map<int, List<ChannelModel>>> groupSeriesEpisodes(
+    List<ChannelModel> channels) {
+  final result = <String, Map<int, List<ChannelModel>>>{};
+  for (final ch in channels) {
+    final key = ch.seriesName.isNotEmpty ? ch.seriesName : ch.name;
+    result
+        .putIfAbsent(key, () => <int, List<ChannelModel>>{})
+        .putIfAbsent(ch.seasonNumber, () => <ChannelModel>[])
+        .add(ch);
   }
+  // Xtream container'ı, dizinin gerçek bölümleri varken "Özel" sezonu gibi
+  // görünmesin — yalnız bölümsüz dizide (lazy) yer tutucu olarak kalır.
+  for (final seasons in result.values) {
+    final zero = seasons[0];
+    if (zero == null || seasons.length == 1) continue;
+    zero.removeWhere((c) => c.isSeriesContainer);
+    if (zero.isEmpty) seasons.remove(0);
+  }
+  for (final seasons in result.values) {
+    for (final eps in seasons.values) {
+      eps.sort((a, b) => a.sortOrder.compareTo(b.sortOrder));
+    }
+  }
+  return result;
+}
+
+/// Dizi kartindan (Ana Sayfa, Yeni Diziler, arama) seri detay sheet'ini acar.
+/// Bolumler DB'den seriesName + playlistId ile yuklenir — kartin temsil
+/// ettigi rastgele bolum degil, dizinin tamami gosterilir. Dizi degilse
+/// (veya seriesName bos) dogrudan oynatir.
+Future<void> openSeries(
+  BuildContext context,
+  WidgetRef ref,
+  ChannelModel channel,
+) async {
+  if (channel.streamType != 'series' || channel.seriesName.isEmpty) {
+    return openChannelGuarded(context, ref, channel);
+  }
+  if (!await ensureCategoryUnlocked(context, ref, channel.category)) return;
+  final repo = ref.read(channelRepoProvider);
+  var episodes =
+      await repo.getSeriesEpisodes(channel.playlistId, channel.seriesName);
+  // Xtream: bölümler lazy — container varsa get_series_info ile çek
+  // (Android XtreamLoader.loadSeriesEpisodes). Eski bölümler varsa hata
+  // durumunda onlar gösterilir.
+  final container = episodes.where((e) => e.isSeriesContainer).firstOrNull;
+  if (container != null && context.mounted) {
+    final l = AppLocalizations.of(context);
+    String? error;
+    final loaded = await _withProgress(context, () async {
+      try {
+        final p = await ref.read(playlistRepoProvider).getById(container.playlistId);
+        if (p == null) return 0;
+        return await XtreamService.loadSeriesContainer(p, container, repo);
+      } catch (_) {
+        error = l.loadErrSeriesInfo;
+        return 0;
+      }
+    });
+    if (loaded > 0) {
+      episodes =
+          await repo.getSeriesEpisodes(channel.playlistId, channel.seriesName);
+      // Diziler sekmesindeki container kartı gerçek bölümlerle değişsin.
+      unawaited(ref.read(homeProvider.notifier).reloadPreservingSelection());
+    }
+    final real = episodes.where((e) => !e.isSeriesContainer).toList();
+    if (real.isEmpty) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(error ?? l.loadErrNoEpisodes)));
+      }
+      return;
+    }
+    episodes = real;
+  }
+  if (!context.mounted) return;
+  final seasons = groupSeriesEpisodes(episodes)[channel.seriesName];
+  if (seasons == null || seasons.isEmpty) {
+    return openChannelGuarded(context, ref, channel);
+  }
+  _showSeriesSheet(context, channel.seriesName, seasons);
+}
+
+/// Kısa engelleyici ilerleme göstergesi (lazy bölüm yükleme).
+Future<T> _withProgress<T>(
+    BuildContext context, Future<T> Function() task) async {
+  final nav = Navigator.of(context, rootNavigator: true);
+  var shown = true;
+  unawaited(showDialog<void>(
+    context: context,
+    barrierDismissible: false,
+    useRootNavigator: true,
+    builder: (_) => const Center(child: CircularProgressIndicator()),
+  ).whenComplete(() => shown = false));
+  try {
+    return await task();
+  } finally {
+    if (shown) nav.pop();
+  }
+}
+
+void _showSeriesSheet(
+  BuildContext context,
+  String seriesName,
+  Map<int, List<ChannelModel>> seasons,
+) {
+  // Shape / drag handle / background come from bottomSheetTheme.
+  showModalBottomSheet<void>(
+    context: context,
+    isScrollControlled: true,
+    useSafeArea: true,
+    builder: (ctx) => _SeriesDetailSheet(
+      seriesName: seriesName,
+      seasons:    seasons,
+    ),
+  );
 }
 
 /// Tek dizi kapagi — film poster card stilinde. Tap -> bottom sheet detay.
@@ -98,16 +205,6 @@ class _SeriesPosterCard extends ConsumerWidget {
     required this.seasons,
   });
 
-  /// Dizinin kategorisi — ebeveyn kilidi kontrolü için ilk bölümden okunur.
-  String _category() {
-    for (final eps in seasons.values) {
-      for (final ep in eps) {
-        if (ep.category.isNotEmpty) return ep.category;
-      }
-    }
-    return '';
-  }
-
   /// Posterde gosterilecek logo URL'i — en yeni bolumun logo'su (fallback olarak
   /// ilk dolu logo).
   String? _coverUrl() {
@@ -119,104 +216,88 @@ class _SeriesPosterCard extends ConsumerWidget {
     return null;
   }
 
-  int _totalEpisodes() =>
-      seasons.values.fold(0, (sum, eps) => sum + eps.length);
+  int _totalEpisodes() => seasons.values.fold(
+      0, (sum, eps) => sum + eps.where((e) => !e.isSeriesContainer).length);
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final cs = Theme.of(context).colorScheme;
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
     final l  = AppLocalizations.of(context);
     final cover = _coverUrl();
     final epCount = _totalEpisodes();
 
     return TvFocusableScale(
-      borderRadius: BorderRadius.circular(Radius.card + 3),
+      borderRadius: BorderRadius.circular(AppRadius.card + 3),
       onTap: () => _openDetail(context, ref),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Expanded(
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(Radius.card),
-              child: cover != null
-                  ? CachedNetworkImage(
-                      imageUrl:    cover,
-                      fit:         BoxFit.cover,
-                      width:       double.infinity,
-                      placeholder: (_, __) => Container(
-                          color: cs.surfaceContainerHighest),
-                      errorWidget: (_, __, ___) =>
-                          _PosterPlaceholder(name: seriesName),
-                    )
-                  : _PosterPlaceholder(name: seriesName),
+      child: Semantics(
+        label: epCount > 0
+            ? '$seriesName, ${l.seriesEpisodeCount(epCount)}'
+            : seriesName,
+        button: true,
+        excludeSemantics: true,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            AspectRatio(
+              aspectRatio: Dimens.posterAspect,
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(AppRadius.card),
+                child: LayoutBuilder(
+                  builder: (_, c) => PosterImage(
+                    url:   cover,
+                    seed:  seriesName,
+                    width: c.maxWidth,
+                  ),
+                ),
+              ),
             ),
-          ),
-          const SizedBox(height: 4),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 4),
-            child: Text(
-              seriesName,
-              maxLines:  1,
-              overflow:  TextOverflow.ellipsis,
-              style:     const TextStyle(
-                  fontSize:   TextSize.caption,
-                  fontWeight: FontWeight.w600),
+            // Fixed caption block: name (1 line) + episode count.
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.only(top: Spacing.xs + 2),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      seriesName,
+                      maxLines:  1,
+                      overflow:  TextOverflow.ellipsis,
+                      style: theme.textTheme.labelMedium?.copyWith(
+                          fontWeight: FontWeight.w600,
+                          color: cs.onSurface,
+                          height: 1.2),
+                    ),
+                    if (epCount > 0)
+                      Text(
+                        l.seriesEpisodeCount(epCount),
+                        maxLines:  1,
+                        overflow:  TextOverflow.ellipsis,
+                        style: theme.textTheme.labelSmall?.copyWith(
+                            fontWeight: FontWeight.w400,
+                            letterSpacing: 0,
+                            color: cs.onSurfaceVariant,
+                            height: 1.2),
+                      ),
+                  ],
+                ),
+              ),
             ),
-          ),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 4),
-            child: Text(
-              l.seriesEpisodeCount(epCount),
-              maxLines:  1,
-              overflow:  TextOverflow.ellipsis,
-              style:     TextStyle(
-                  fontSize: TextSize.micro,
-                  color:    cs.onSurfaceVariant),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Future<void> _openDetail(BuildContext context, WidgetRef ref) async {
-    if (!await ensureCategoryUnlocked(context, ref, _category())) return;
-    if (!context.mounted) return;
-    showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Theme.of(context).colorScheme.surface,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: ui.Radius.circular(20)),
-      ),
-      builder: (ctx) => _SeriesDetailSheet(
-        seriesName: seriesName,
-        seasons:    seasons,
-      ),
-    );
-  }
-}
-
-class _PosterPlaceholder extends StatelessWidget {
-  final String name;
-  const _PosterPlaceholder({required this.name});
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    return Container(
-      color: cs.surfaceContainerHighest,
-      child: Center(
-        child: Text(
-          name.isNotEmpty ? name[0].toUpperCase() : '?',
-          style: TextStyle(
-              fontSize: TextSize.titleLg * 1.5,
-              color:    cs.onSurfaceVariant),
+          ],
         ),
       ),
     );
   }
+
+  /// Bölümler DB'den yüklenir (liste limitle kesilmiş olabilir; Xtream
+  /// container'ı lazy çekilir) — bkz. [openSeries].
+  Future<void> _openDetail(BuildContext context, WidgetRef ref) async {
+    final first = seasons.values.expand((e) => e).firstOrNull;
+    if (first == null) return;
+    await openSeries(context, ref, first);
+  }
 }
+
 
 /// Modal bottom-sheet: dizi basligi + sezon chip'leri + bolum listesi.
 class _SeriesDetailSheet extends StatefulWidget {
@@ -244,9 +325,12 @@ class _SeriesDetailSheetState extends State<_SeriesDetailSheet> {
 
   @override
   Widget build(BuildContext context) {
-    final cs       = Theme.of(context).colorScheme;
+    final theme    = Theme.of(context);
+    final cs       = theme.colorScheme;
     final l        = AppLocalizations.of(context);
     final seasons  = widget.seasons.keys.toList()..sort();
+    // Home indicator / gesture bar alani — son bolum altinda kalmasin.
+    final bottomInset = MediaQuery.viewPaddingOf(context).bottom;
     final episodes = _selectedSeason != null
         ? (widget.seasons[_selectedSeason] ?? [])
         : <ChannelModel>[];
@@ -258,40 +342,41 @@ class _SeriesDetailSheetState extends State<_SeriesDetailSheet> {
       expand:           false,
       builder: (ctx, scrollCtrl) => Column(
         children: [
-          // Drag handle
-          Padding(
-            padding: const EdgeInsets.symmetric(vertical: 10),
-            child: Container(
-              width:  40,
-              height: 4,
-              decoration: BoxDecoration(
-                color:        cs.onSurfaceVariant.withValues(alpha: 0.4),
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-          ),
+          // Drag handle: bottomSheetTheme.showDragHandle.
           // Baslik
           Padding(
-            padding: const EdgeInsets.symmetric(
-                horizontal: Spacing.lg, vertical: Spacing.sm),
+            padding: const EdgeInsets.fromLTRB(
+                Spacing.lg, 0, Spacing.sm, Spacing.sm),
             child: Row(
               children: [
                 Expanded(
-                  child: Text(
-                    widget.seriesName,
-                    style: TextStyle(
-                        fontSize:   TextSize.titleLg,
-                        fontWeight: FontWeight.w700,
-                        color:      cs.onSurface),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
+                  child: Semantics(
+                    header: true,
+                    child: Text(
+                      widget.seriesName,
+                      style: theme.textTheme.headlineSmall
+                          ?.copyWith(color: cs.onSurface),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
                   ),
                 ),
+                const SizedBox(width: Spacing.sm),
                 Text(
                   l.seriesSeasonCount(seasons.length),
-                  style: TextStyle(
-                      fontSize: TextSize.caption,
-                      color:    cs.onSurfaceVariant),
+                  style: theme.textTheme.bodySmall
+                      ?.copyWith(color: cs.onSurfaceVariant),
+                ),
+                _SeriesFavoriteButton(
+                  playlistId: widget.seasons.values
+                          .expand((e) => e)
+                          .firstOrNull
+                          ?.playlistId ??
+                      '',
+                  seriesName: widget.seriesName,
+                  initial: widget.seasons.values
+                      .expand((e) => e)
+                      .any((e) => e.isFavorite),
                 ),
               ],
             ),
@@ -299,7 +384,7 @@ class _SeriesDetailSheetState extends State<_SeriesDetailSheet> {
           const Divider(height: 1),
           // Sezon chip'leri
           SizedBox(
-            height: 44,
+            height: 48,
             child: FocusTraversalGroup(
               policy: OrderedTraversalPolicy(),
               child: ListView(
@@ -311,26 +396,32 @@ class _SeriesDetailSheetState extends State<_SeriesDetailSheet> {
                   return Padding(
                     padding: const EdgeInsets.only(right: 6),
                     child: TvFocusable(
-                      borderRadius: BorderRadius.circular(15),
-                      onTap: () => setState(() => _selectedSeason = s),
+                      borderRadius: BorderRadius.circular(AppRadius.pill),
+                      semanticLabel: s == 0
+                          ? l.seriesSpecialSeason
+                          : l.seriesSeasonNumber(s),
+                      onTap: () {
+                        if (s == _selectedSeason) return;
+                        HapticFeedback.selectionClick();
+                        setState(() => _selectedSeason = s);
+                      },
                       child: Container(
                         padding: const EdgeInsets.symmetric(
                             horizontal: 14, vertical: 6),
                         decoration: BoxDecoration(
                           color: active
-                              ? AppColors.accent
-                              : cs.surfaceContainerHighest,
-                          borderRadius: BorderRadius.circular(14),
+                              ? cs.primary
+                              : cs.surfaceContainerHigh,
+                          borderRadius: BorderRadius.circular(AppRadius.pill),
                         ),
                         child: Text(
                           s == 0
                               ? l.seriesSpecialSeason
                               : l.seriesSeasonNumber(s),
-                          style: TextStyle(
-                              fontSize:   TextSize.label,
+                          style: theme.textTheme.labelMedium?.copyWith(
                               fontWeight: active
                                   ? FontWeight.w700
-                                  : FontWeight.normal,
+                                  : FontWeight.w500,
                               color: active
                                   ? cs.onPrimary
                                   : cs.onSurfaceVariant),
@@ -347,6 +438,7 @@ class _SeriesDetailSheetState extends State<_SeriesDetailSheet> {
           Expanded(
             child: ListView.builder(
               controller: scrollCtrl,
+              padding:    EdgeInsets.only(bottom: bottomInset + Spacing.lg),
               itemCount:  episodes.length,
               itemBuilder: (ctx, i) => _EpisodeTile(
                 episode: episodes[i],
@@ -356,6 +448,46 @@ class _SeriesDetailSheetState extends State<_SeriesDetailSheet> {
           ),
         ],
       ),
+    );
+  }
+}
+
+/// Dizi favorisi (tüm bölümler) — Android toggleSeriesFavorite.
+class _SeriesFavoriteButton extends ConsumerStatefulWidget {
+  final String playlistId;
+  final String seriesName;
+  final bool initial;
+  const _SeriesFavoriteButton({
+    required this.playlistId,
+    required this.seriesName,
+    required this.initial,
+  });
+
+  @override
+  ConsumerState<_SeriesFavoriteButton> createState() =>
+      _SeriesFavoriteButtonState();
+}
+
+class _SeriesFavoriteButtonState extends ConsumerState<_SeriesFavoriteButton> {
+  late bool _fav = widget.initial;
+
+  @override
+  Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context);
+    return IconButton(
+      tooltip: _fav ? l.playerFavoriteRemove : l.playerFavoriteAdd,
+      isSelected: _fav,
+      icon: Icon(_fav ? Icons.favorite : Icons.favorite_border,
+          color: _fav ? AppPalette.of(context).accentText : null),
+      onPressed: widget.playlistId.isEmpty
+          ? null
+          : () async {
+              HapticFeedback.lightImpact();
+              final next = await ref
+                  .read(homeProvider.notifier)
+                  .toggleSeriesFavorite(widget.playlistId, widget.seriesName);
+              if (mounted) setState(() => _fav = next);
+            },
     );
   }
 }
@@ -402,7 +534,8 @@ class _EpisodeTileState extends State<_EpisodeTile> {
 
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
     final ep = widget.episode;
 
     return Focus(
@@ -423,33 +556,32 @@ class _EpisodeTileState extends State<_EpisodeTile> {
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 100),
         color: _focused
-            ? AppColors.accent.withValues(alpha: 0.12)
+            ? cs.primary.withValues(alpha: 0.12)
             : Colors.transparent,
         child: ListTile(
           dense:     true,
           leading:   CircleAvatar(
             radius:          14,
             backgroundColor: _focused
-                ? AppColors.accent.withValues(alpha: 0.3)
-                : cs.surfaceContainerHighest,
+                ? cs.primary.withValues(alpha: 0.3)
+                : cs.surfaceContainerHigh,
             child: Text(
               ep.episodeNumber > 0 ? '${ep.episodeNumber}' : '${widget.index + 1}',
-              style: TextStyle(
-                  fontSize: TextSize.caption,
-                  color: _focused ? AppColors.accent : cs.onSurfaceVariant),
+              style: theme.textTheme.labelSmall?.copyWith(
+                  fontFeatures: const [FontFeature.tabularFigures()],
+                  color: _focused ? cs.onSurface : cs.onSurfaceVariant),
             ),
           ),
           title: Text(
             ep.name,
             maxLines:  1,
             overflow:  TextOverflow.ellipsis,
-            style:     TextStyle(
-                fontSize: TextSize.body,
-                fontWeight: _focused ? FontWeight.w600 : FontWeight.normal),
+            style: theme.textTheme.bodyMedium?.copyWith(
+                fontWeight: _focused ? FontWeight.w600 : FontWeight.w400),
           ),
           trailing: ep.isWatched
               ? Icon(Icons.check_circle,
-                  size: 16, color: AppColors.success)
+                  size: 18, color: AppPalette.of(context).success)
               : null,
           onTap: _play,
         ),

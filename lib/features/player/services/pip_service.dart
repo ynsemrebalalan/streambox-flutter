@@ -2,6 +2,8 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 
+import '../../../core/utils/ref_counter.dart';
+
 /// Picture-in-Picture (PiP) Pro feature servisi.
 ///
 /// Android: Activity-level PiP (API 26+). MainActivity.kt MethodChannel
@@ -88,7 +90,31 @@ class PipService {
     }
   }
 
+  /// Aktif player sayaci (kanal degisiminde yeni ekran eskinin dispose'undan
+  /// once acilir; eski dispose yeninin PiP durumunu kapatmasin).
+  final RefCounter _playerRefs = RefCounter();
+
+  /// Player acildi: yalniz ilk player'da native bayrak true.
+  Future<void> acquirePlayer() async {
+    if (_playerRefs.acquire()) await setPlayerActive(true);
+  }
+
+  /// Player kapandi: yalniz son player kapaninca bayrak + auto-PiP false.
+  Future<void> releasePlayer() async {
+    if (!_playerRefs.release()) return;
+    await setPlayerActive(false);
+    await setAutoPip(false);
+  }
+
+  /// Auto-PiP'i yalnizca bir player aktifken ac (gec gelen async kurulum,
+  /// son player kapandiktan sonra auto-PiP'i acik birakmasin).
+  Future<void> setAutoPipForActivePlayer(bool enabled) async {
+    if (!_playerRefs.isActive) return;
+    await setAutoPip(enabled);
+  }
+
   /// Player aktiflik bayragi — PiP servisinin auto-mode kararini etkiler.
+  /// Dogrudan cagirma; [acquirePlayer]/[releasePlayer] kullan.
   Future<void> setPlayerActive(bool active) async {
     await ensureInitialized();
     if (!_isAndroid) return;

@@ -216,6 +216,27 @@ class AppLocalizationsRo extends AppLocalizations {
   String get homeMore => 'Mai mult';
 
   @override
+  String get homePlaylistSyncing => 'Se sincronizează lista…';
+
+  @override
+  String get homeSearchTooltip => 'Caută';
+
+  @override
+  String get watchlistAddTooltip => 'Adaugă în Lista mea';
+
+  @override
+  String get watchlistRemoveTooltip => 'Elimină din Lista mea';
+
+  @override
+  String get playerPlayAction => 'Redă';
+
+  @override
+  String get playerPauseAction => 'Pauză';
+
+  @override
+  String get playlistsActiveLabel => 'Activă';
+
+  @override
   String get homeCategoryManagement => 'Gestionare categorii';
 
   @override
@@ -346,6 +367,51 @@ class AppLocalizationsRo extends AppLocalizations {
 
   @override
   String get playlistsTypeXtream => 'Xtream';
+
+  @override
+  String get playlistsTypeStalker => 'Stalker / MAG';
+
+  @override
+  String get playlistsStalkerCardTitle => 'Portal Stalker / MAG Box';
+
+  @override
+  String get playlistsStalkerCardBody => 'Adresa ta MAC trebuie să fie înregistrată la furnizorul tău IPTV. Aplicația încearcă mai întâi calea rapidă M3U, apoi revine la protocolul Stalker complet dacă este necesar.';
+
+  @override
+  String get playlistsStalkerPortalLabel => 'URL portal';
+
+  @override
+  String get playlistsStalkerPortalHint => 'http://provider.com:8080';
+
+  @override
+  String get playlistsStalkerMacLabel => 'Adresă MAC';
+
+  @override
+  String get playlistsStalkerMacHint => '00:1A:79:XX:XX:XX';
+
+  @override
+  String get playlistsStalkerMacGenerate => 'Generează';
+
+  @override
+  String get playlistsStalkerMacHelp => 'Format MAC: XX:XX:XX:XX:XX:XX (majuscule, separate prin două puncte)';
+
+  @override
+  String get playlistsValidationStalkerMac => 'Introdu o adresă MAC validă (XX:XX:XX:XX:XX:XX).';
+
+  @override
+  String get editPlaylistStalkerBadge => 'Stalker / MAG';
+
+  @override
+  String get progressTryingPortalList => 'Se încearcă preluarea listei din portal…';
+
+  @override
+  String get progressPortalConnecting => 'Se conectează la portal…';
+
+  @override
+  String get loadErrPortalConnect => 'Nu s-a putut realiza conexiunea la portal. Verifică adresa portalului și dacă adresa ta MAC este înregistrată la furnizor.';
+
+  @override
+  String get loadErrPortalList => 'Lista de canale nu a putut fi preluată. Verifică la furnizor dacă adresa ta MAC este înregistrată în portal.';
 
   @override
   String get playlistsNameLabel => 'Numele playlistului';
@@ -501,6 +567,307 @@ class AppLocalizationsRo extends AppLocalizations {
 
   @override
   String get playerSingleQuality => 'Acest flux oferă o singură calitate.';
+
+  @override
+  String get playerErrorUnsupportedFormat => 'Formatul video sau audio al acestei transmisiuni nu poate fi redat pe acest dispozitiv. Încercați altă sursă sau un player extern.';
+
+  @override
+  String get playerErrorCorruptStream => 'Datele transmisiunii nu au putut fi citite. Canalul poate fi temporar defect; încercați mai târziu.';
+
+  @override
+  String get aiSubErrUnavailable => 'Serviciul de subtitrări AI nu este disponibil momentan. Te rugăm să încerci din nou mai târziu.';
+
+  @override
+  String get aiSubErrProRequired => 'Perioada de probă pentru subtitrările AI s-a încheiat. Treci la Pro pentru a continua.';
+
+  @override
+  String get aiSubErrQuota => 'Cota de utilizare pentru subtitrările AI a fost epuizată.';
+
+  @override
+  String get aiSubErrBusy => 'Serviciul de subtitrări AI este foarte aglomerat acum. Așteaptă puțin și încearcă din nou.';
+
+  @override
+  String get aiSubErrInvalidKey => 'Cheia API pentru subtitrările AI este invalidă sau a expirat. Verific-o din Setări > Subtitrări AI.';
+
+  @override
+  String get aiSubErrRejected => 'Serviciul de subtitrări AI nu a acceptat solicitarea. Te rugăm să încerci din nou mai târziu.';
+
+  @override
+  String get aiSubErrEmptyResponse => 'Serviciul de subtitrări AI a trimis un răspuns gol. Te rugăm să încerci din nou.';
+
+  @override
+  String get aiSubErrNoSpeech => 'Nu s-a detectat vorbire în această porțiune. Încearcă din nou în alt moment al videoclipului.';
+
+  @override
+  String get aiSubErrGeneric => 'Subtitrările nu au putut fi create. Te rugăm să încerci din nou.';
+
+  @override
+  String get aiSubErrUnreachable => 'Serviciul de subtitrări AI nu poate fi accesat. Verifică conexiunea la internet.';
+
+  @override
+  String get aiSubErrConnectTimeout => 'Conectarea la serviciul de subtitrări AI a expirat. Te rugăm să încerci din nou.';
+
+  @override
+  String get aiSubErrExtract => 'Sunetul pentru subtitrările AI nu a putut fi citit. Formatul acestui flux nu este acceptat pe unele dispozitive. Încearcă o sursă de calitate mai mică sau un player extern.';
+
+  @override
+  String get aiSubErrNoOpenAiKey => 'Nu a fost introdusă nicio cheie API OpenAI. Adaug-o din Setări > Subtitrări AI.';
+
+  @override
+  String aiTrialStarted(int days) {
+    return 'Perioada ta de probă gratuită de $days zile pentru subtitrări AI a început';
+  }
+
+  @override
+  String get paywallAiTrialEnded => 'Perioada de probă pentru subtitrări AI s-a încheiat. Treci la Pro ca să le folosești în continuare.';
+
+  @override
+  String get playerAiPreparing => 'Se pregătesc subtitrările AI';
+
+  @override
+  String playerSecondsShort(int seconds) {
+    return '$seconds s';
+  }
+
+  @override
+  String playerBannerWhisper(String lang) {
+    return 'Subtitrări AI (recunoaștere vocală): $lang';
+  }
+
+  @override
+  String get playerOrientationLock => 'Blochează orientarea ecranului';
+
+  @override
+  String playerResumeQuestion(String position) {
+    return 'Reiei de la $position?';
+  }
+
+  @override
+  String get playerResumeContinue => 'Reia';
+
+  @override
+  String get playerResumeFromBeginning => 'De la început';
+
+  @override
+  String get playerErrorStreamUnavailable => 'Acest canal nu a putut fi deschis. Sursa nu răspunde sau conexiunea s-a întrerupt.';
+
+  @override
+  String get playerErrorBackToList => 'Înapoi la lista de canale';
+
+  @override
+  String get playerReportError => 'Raportează eroare';
+
+  @override
+  String get errorReportTitle => 'Raportează eroare';
+
+  @override
+  String get errorReportThanks => 'Mulțumim!';
+
+  @override
+  String get errorReportReceived => 'Raportarea ta de eroare a fost trimisă.';
+
+  @override
+  String errorReportChannel(String name) {
+    return 'Canal: $name';
+  }
+
+  @override
+  String errorReportError(String error) {
+    return 'Eroare: $error';
+  }
+
+  @override
+  String errorReportDevice(String device) {
+    return 'Dispozitiv: $device';
+  }
+
+  @override
+  String errorReportVersion(String version) {
+    return 'Versiune: $version';
+  }
+
+  @override
+  String get errorReportNoteLabel => 'Notă suplimentară (opțional):';
+
+  @override
+  String get errorReportNotePlaceholder => 'Ce făceai?';
+
+  @override
+  String get errorReportSend => 'Trimite';
+
+  @override
+  String playerPanelChannels(int count) {
+    return 'Canale ($count)';
+  }
+
+  @override
+  String get playerSeekForward => '▶▶ +10s';
+
+  @override
+  String get playerSeekBackward => '◀◀ -10s';
+
+  @override
+  String get playerWatchlistAdded => 'Adăugat în listă';
+
+  @override
+  String get playerWatchlistRemoved => 'Eliminat din listă';
+
+  @override
+  String get playerWatchlistTooltip => 'Vizionează mai târziu';
+
+  @override
+  String get settingsAiSection => 'Subtitrări AI';
+
+  @override
+  String get settingsAiTargetLangTitle => 'Limba țintă a subtitrărilor AI';
+
+  @override
+  String get settingsAiTargetLangSubtitle => 'Limba pentru subtitrările traduse';
+
+  @override
+  String get settingsAiTargetLangAuto => 'Automată (limba dispozitivului)';
+
+  @override
+  String get settingsAiTargetLangDialogTitle => 'Alege limba țintă';
+
+  @override
+  String get settingsAiBannerTitle => 'Banner subtitrări AI';
+
+  @override
+  String get settingsAiBannerSubtitle => 'Afișează limba sursă/țintă în partea de sus';
+
+  @override
+  String get settingsAiWhisperTitle => 'Subtitrări AI Whisper';
+
+  @override
+  String get settingsAiWhisperSubtitle => 'Subtitrări generate automat în player';
+
+  @override
+  String get settingsAiProviderGroq => 'Groq';
+
+  @override
+  String get settingsAiProviderGroqBadge => 'Pro';
+
+  @override
+  String get settingsAiProviderOpenai => 'OpenAI';
+
+  @override
+  String get settingsAiProviderOpenaiBadge => 'Cu plată';
+
+  @override
+  String settingsAiGroqInfo(int days) {
+    return 'Serviciu Groq integrat — funcție Pro, $days zile de probă gratuită';
+  }
+
+  @override
+  String get settingsAiOpenaiCost => 'Cost estimat: ~\$0.006/cerere · ~\$0.006/min · openai.com/account/billing';
+
+  @override
+  String get settingsAiOpenaiKeyLabel => 'Cheie API OpenAI';
+
+  @override
+  String get settingsAiOpenaiKeyPlaceholder => 'sk-…';
+
+  @override
+  String get settingsAiOpenaiKeySaved => '✓ Cheie OpenAI salvată';
+
+  @override
+  String get settingsSubtitleDefaultOn => 'Subtitrări active implicit';
+
+  @override
+  String get settingsSubtitleDefaultOnSubtitle => 'Activează subtitrările la deschiderea playerului';
+
+  @override
+  String get settingsBufferDuration => 'Durata bufferului';
+
+  @override
+  String settingsBufferSeconds(int seconds) {
+    return '$seconds secunde';
+  }
+
+  @override
+  String aiTrialDaysLeft(int days) {
+    String _temp0 = intl.Intl.pluralLogic(
+      days,
+      locale: localeName,
+      other: 'Probă subtitrări AI: $days de zile rămase',
+      few: 'Probă subtitrări AI: $days zile rămase',
+      one: 'Probă subtitrări AI: $days zi rămasă',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get playerPaused => 'Pauză';
+
+  @override
+  String get playerPlaying => 'Redare';
+
+  @override
+  String get playerMuted => 'Sunet oprit';
+
+  @override
+  String get playerUnmuted => 'Sunet pornit';
+
+  @override
+  String playerFeedbackAudio(String label) {
+    return 'Audio: $label';
+  }
+
+  @override
+  String playerFeedbackSpeed(String speed) {
+    return 'Viteză $speed';
+  }
+
+  @override
+  String get playerFeedbackSubtitleOff => 'Subtitrări oprite';
+
+  @override
+  String playerFeedbackSubtitle(String lang) {
+    return 'Subtitrări: $lang';
+  }
+
+  @override
+  String get playerFeedbackSubtitleLoading => 'Se încarcă subtitrările…';
+
+  @override
+  String playerFeedbackResolution(String value) {
+    return 'Rezoluție: $value';
+  }
+
+  @override
+  String playerFeedbackFit(String mode) {
+    return 'Imagine: $mode';
+  }
+
+  @override
+  String get playerFavoriteAdd => 'Adaugă la favorite';
+
+  @override
+  String get playerFavoriteRemove => 'Elimină din favorite';
+
+  @override
+  String get playerNextChannel => 'Canalul următor';
+
+  @override
+  String get playerPrevChannel => 'Canalul anterior';
+
+  @override
+  String get playerOrientationUnlocked => 'Rotație deblocată';
+
+  @override
+  String playerNextEpisode(String title) {
+    return 'Episodul următor: $title';
+  }
+
+  @override
+  String get playerOpenExternal => 'Deschide în player extern (VLC)';
+
+  @override
+  String get playerExternalNotFound => 'Nu a fost găsit niciun player extern. Instalează VLC din App Store.';
+
+  @override
+  String get playerChannelPanelTooltip => 'Lista de canale';
 
   @override
   String get disclaimerWelcome => 'Bine ai venit';
@@ -1234,4 +1601,393 @@ class AppLocalizationsRo extends AppLocalizations {
 
   @override
   String get otherAppsContinue => 'Continuă';
+
+  @override
+  String get editPlaylistTitle => 'Editează playlist';
+
+  @override
+  String get editPlaylistNotFound => 'Playlist negăsită';
+
+  @override
+  String get editPlaylistXtreamBadge => 'Xtream Codes';
+
+  @override
+  String get editPlaylistM3uBadge => 'Playlist M3U';
+
+  @override
+  String get editPlaylistAddedAt => 'Adăugată la';
+
+  @override
+  String get editPlaylistExpiry => 'Expiră la';
+
+  @override
+  String get editPlaylistExpiredLabel => '⚠ Expirată';
+
+  @override
+  String get editPlaylistValidLabel => '✓ Validă';
+
+  @override
+  String get editPlaylistUrlLabel => 'URL server';
+
+  @override
+  String get editPlaylistRefreshButton => 'Actualizează canalele';
+
+  @override
+  String get editPlaylistDeleteButton => 'Șterge playlist';
+
+  @override
+  String get deletePlaylistDialogTitle => 'Șterge playlist';
+
+  @override
+  String get deletePlaylistDialogQuestion => 'Cum vrei să o ștergi?';
+
+  @override
+  String get deleteDeviceExplain => 'Se elimină doar de pe acest dispozitiv. Copia din cloud rămâne; o poți recupera oricând cu \"Descarcă din cloud\".';
+
+  @override
+  String get deleteDeviceExplainLocal => 'Se elimină de pe acest dispozitiv. Această listă nu este salvată în cloud, așa că va trebui să o adaugi din nou.';
+
+  @override
+  String get deletePlaylistFromCloud => 'Șterge din cloud';
+
+  @override
+  String get deletePlaylistFromDevice => 'Șterge de pe dispozitiv';
+
+  @override
+  String get deleteCloudExplain => 'Se șterge definitiv de pe acest dispozitiv și din cloud și nu va mai apărea nici pe celelalte dispozitive.';
+
+  @override
+  String get progressDownloadingList => 'Se descarcă lista de canale…';
+
+  @override
+  String progressRetrying(int attempt) {
+    return 'Se reîncearcă ($attempt/3)…';
+  }
+
+  @override
+  String get progressParsingList => 'Se procesează lista de canale…';
+
+  @override
+  String progressChannelsSaved(int count) {
+    return '$count canale salvate…';
+  }
+
+  @override
+  String get progressServerConnecting => 'Se conectează la server…';
+
+  @override
+  String get progressLoadingLive => 'Se încarcă canalele live…';
+
+  @override
+  String get progressLoadingMovies => 'Se încarcă filmele…';
+
+  @override
+  String get progressLoadingSeries => 'Se încarcă serialele…';
+
+  @override
+  String get loadErrM3uNotFound => 'Nu s-a găsit nicio listă de canale la această adresă. Asigură-te că adresa aparține unei liste M3U.';
+
+  @override
+  String loadErrIncomplete(int count, int total) {
+    return 'Lista a sosit incompletă ($count / $total canale) — este posibil ca conexiunea să se fi întrerupt. Lista ta actuală a fost păstrată; încearcă din nou.';
+  }
+
+  @override
+  String get loadErrServerEmpty => 'Serverul a trimis o listă goală. Asigură-te că abonamentul tău include canale; dacă problema persistă, contactează furnizorul.';
+
+  @override
+  String get loadErrSeriesInfo => 'Detaliile acestui serial nu au putut fi încărcate. Reîmprospătează lista și încearcă din nou.';
+
+  @override
+  String get loadErrNoEpisodes => 'Furnizorul nu a trimis episoade pentru acest serial.';
+
+  @override
+  String loadErrDrasticShrink(int count, int total) {
+    return 'Serverul a trimis doar $count canale (anterior $total). Este posibil ca abonamentul să fi expirat; lista ta actuală a fost păstrată.';
+  }
+
+  @override
+  String syncShrinkKept(String type) {
+    return '$type: serverul a trimis mult mai puțin conținut decât înainte, așa că a fost păstrat conținutul existent.';
+  }
+
+  @override
+  String get playlistSyncQueued => 'Modificările au fost salvate. Lista va fi descărcată din nou după ce se termină actualizarea în curs.';
+
+  @override
+  String get errorReportPreviewLabel => 'Textul care va fi trimis (datele de autentificare sunt ascunse):';
+
+  @override
+  String paywallPricePerMonths(String price, int months) {
+    return '$price / $months luni';
+  }
+
+  @override
+  String paywallPlanMonths(int months) {
+    return '$months luni';
+  }
+
+  @override
+  String paywallIntroPriceThen(String intro, String price) {
+    return '$intro preț introductiv, apoi $price';
+  }
+
+  @override
+  String get watchlistClearAll => 'Golește lista';
+
+  @override
+  String get watchlistClearConfirm => 'Elimini toate elementele?';
+
+  @override
+  String get categoryFilterPlaylist => 'Playlist';
+
+  @override
+  String get settingsRefreshOff => 'Oprit';
+
+  @override
+  String get settingsRefreshOnOpen => 'La fiecare pornire';
+
+  @override
+  String get settingsRefresh1Day => 'Zilnic';
+
+  @override
+  String get settingsRefresh1Week => 'Săptămânal';
+
+  @override
+  String get settingsRefresh1Month => 'Lunar';
+
+  @override
+  String get settingsRefresh1Year => 'Anual';
+
+  @override
+  String get settingsClearHistoryTitle => 'Geçmişi Temizle';
+
+  @override
+  String get settingsClearHistorySubtitle => 'Son İzlenenler, Nerede Kaldım ve İzlenenler listelerini temizler. Favorileriniz silinmez';
+
+  @override
+  String get settingsClearHistoryDialogTitle => 'İzleme geçmişi temizlensin mi?';
+
+  @override
+  String get settingsClearHistoryDialogMessage => 'Son İzlenenler, Nerede Kaldım ve İzlenenler listelerindeki tüm kayıtlar silinecek. Bu işlem geri alınamaz.';
+
+  @override
+  String get settingsClearHistoryAction => 'Temizle';
+
+  @override
+  String epgNextProgram(String title) {
+    return 'Următorul: $title';
+  }
+
+  @override
+  String get xtreamBadLogin => 'Numele de utilizator sau parola sunt greșite. Verifică datele la furnizor și încearcă din nou.';
+
+  @override
+  String get xtreamExpired => 'Abonamentul tău a expirat. Contactează furnizorul pentru a-l reînnoi.';
+
+  @override
+  String xtreamExpiredOn(String date) {
+    return 'Abonamentul tău a expirat pe $date. Contactează furnizorul pentru a-l reînnoi.';
+  }
+
+  @override
+  String get xtreamDisabled => 'Contul tău a fost dezactivat de furnizor. Contactează furnizorul.';
+
+  @override
+  String get epgAutoRefreshAuto => 'Automat — se actualizează când ghidul este pe terminate';
+
+  @override
+  String xtreamPartialLoad(String type) {
+    return 'Unele conținuturi nu au putut fi încărcate: $type';
+  }
+
+  @override
+  String get settingsPlaylistAutoRefreshTitle => 'Actualizare automată playlist';
+
+  @override
+  String settingsEpgUrlForPlaylist(String name) {
+    return 'Pentru playlistul activ: $name';
+  }
+
+  @override
+  String get settingsClearHistoryDone => 'Istoricul vizionărilor a fost șters';
+
+  @override
+  String get settingsSupportSection => 'Asistență';
+
+  @override
+  String get settingsFeedbackTitle => 'Trimite feedback';
+
+  @override
+  String get settingsFeedbackSubtitle => 'Sugestii, raportări de erori sau opinii generale';
+
+  @override
+  String get feedbackDialogTitle => 'Feedback';
+
+  @override
+  String get feedbackThanks => 'Mulțumim!';
+
+  @override
+  String get feedbackReceived => 'Feedbackul tău a fost primit.';
+
+  @override
+  String get feedbackChooseType => 'Selectează tipul:';
+
+  @override
+  String get feedbackTypeSuggestion => 'Sugestie';
+
+  @override
+  String get feedbackTypeBug => 'Raportare eroare';
+
+  @override
+  String get feedbackTypeGeneral => 'General';
+
+  @override
+  String get feedbackNameLabel => 'Nume';
+
+  @override
+  String get feedbackNamePlaceholder => 'Opțional';
+
+  @override
+  String get feedbackEmailLabel => 'Email *';
+
+  @override
+  String get feedbackEmailPlaceholder => 'exemplu@mail.com';
+
+  @override
+  String get feedbackEmailInvalid => 'Introdu o adresă de email validă';
+
+  @override
+  String get feedbackMessageLabel => 'Mesajul tău *';
+
+  @override
+  String get feedbackMessagePlaceholder => 'Spune-ne ce crezi…';
+
+  @override
+  String get feedbackScreenshotLabel => 'Capturi de ecran (max 3)';
+
+  @override
+  String get feedbackAddImage => 'Adaugă imagine';
+
+  @override
+  String feedbackError(String details) {
+    return 'Nu s-a putut trimite: $details';
+  }
+
+  @override
+  String get feedbackImageTooLarge => 'Imaginile mai mari de 5 MB nu pot fi atașate';
+
+  @override
+  String get commonSend => 'Trimite';
+
+  @override
+  String get commonSending => 'Se trimite…';
+
+  @override
+  String get settingsRateApp => 'Evaluează aplicația';
+
+  @override
+  String get settingsRateAppSubtitle => 'Evaluează și scrie o recenzie în App Store';
+
+  @override
+  String paywallBenefitPlaylistsUpTo(int count) {
+    return 'Până la $count playlisturi';
+  }
+
+  @override
+  String get paywallBenefitAiWhisper => 'Subtitrări AI Whisper';
+
+  @override
+  String get paywallBenefitCloudSyncDevices => 'Sincronizare cloud (multi-dispozitiv)';
+
+  @override
+  String get paywallBenefitThemes => 'Teme premium';
+
+  @override
+  String get paywallBenefitWatchlist => 'Listă de vizionat';
+
+  @override
+  String get paywallBenefitEpgAuto => 'Actualizare automată EPG';
+
+  @override
+  String paywallPricePerYear(String price) {
+    return '$price / an';
+  }
+
+  @override
+  String paywallPricePerMonth(String price) {
+    return '$price / lună';
+  }
+
+  @override
+  String paywallPricePerWeek(String price) {
+    return '$price / săptămână';
+  }
+
+  @override
+  String paywallPriceOneTime(String price) {
+    return '$price o singură dată';
+  }
+
+  @override
+  String paywallMonthlyEquivalent(String price) {
+    return 'Doar $price / lună';
+  }
+
+  @override
+  String paywallTrialThen(int days, String price) {
+    String _temp0 = intl.Intl.pluralLogic(
+      days,
+      locale: localeName,
+      other: 'Primele $days de zile gratuit',
+      few: 'Primele $days zile gratuit',
+      one: 'Prima zi gratuită',
+    );
+    return '$_temp0, apoi $price. Anulezi oricând.';
+  }
+
+  @override
+  String get paywallLifetimeHint => '✦ Plată unică · Acces pe viață';
+
+  @override
+  String get paywallPurchase => 'Cumpără';
+
+  @override
+  String get paywallTermsFooterApple => 'Plata se debitează din ID-ul Apple la confirmarea achiziției. Abonamentele se reînnoiesc automat dacă nu sunt anulate cu cel puțin 24 de ore înainte de sfârșitul perioadei curente. Le poți gestiona sau anula din setările contului App Store.';
+
+  @override
+  String get paywallActivationPending => 'Achiziția a reușit, dar Pro nu este încă activ. Încearcă să restabilești achizițiile; dacă problema persistă, contactează asistența.';
+
+  @override
+  String get paywallLoadError => 'Planurile nu au putut fi încărcate. Verifică conexiunea și încearcă din nou.';
+
+  @override
+  String playlistDeviceLimit(int count) {
+    return 'Acest dispozitiv acceptă cel mult $count liste.';
+  }
+
+  @override
+  String get authReauthTitle => 'Confirmă că ești tu';
+
+  @override
+  String get authReauthPasswordMessage => 'Introdu parola pentru a-ți șterge contul.';
+
+  @override
+  String get authAccountDeleted => 'Contul tău a fost șters.';
+
+  @override
+  String get playerUrlMissing => 'URL-ul fluxului nu a fost găsit';
+
+  @override
+  String parentalPinWrongAttempts(int remaining) {
+    return 'PIN greșit. Încercări rămase: $remaining.';
+  }
+
+  @override
+  String parentalPinCooldown(int seconds) {
+    return 'Prea multe încercări greșite. Așteaptă $seconds secunde.';
+  }
+
+  @override
+  String get paywallRestoreNothing => 'Nu au fost găsite achiziții anterioare pentru acest ID Apple.';
 }

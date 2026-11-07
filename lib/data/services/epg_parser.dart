@@ -1,110 +1,96 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
-import 'package:xml/xml.dart';
-import '../../core/utils/http_client.dart';
-import '../models/epg_model.dart';
 
+import 'isolate_batch_pump.dart';
+import 'xmltv_stream_parser.dart';
+
+/// XMLTV indirme + akışlı ayrıştırma — ayrı isolate'ta (Android EpgRepository
+/// streaming paritesi). 50-200 MB'lık `.xml.gz` dosyası hiç belleğe alınmaz;
+/// programlar batch'ler halinde ana isolate'a gelir.
 class EpgParser {
-  /// Fetch and parse XMLTV from [url].
-  /// Supports plain .xml and gzip-compressed .xml.gz.
-  static Future<({List<EpgChannelModel> channels, List<EpgProgrammeModel> programmes})>
-      fetchAndParse(String url, String playlistId) async {
-    // EPG genelde buyuk dosya (50-200 MB xml.gz), 90 sn timeout.
-    final bytes = await AppHttp.getBytes(
-      Uri.parse(url),
-      timeout: const Duration(seconds: 90),
-      retries: 2,
+  EpgParser._();
+
+  /// Dönüş: XMLTV'deki kanallar (epg_channels satırları).
+  static Future<List<Map<String, Object?>>> load(
+    String url,
+    String playlistId, {
+    required Future<void> Function(List<Map<String, Object?>> batch) onProgrammes,
+    Set<String>? allowedTvgIds,
+    int minStopMs = 0,
+  }) async {
+    final res = await runBatchIsolate(
+      _worker,
+      {
+        'url': url.trim(),
+        'playlistId': playlistId,
+        'allowed': allowedTvgIds?.toList(),
+        'minStop': minStopMs,
+      },
+      onBatch: onProgrammes,
     );
-
-    final xmlStr = _decode(bytes, url);
-    return parse(xmlStr, playlistId);
+    return ((res['channels'] as List?) ?? const [])
+        .cast<Map>()
+        .map((m) => m.cast<String, Object?>())
+        .toList();
   }
 
-  static String _decode(List<int> bytes, String url) {
-    if (url.endsWith('.gz') || _isGzip(bytes)) {
-      return utf8.decode(gzip.decode(bytes));
-    }
-    return utf8.decode(bytes);
-  }
-
-  static bool _isGzip(List<int> bytes) =>
-      bytes.length >= 2 && bytes[0] == 0x1f && bytes[1] == 0x8b;
-
-  static ({List<EpgChannelModel> channels, List<EpgProgrammeModel> programmes})
-      parse(String xmlStr, String playlistId) {
-    final doc      = XmlDocument.parse(xmlStr);
-    final channels = <EpgChannelModel>[];
-    final programmes= <EpgProgrammeModel>[];
-
-    for (final ch in doc.findAllElements('channel')) {
-      final id   = ch.getAttribute('id') ?? '';
-      if (id.isEmpty) continue;
-      final name = ch.findElements('display-name').firstOrNull?.innerText ?? id;
-      final icon = ch.findElements('icon').firstOrNull?.getAttribute('src') ?? '';
-      channels.add(EpgChannelModel(
-        tvgId:       id,
-        playlistId:  playlistId,
-        displayName: name,
-        icon:        icon,
-      ));
-    }
-
-    for (final p in doc.findAllElements('programme')) {
-      final channelId = p.getAttribute('channel') ?? '';
-      final start     = _parseTime(p.getAttribute('start') ?? '');
-      final stop      = _parseTime(p.getAttribute('stop') ?? '');
-      if (channelId.isEmpty || start == 0 || stop == 0) continue;
-
-      final title  = p.findElements('title').firstOrNull?.innerText ?? '';
-      final desc   = p.findElements('desc').firstOrNull?.innerText ?? '';
-      final cat    = p.findElements('category').firstOrNull?.innerText ?? '';
-      final icon   = p.findElements('icon').firstOrNull?.getAttribute('src') ?? '';
-      final id     = '${channelId}_$start';
-
-      programmes.add(EpgProgrammeModel(
-        id:          id,
-        channelId:   channelId,
-        title:       title,
-        description: desc,
-        startTime:   start,
-        stopTime:    stop,
-        category:    cat,
-        icon:        icon,
-      ));
-    }
-
-    return (channels: channels, programmes: programmes);
-  }
-
-  /// Parse XMLTV datetime: "20240101120000 +0300" → Unix millis UTC
-  static int _parseTime(String s) {
-    if (s.isEmpty) return 0;
-    try {
-      // format: YYYYMMDDHHmmss +HHMM
-      final parts    = s.trim().split(' ');
-      final datePart = parts[0];
-      if (datePart.length < 14) return 0;
-
-      final year   = int.parse(datePart.substring(0, 4));
-      final month  = int.parse(datePart.substring(4, 6));
-      final day    = int.parse(datePart.substring(6, 8));
-      final hour   = int.parse(datePart.substring(8, 10));
-      final minute = int.parse(datePart.substring(10, 12));
-      final second = int.parse(datePart.substring(12, 14));
-
-      int offsetMs = 0;
-      if (parts.length > 1) {
-        final tz  = parts[1];
-        final sign= tz.startsWith('-') ? -1 : 1;
-        final h   = int.tryParse(tz.substring(1, 3)) ?? 0;
-        final m   = int.tryParse(tz.substring(3, 5)) ?? 0;
-        offsetMs  = sign * (h * 60 + m) * 60 * 1000;
+  static Future<Map<String, Object?>> _worker(
+      BatchSink sink, Map<String, Object?> cfg) async {
+    final allowed = (cfg['allowed'] as List?)?.cast<String>().toSet();
+    var url = cfg['url'] as String;
+    for (var attempt = 0; attempt < 2; attempt++) {
+      final client = HttpClient()
+        ..connectionTimeout = const Duration(seconds: 20)
+        ..badCertificateCallback = (cert, host, port) => true;
+      try {
+        final req = await client.getUrl(Uri.parse(url));
+        req.headers.set(HttpHeaders.userAgentHeader, 'IPTV-AI-Player');
+        final resp = await req.close().timeout(const Duration(seconds: 90));
+        if (resp.statusCode != 200) {
+          await resp.drain<void>().catchError((_) {});
+          throw IsolateHttpStatus(resp.statusCode);
+        }
+        final text = _maybeGunzip(resp.timeout(const Duration(seconds: 120)))
+            .transform(const Utf8Decoder(allowMalformed: true));
+        final r = await XmltvStreamParser.parse(
+          text,
+          playlistId: cfg['playlistId'] as String,
+          allowedTvgIds: allowed,
+          minStopMs: cfg['minStop'] as int,
+          onProgrammes: (b) async {
+            if (!await sink.emit(b)) throw StateError('cancelled');
+          },
+        );
+        return {'channels': r.channels};
+      } on HandshakeException {
+        if (attempt == 0 && url.toLowerCase().startsWith('https:')) {
+          url = Uri.parse(url).replace(scheme: 'http').toString();
+          continue;
+        }
+        rethrow;
+      } finally {
+        client.close(force: true);
       }
+    }
+    throw const IsolateHttpStatus(0);
+  }
 
-      final dt = DateTime.utc(year, month, day, hour, minute, second);
-      return dt.millisecondsSinceEpoch - offsetMs;
-    } catch (_) {
-      return 0;
+  static Stream<List<int>> _maybeGunzip(Stream<List<int>> src) async* {
+    final it = StreamIterator<List<int>>(src);
+    if (!await it.moveNext()) return;
+    final first = it.current;
+    Stream<List<int>> rest() async* {
+      yield first;
+      while (await it.moveNext()) {
+        yield it.current;
+      }
+    }
+
+    if (first.length >= 2 && first[0] == 0x1f && first[1] == 0x8b) {
+      yield* rest().transform(gzip.decoder);
+    } else {
+      yield* rest();
     }
   }
 }

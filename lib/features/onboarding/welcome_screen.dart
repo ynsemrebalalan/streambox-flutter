@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../core/providers/app_providers.dart';
 import '../../core/router/app_router.dart';
 import '../../core/theme/app_colors.dart';
+import '../../core/theme/app_theme.dart';
 import '../../core/utils/responsive.dart';
 import '../../data/repositories/settings_repository.dart';
 import '../../l10n/generated/app_localizations.dart';
@@ -42,74 +43,77 @@ class _WelcomeScreenState extends ConsumerState<WelcomeScreen> {
   @override
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context);
-    return Scaffold(
-      backgroundColor: AppColors.darkBg,
-      body: SafeArea(
-        child: ResponsiveCenter(
-          maxWidth: Responsive.formMaxWidth(context),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 24),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                const Spacer(),
-                Icon(Icons.celebration,
-                    size: 72, color: AppColors.accent),
-                const SizedBox(height: 20),
-                Text(
-                  l.welcomeTitle,
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(
+    // Sabit koyu zemin: tema aydinlik olsa bile butonlar/metinler koyu
+    // temanin rollerini kullansin (aksi halde lacivert primary gorunmez).
+    return Theme(
+      data: AppTheme.dark,
+      child: Scaffold(
+        backgroundColor: AppColors.darkBg,
+        body: SafeArea(
+          child: ResponsiveCenter(
+            maxWidth: Responsive.formMaxWidth(context),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  const Spacer(),
+                  Icon(Icons.celebration, size: 72, color: AppColors.accent),
+                  const SizedBox(height: 20),
+                  Text(
+                    l.welcomeTitle,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
                       fontSize: 28,
                       fontWeight: FontWeight.bold,
-                      color: Colors.white),
-                ),
-                const SizedBox(height: 12),
-                Text(
-                  l.welcomeSubtitle,
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(
-                      fontSize: 15, color: Colors.white70),
-                ),
-                const SizedBox(height: 32),
-                _Feature(
-                    icon: Icons.tv,
-                    title: l.welcomeFeatureUnlimited),
-                _Feature(
+                      color: Colors.white,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    l.welcomeSubtitle,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(fontSize: 15, color: Colors.white70),
+                  ),
+                  const SizedBox(height: 32),
+                  _Feature(icon: Icons.tv, title: l.welcomeFeatureUnlimited),
+                  _Feature(
                     icon: Icons.subtitles,
-                    title: l.welcomeFeatureSubtitles),
-                _Feature(
-                    icon: Icons.cloud_sync,
-                    title: l.welcomeFeatureSync),
-                const Spacer(),
-                FilledButton(
-                  onPressed: _busy
-                      ? null
-                      : () => _markSeenAndGo(AppRoutes.register),
-                  style: FilledButton.styleFrom(
-                      minimumSize: const Size(0, 50)),
-                  child: Text(l.welcomeStartFreeButton),
-                ),
-                const SizedBox(height: 8),
-                OutlinedButton(
-                  onPressed:
-                      _busy ? null : () => _markSeenAndGo(AppRoutes.home),
-                  style: OutlinedButton.styleFrom(
+                    title: l.welcomeFeatureSubtitles,
+                  ),
+                  _Feature(icon: Icons.cloud_sync, title: l.welcomeFeatureSync),
+                  const Spacer(),
+                  FilledButton(
+                    onPressed:
+                        _busy ? null : () => _markSeenAndGo(AppRoutes.register),
+                    style: FilledButton.styleFrom(
+                      minimumSize: const Size(0, 50),
+                    ),
+                    child: Text(l.welcomeStartFreeButton),
+                  ),
+                  const SizedBox(height: 8),
+                  OutlinedButton(
+                    onPressed:
+                        _busy ? null : () => _markSeenAndGo(AppRoutes.home),
+                    style: OutlinedButton.styleFrom(
                       minimumSize: const Size(0, 50),
                       foregroundColor: Colors.white70,
-                      side: const BorderSide(color: Colors.white24)),
-                  child: Text(l.welcomeSkipButton),
-                ),
-                const SizedBox(height: 8),
-                TextButton(
-                  onPressed:
-                      _busy ? null : () => _markSeenAndGo(AppRoutes.login),
-                  child: Text(l.welcomeSignInLink,
-                      style:
-                          const TextStyle(color: Colors.white60)),
-                ),
-                const SizedBox(height: 16),
-              ],
+                      side: const BorderSide(color: Colors.white24),
+                    ),
+                    child: Text(l.welcomeSkipButton),
+                  ),
+                  const SizedBox(height: 8),
+                  TextButton(
+                    onPressed:
+                        _busy ? null : () => _markSeenAndGo(AppRoutes.login),
+                    child: Text(
+                      l.welcomeSignInLink,
+                      style: const TextStyle(color: Colors.white60),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                ],
+              ),
             ),
           ),
         ),
@@ -132,9 +136,10 @@ class _Feature extends StatelessWidget {
           Icon(icon, color: AppColors.accent, size: 22),
           const SizedBox(width: 12),
           Expanded(
-            child: Text(title,
-                style: const TextStyle(
-                    color: Colors.white, fontSize: 15)),
+            child: Text(
+              title,
+              style: const TextStyle(color: Colors.white, fontSize: 15),
+            ),
           ),
         ],
       ),

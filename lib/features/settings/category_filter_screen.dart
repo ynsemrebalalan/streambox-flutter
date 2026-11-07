@@ -1,117 +1,114 @@
-import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/providers/app_providers.dart';
 import '../../core/router/app_router.dart';
-import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_tokens.dart';
-import '../../data/repositories/settings_repository.dart';
+import '../../core/widgets/empty_state.dart';
+import '../../core/widgets/skeleton.dart';
+import '../../data/models/playlist_model.dart';
+import '../../data/repositories/hidden_categories_repository.dart';
 import '../../l10n/generated/app_localizations.dart';
 import '../home/home_provider.dart';
 
 // ── State ────────────────────────────────────────────────────────────────────
 
 class _CatFilterState {
+  final List<PlaylistModel> playlists;
+  final String playlistId;
   final Map<String, List<String>> categoriesByType; // live/movie/series → [cat]
   final Set<String> hidden;
-  final bool isLoading;
 
   const _CatFilterState({
+    this.playlists = const [],
+    this.playlistId = '',
     this.categoriesByType = const {},
     this.hidden = const {},
-    this.isLoading = true,
   });
 
-  _CatFilterState copyWith({
-    Map<String, List<String>>? categoriesByType,
-    Set<String>? hidden,
-    bool? isLoading,
-  }) =>
-      _CatFilterState(
-        categoriesByType: categoriesByType ?? this.categoriesByType,
+  _CatFilterState copyWith({Set<String>? hidden}) => _CatFilterState(
+        playlists: playlists,
+        playlistId: playlistId,
+        categoriesByType: categoriesByType,
         hidden: hidden ?? this.hidden,
-        isLoading: isLoading ?? this.isLoading,
       );
 }
 
 // ── Provider ─────────────────────────────────────────────────────────────────
 
+/// Android CategoryFilterScreen paritesi: gizli kategoriler PLAYLIST BAŞINA;
+/// üstte playlist seçici, Tümünü Göster / Tümünü Gizle.
 final _catFilterProvider =
-    AsyncNotifierProvider<_CatFilterNotifier, _CatFilterState>(
+    AsyncNotifierProvider.autoDispose<_CatFilterNotifier, _CatFilterState>(
   _CatFilterNotifier.new,
 );
 
-class _CatFilterNotifier extends AsyncNotifier<_CatFilterState> {
+class _CatFilterNotifier extends AutoDisposeAsyncNotifier<_CatFilterState> {
+  HiddenCategoriesRepository get _hiddenRepo =>
+      HiddenCategoriesRepository(ref.read(settingsRepoProvider));
+
   @override
   Future<_CatFilterState> build() async {
-    final activeId = ref.read(activePlaylistProvider);
-    if (activeId.isEmpty) {
-      return const _CatFilterState(isLoading: false);
-    }
+    final playlists = await ref.read(playlistRepoProvider).getAll();
+    final active = ref.read(activePlaylistProvider);
+    final id = playlists.any((p) => p.id == active)
+        ? active
+        : (playlists.firstOrNull?.id ?? '');
+    return _load(playlists, id);
+  }
+
+  Future<_CatFilterState> _load(List<PlaylistModel> playlists, String id) async {
+    if (id.isEmpty) return _CatFilterState(playlists: playlists);
     final repo = ref.read(channelRepoProvider);
-    final settings = ref.read(settingsRepoProvider);
-
     final results = await Future.wait([
-      repo.getCategories(activeId, 'live'),
-      repo.getCategories(activeId, 'movie'),
-      repo.getCategories(activeId, 'series'),
-      settings.get(SettingsKeys.hiddenCategories),
+      repo.getCategories(id, 'live'),
+      repo.getCategories(id, 'movie'),
+      repo.getCategories(id, 'series'),
     ]);
-
-    final hidden = <String>{};
-    final raw = results[3] as String?;
-    if (raw != null && raw.isNotEmpty) {
-      hidden.addAll(
-          (jsonDecode(raw) as List).cast<String>());
-    }
-
     return _CatFilterState(
+      playlists: playlists,
+      playlistId: id,
       categoriesByType: {
-        'live': results[0] as List<String>,
-        'movie': results[1] as List<String>,
-        'series': results[2] as List<String>,
+        'live': results[0],
+        'movie': results[1],
+        'series': results[2],
       },
-      hidden: hidden,
-      isLoading: false,
+      hidden: await _hiddenRepo.get(id),
     );
+  }
+
+  Future<void> selectPlaylist(String id) async {
+    final s = state.value;
+    if (s == null || id == s.playlistId) return;
+    state = const AsyncLoading();
+    state = await AsyncValue.guard(() => _load(s.playlists, id));
   }
 
   Future<void> toggle(String category) async {
     final s = state.value;
     if (s == null) return;
     final next = Set<String>.from(s.hidden);
-    if (next.contains(category)) {
-      next.remove(category);
-    } else {
-      next.add(category);
-    }
+    if (!next.remove(category)) next.add(category);
     state = AsyncData(s.copyWith(hidden: next));
-    await _persist(next);
+    await _hiddenRepo.set(s.playlistId, next);
   }
 
   Future<void> showAll() async {
     final s = state.value;
     if (s == null) return;
     state = AsyncData(s.copyWith(hidden: {}));
-    await _persist({});
+    await _hiddenRepo.set(s.playlistId, {});
   }
 
   Future<void> hideAll() async {
     final s = state.value;
     if (s == null) return;
-    final all = <String>{};
-    for (final cats in s.categoriesByType.values) {
-      all.addAll(cats);
-    }
+    final all = <String>{
+      for (final cats in s.categoriesByType.values) ...cats,
+    };
     state = AsyncData(s.copyWith(hidden: all));
-    await _persist(all);
-  }
-
-  Future<void> _persist(Set<String> hidden) async {
-    await ref
-        .read(settingsRepoProvider)
-        .set(SettingsKeys.hiddenCategories, jsonEncode(hidden.toList()));
+    await _hiddenRepo.set(s.playlistId, all);
   }
 }
 
@@ -162,21 +159,45 @@ class CategoryFilterScreen extends ConsumerWidget {
         ],
       ),
       body: async.when(
-        loading: () =>
-            const Center(child: CircularProgressIndicator()),
-        error: (e, _) => Center(child: Text(l.errorWithDetails('$e'))),
+        loading: () => const ChannelListSkeleton(rows: 6),
+        error: (e, _) => EmptyState.error(
+          title:       l.errorWithDetails('$e'),
+          actionLabel: l.retry,
+          onAction:    () => ref.invalidate(_catFilterProvider),
+        ),
         data: (state) {
-          if (state.categoriesByType.isEmpty ||
-              state.categoriesByType.values.every((cats) => cats.isEmpty)) {
-            return Center(
-              child: Text(l.categoryFilterEmpty,
-                  style: TextStyle(color: cs.onSurfaceVariant)),
+          final noCats =
+              state.categoriesByType.values.every((cats) => cats.isEmpty);
+          if (state.playlists.length <= 1 && noCats) {
+            return EmptyState(
+              icon:  Icons.filter_list_off_rounded,
+              title: l.categoryFilterEmpty,
             );
           }
 
           return ListView(
             padding: const EdgeInsets.all(Spacing.lg),
             children: [
+              if (state.playlists.length > 1)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: Spacing.md),
+                  child: DropdownButtonFormField<String>(
+                    value: state.playlistId,
+                    decoration: InputDecoration(
+                      labelText: l.categoryFilterPlaylist,
+                      border: const OutlineInputBorder(),
+                    ),
+                    items: [
+                      for (final p in state.playlists)
+                        DropdownMenuItem(value: p.id, child: Text(p.name)),
+                    ],
+                    onChanged: (id) {
+                      if (id != null) {
+                        ref.read(_catFilterProvider.notifier).selectPlaylist(id);
+                      }
+                    },
+                  ),
+                ),
               for (final (type, label, icon) in sections)
                 if ((state.categoriesByType[type] ?? []).isNotEmpty)
                   _SectionCard(
@@ -237,14 +258,13 @@ class _SectionCardState extends State<_SectionCard> {
                   horizontal: Spacing.lg, vertical: Spacing.md),
               child: Row(
                 children: [
-                  Icon(widget.icon, size: 20, color: AppColors.accent),
+                  Icon(widget.icon, size: 20, color: cs.primary),
                   const SizedBox(width: Spacing.sm),
                   Expanded(
                     child: Text(
                       l.categoryFilterCount(widget.label, activeCount, widget.categories.length),
-                      style: const TextStyle(
-                          fontSize: TextSize.bodyLg,
-                          fontWeight: FontWeight.w600),
+                      style: Theme.of(context).textTheme.titleSmall
+                          ?.copyWith(fontWeight: FontWeight.w600),
                     ),
                   ),
                   Icon(
@@ -296,13 +316,12 @@ class _CategoryRow extends StatelessWidget {
             Icon(
               visible ? Icons.visibility : Icons.visibility_off,
               size: 18,
-              color: visible ? AppColors.accent : cs.onSurfaceVariant,
+              color: visible ? cs.primary : cs.onSurfaceVariant,
             ),
             const SizedBox(width: Spacing.md),
             Expanded(
               child: Text(name,
-                  style: TextStyle(
-                    fontSize: TextSize.body,
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                     color: visible ? cs.onSurface : cs.onSurfaceVariant,
                     decoration:
                         visible ? null : TextDecoration.lineThrough,
@@ -310,8 +329,10 @@ class _CategoryRow extends StatelessWidget {
             ),
             Switch(
               value: visible,
-              onChanged: (_) => onToggle(),
-              activeColor: AppColors.accent,
+              onChanged: (_) {
+                HapticFeedback.selectionClick();
+                onToggle();
+              },
             ),
           ],
         ),

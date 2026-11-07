@@ -1,17 +1,22 @@
 import 'dart:async';
 
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:flutter/cupertino.dart' show CupertinoIcons;
+import 'package:flutter/foundation.dart' show defaultTargetPlatform;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/router/app_router.dart';
-import '../../core/theme/app_colors.dart';
+import '../../core/theme/app_palette.dart';
 import '../../core/theme/app_tokens.dart';
 import '../../core/theme/category_icons.dart';
 import '../../core/utils/http_client.dart';
-import '../../core/utils/responsive.dart';
 import '../../core/utils/tv_focus.dart';
+import '../../core/widgets/empty_state.dart';
+import '../../core/widgets/poster_grid.dart';
+import '../../core/widgets/poster_image.dart';
+import '../../core/widgets/skeleton.dart';
 import '../../data/models/channel_model.dart';
 import '../../l10n/generated/app_localizations.dart';
 import '../parental/parental_guard.dart';
@@ -56,31 +61,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
     return homeAsync.when(
       loading: () => const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
+        body: SafeArea(child: ChannelListSkeleton()),
       ),
       error: (e, _) => Scaffold(
-        body: Center(
-          child: Padding(
-            padding: const EdgeInsets.all(24),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Icon(Icons.cloud_off, size: 56, color: Colors.redAccent),
-                const SizedBox(height: 12),
-                Text(
-                  _homeErrorMessage(e, l),
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(fontSize: 14),
-                ),
-                const SizedBox(height: 16),
-                FilledButton.icon(
-                  autofocus: true,
-                  icon: const Icon(Icons.refresh),
-                  label: Text(l.retry),
-                  onPressed: () => ref.invalidate(homeProvider),
-                ),
-              ],
-            ),
+        body: SafeArea(
+          child: EmptyState.error(
+            title:       _homeErrorMessage(e, l),
+            actionLabel: l.retry,
+            onAction:    () => ref.invalidate(homeProvider),
           ),
         ),
       ),
@@ -89,14 +77,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   }
 
   Widget _buildMain(BuildContext context, HomeState state) {
-    final cs = Theme.of(context).colorScheme;
-
+    final l = AppLocalizations.of(context);
     if (state.playlists.isEmpty) {
       return _NoPlaylistView();
     }
 
+    // Arka plan = scaffoldBackgroundColor (diger ekranlarla ayni zemin).
     return Scaffold(
-      backgroundColor: cs.surface,
       // SafeArea: iPhone Dynamic Island / notch + home indicator alanlarini
       // koru. bottom: false → BottomBar kendi padding'ini iceride yapiyor,
       // double-padding olmasin.
@@ -137,9 +124,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 builder: (_, msg, __) {
                   if (msg.isEmpty && !syncing) return const SizedBox.shrink();
                   return _BackgroundLoadingBar(
-                    message: msg.isEmpty
-                        ? 'Playlist senkronize ediliyor...'
-                        : msg,
+                    message: msg.isEmpty ? l.homePlaylistSyncing : msg,
                   );
                 },
               );
@@ -177,31 +162,35 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 class _NoPlaylistView extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final cs = Theme.of(context).colorScheme;
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
     final l = AppLocalizations.of(context);
     return Scaffold(
       body: SafeArea(
         child: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(Icons.live_tv, size: 80, color: cs.onSurfaceVariant),
-              const SizedBox(height: Spacing.xl),
-              Text(l.homeAppTitle,
-                  style: TextStyle(
-                      fontSize: TextSize.titleLg,
-                      fontWeight: FontWeight.bold,
-                      color: cs.onSurface)),
-              const SizedBox(height: Spacing.sm),
-              Text(l.homeNoPlaylistMessage,
-                  style: TextStyle(color: cs.onSurfaceVariant)),
-              const SizedBox(height: Spacing.xl),
-              FilledButton.icon(
-                icon:    const Icon(Icons.add),
-                label:   Text(l.homeAddPlaylist),
-                onPressed: () => context.push(AppRoutes.playlists),
-              ),
-            ],
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(Spacing.xxl),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.live_tv, size: 80, color: cs.onSurfaceVariant),
+                const SizedBox(height: Spacing.xl),
+                Text(l.homeAppTitle,
+                    textAlign: TextAlign.center,
+                    style: theme.textTheme.headlineSmall),
+                const SizedBox(height: Spacing.sm),
+                Text(l.homeNoPlaylistMessage,
+                    textAlign: TextAlign.center,
+                    style: theme.textTheme.bodyMedium
+                        ?.copyWith(color: cs.onSurfaceVariant)),
+                const SizedBox(height: Spacing.xl),
+                FilledButton.icon(
+                  icon:    const Icon(Icons.add),
+                  label:   Text(l.homeAddPlaylist),
+                  onPressed: () => context.push(AppRoutes.playlists),
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -218,11 +207,15 @@ PopupMenuItem<String> _menuItem(String value, IconData icon, String label) =>
       child: Row(
         children: [
           Icon(icon, size: 20),
-          const SizedBox(width: Spacing.sm),
-          Text(label),
+          const SizedBox(width: Spacing.md),
+          Flexible(child: Text(label, overflow: TextOverflow.ellipsis)),
         ],
       ),
     );
+
+bool get _isCupertino =>
+    defaultTargetPlatform == TargetPlatform.iOS ||
+    defaultTargetPlatform == TargetPlatform.macOS;
 
 class _TopBar extends ConsumerWidget {
   final HomeState         state;
@@ -241,35 +234,51 @@ class _TopBar extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final cs = Theme.of(context).colorScheme;
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
     final l = AppLocalizations.of(context);
 
     return Container(
       height:     Dimens.topBarHeight,
-      color:      cs.surface,
-      padding:    const EdgeInsets.symmetric(horizontal: Spacing.md),
+      padding:    const EdgeInsets.only(left: Spacing.lg, right: Spacing.xs),
       child: Row(
         children: [
           // Logo / title
           if (!showSearch)
-            Row(
-              children: [
-                Icon(Icons.live_tv, color: AppColors.accent, size: 26),
-                const SizedBox(width: Spacing.sm),
-                Text(l.homeAppTitle,
-                    style: TextStyle(
-                        fontSize:   TextSize.title,
-                        fontWeight: FontWeight.bold,
-                        color:      cs.onSurface)),
-              ],
+            Flexible(
+              fit: FlexFit.loose,
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  ExcludeSemantics(
+                    child: Icon(Icons.live_tv,
+                        color: AppPalette.of(context).accentText, size: 26),
+                  ),
+                  const SizedBox(width: Spacing.sm),
+                  Flexible(
+                    child: Semantics(
+                      header: true,
+                      child: Text(l.homeAppTitle,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: theme.textTheme.titleLarge
+                              ?.copyWith(fontWeight: FontWeight.w700)),
+                    ),
+                  ),
+                ],
+              ),
             ),
           if (showSearch)
             Expanded(
               child: TextField(
                 controller:   searchCtrl,
                 autofocus:    true,
+                // Kanal adlarinda autocorrect/oneri yanlis kelimeye cevirir.
+                autocorrect:        false,
+                enableSuggestions:  false,
+                textInputAction:    TextInputAction.search,
                 onChanged:    onSearchChanged,
-                style: const TextStyle(fontSize: TextSize.body),
+                style: theme.textTheme.bodyMedium,
                 decoration: InputDecoration(
                   hintText:      l.homeSearchHint,
                   border:        InputBorder.none,
@@ -285,13 +294,14 @@ class _TopBar extends ConsumerWidget {
           // gibi tüm ikincil eylemler tek menüde toplanır, üst bar yorulmaz.
           IconButton(
             iconSize: 28,
+            tooltip: showSearch ? l.close : l.homeSearchTooltip,
             icon: Icon(showSearch ? Icons.close : Icons.search),
             onPressed: onSearchToggle,
           ),
           PopupMenuButton<String>(
             iconSize: 28,
             tooltip: l.homeMore,
-            icon: const Icon(Icons.more_vert),
+            icon: Icon(_isCupertino ? CupertinoIcons.ellipsis : Icons.more_vert),
             onSelected: (value) {
               switch (value) {
                 case 'playlists':
@@ -331,7 +341,6 @@ class _TabBar extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final cs = Theme.of(context).colorScheme;
     final l = AppLocalizations.of(context);
 
     final tabs = <(String, String, IconData)>[
@@ -342,9 +351,8 @@ class _TabBar extends ConsumerWidget {
       ('favorites', l.homeTabFavorites, Icons.star),
     ];
 
-    return Container(
+    return SizedBox(
       height: 44,
-      color:  cs.surface,
       child: Row(
         children: tabs.map((t) {
           final (tab, label, icon) = t;
@@ -355,7 +363,10 @@ class _TabBar extends ConsumerWidget {
               label: label,
               icon: icon,
               active: active,
-              onTap: () => ref.read(homeProvider.notifier).selectTab(tab),
+              onTap: () {
+                if (!active) HapticFeedback.selectionClick();
+                ref.read(homeProvider.notifier).selectTab(tab);
+              },
             ),
           );
         }).toList(),
@@ -386,7 +397,8 @@ class _TabButtonState extends State<_TabButton> {
 
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
     final active = widget.active;
     final highlight = _focused || active;
     return Focus(
@@ -403,44 +415,54 @@ class _TabButtonState extends State<_TabButton> {
         }
         return KeyEventResult.ignored;
       },
-      child: InkWell(
-        onTap: widget.onTap,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 120),
-          decoration: BoxDecoration(
-            color: _focused
-                ? AppColors.accent.withValues(alpha: 0.15)
-                : Colors.transparent,
-          ),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.end,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(widget.icon,
-                      size: 16,
-                      color: highlight
-                          ? AppColors.accent
-                          : cs.onSurfaceVariant),
-                  const SizedBox(width: 4),
-                  Text(widget.label,
-                      style: TextStyle(
-                          fontSize:   TextSize.label,
-                          fontWeight: highlight
-                              ? FontWeight.w600
-                              : FontWeight.normal,
-                          color:      highlight
-                              ? AppColors.accent
-                              : cs.onSurfaceVariant)),
-                ],
-              ),
-              const SizedBox(height: 4),
-              Container(
-                height: _focused ? 3 : 2,
-                color: highlight ? AppColors.accent : Colors.transparent,
-              ),
-            ],
+      child: Semantics(
+        selected: active,
+        button: true,
+        child: InkWell(
+          onTap: widget.onTap,
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 120),
+            decoration: BoxDecoration(
+              color: _focused
+                  ? cs.primary.withValues(alpha: 0.15)
+                  : Colors.transparent,
+            ),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 2),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(widget.icon,
+                          size: 16,
+                          color: highlight
+                              ? cs.primary
+                              : cs.onSurfaceVariant),
+                      const SizedBox(width: 4),
+                      Flexible(
+                        child: Text(widget.label,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: theme.textTheme.labelMedium?.copyWith(
+                                fontWeight: highlight
+                                    ? FontWeight.w600
+                                    : FontWeight.w500,
+                                color: highlight
+                                    ? cs.primary
+                                    : cs.onSurfaceVariant)),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Container(
+                  height: _focused ? 3 : 2,
+                  color: highlight ? cs.primary : Colors.transparent,
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -470,7 +492,7 @@ class _CategoryBar extends ConsumerWidget {
         child: ListView.separated(
           scrollDirection: Axis.horizontal,
           padding: const EdgeInsets.symmetric(
-              horizontal: Spacing.md, vertical: 8),
+              horizontal: Spacing.lg, vertical: 8),
           itemCount:        state.categories.length,
           separatorBuilder: (_, __) => const SizedBox(width: 8),
           itemBuilder: (ctx, i) {
@@ -484,6 +506,7 @@ class _CategoryBar extends ConsumerWidget {
               active:  active,
               onTap:   () async {
                 if (await ensureCategoryUnlocked(ctx, ref, cat)) {
+                  if (!active) HapticFeedback.selectionClick();
                   ref.read(homeProvider.notifier).selectCategory(cat);
                 }
               },
@@ -517,19 +540,20 @@ class _CategoryChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
     final fg = active ? cs.onPrimary : cs.onSurfaceVariant;
-    final bg = active ? AppColors.accent : cs.surfaceContainerHighest;
+    final bg = active ? cs.primary : cs.surfaceContainerHigh;
 
     return TvFocusable(
-      borderRadius: BorderRadius.circular(Radius.badge + 8),
+      borderRadius: BorderRadius.circular(AppRadius.pill),
       onTap: onTap,
       semanticLabel: label,
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
         decoration: BoxDecoration(
           color:        bg,
-          borderRadius: BorderRadius.circular(Radius.badge + 5),
+          borderRadius: BorderRadius.circular(AppRadius.pill),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
@@ -540,9 +564,8 @@ class _CategoryChip extends StatelessWidget {
               label,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                fontSize:   TextSize.label,
-                fontWeight: active ? FontWeight.w600 : FontWeight.normal,
+              style: theme.textTheme.labelMedium?.copyWith(
+                fontWeight: active ? FontWeight.w600 : FontWeight.w500,
                 color:      fg,
               ),
             ),
@@ -564,7 +587,8 @@ class _FavoritesTypeBar extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final cs = Theme.of(context).colorScheme;
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
     final l = AppLocalizations.of(context);
 
     final filters = <(String, String, IconData)>[
@@ -581,26 +605,25 @@ class _FavoritesTypeBar extends ConsumerWidget {
         child: ListView.separated(
           scrollDirection: Axis.horizontal,
           padding: const EdgeInsets.symmetric(
-              horizontal: Spacing.md, vertical: 6),
+              horizontal: Spacing.lg, vertical: 6),
           itemCount:       filters.length,
           separatorBuilder: (_, __) => const SizedBox(width: 6),
           itemBuilder: (ctx, i) {
             final (value, label, icon) = filters[i];
             final active = value == state.favoritesTypeFilter;
             return TvFocusable(
-              borderRadius: BorderRadius.circular(Radius.badge + 8),
-              onTap: () => ref
-                  .read(homeProvider.notifier)
-                  .setFavoritesTypeFilter(value),
+              borderRadius: BorderRadius.circular(AppRadius.pill),
+              onTap: () {
+                if (!active) HapticFeedback.selectionClick();
+                ref.read(homeProvider.notifier).setFavoritesTypeFilter(value);
+              },
               semanticLabel: label,
               child: Container(
                 padding: const EdgeInsets.symmetric(
                     horizontal: 12, vertical: 6),
                 decoration: BoxDecoration(
-                  color: active
-                      ? AppColors.accent
-                      : cs.surfaceContainerHighest,
-                  borderRadius: BorderRadius.circular(Radius.badge + 5),
+                  color: active ? cs.primary : cs.surfaceContainerHigh,
+                  borderRadius: BorderRadius.circular(AppRadius.pill),
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
@@ -610,11 +633,10 @@ class _FavoritesTypeBar extends ConsumerWidget {
                         color: active ? cs.onPrimary : cs.onSurfaceVariant),
                     const SizedBox(width: 6),
                     Text(label,
-                        style: TextStyle(
-                            fontSize: TextSize.label,
+                        style: theme.textTheme.labelMedium?.copyWith(
                             fontWeight: active
                                 ? FontWeight.w600
-                                : FontWeight.normal,
+                                : FontWeight.w500,
                             color: active
                                 ? cs.onPrimary
                                 : cs.onSurfaceVariant)),
@@ -641,27 +663,26 @@ class _ChannelList extends ConsumerWidget {
 
     // Ana Sayfa: channels yerine row'lar gösterilir, boş empty state olmamalı
     if (state.activeTab == 'home') {
-      if (state.isLoading) {
-        return const Center(child: CircularProgressIndicator());
-      }
+      if (state.isLoading) return const _HomeRowsSkeleton();
       return _HomeRowsLayout(state: state);
     }
 
     if (state.isLoading) {
-      return const Center(child: CircularProgressIndicator());
+      return state.activeTab == 'movie' || state.activeTab == 'series'
+          ? const PosterGridSkeleton()
+          : const ChannelListSkeleton();
     }
     if (channels.isEmpty) {
       final l = AppLocalizations.of(context);
-      final msg = state.activeTab == 'favorites'
+      final isFav = state.activeTab == 'favorites';
+      final msg = isFav
           ? (state.favoritesTypeFilter.isEmpty
               ? l.homeEmptyFavorites
               : l.homeEmptyFavoritesType)
           : l.homeEmptyCategory;
-      return Center(
-        child: Text(
-          msg,
-          style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant),
-        ),
+      return EmptyState(
+        icon:  isFav ? Icons.star_border_rounded : Icons.inbox_outlined,
+        title: msg,
       );
     }
 
@@ -683,16 +704,8 @@ class _ChannelList extends ConsumerWidget {
 
     // Movie: poster grid + üstte "Son Eklenenler" şeridi (Android paritesi)
     if (state.activeTab == 'movie') {
-      final columns = Responsive.posterGridColumns(context);
       final newMovies = state.newlyAddedMovies;
-      final grid = GridView.builder(
-        padding:     const EdgeInsets.all(Spacing.md),
-        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount:   columns,
-          childAspectRatio: 0.65,
-          crossAxisSpacing: Spacing.sm,
-          mainAxisSpacing:  Spacing.sm,
-        ),
+      final grid = PosterGridView(
         itemCount:   channels.length,
         itemBuilder: (ctx, i) => _PosterCard(channel: channels[i]),
       );
@@ -758,8 +771,9 @@ class _HomeRowsLayout extends StatelessWidget {
         (l.homeRowContinueWatching,   state.continueWatching,       _HomeCardStyle.poster, true),
       if (state.watchedMovies.isNotEmpty)
         (l.homeRowWatchedMovies,      state.watchedMovies,          _HomeCardStyle.poster, true),
-      if (state.watchedSeriesEpisodes.isNotEmpty)
-        (l.homeRowWatchedSeries,      state.watchedSeriesEpisodes,  _HomeCardStyle.poster, true),
+      // Dizi bölümleri "Nerede Kaldım"da (dizi başına tek kart, sonraki
+      // bölüme ilerletilmiş) — ayrı "İzlediğin Diziler" satırı aynı diziyi
+      // ikinci kez gösteriyordu (Android HomeOverviewLayout paritesi).
       if (state.newlyAddedMovies.isNotEmpty)
         (l.homeRowNewMovies,          state.newlyAddedMovies,       _HomeCardStyle.poster, false),
       if (state.newlyAddedSeries.isNotEmpty)
@@ -771,39 +785,18 @@ class _HomeRowsLayout extends StatelessWidget {
     ];
 
     if (sections.isEmpty) {
-      final cs = Theme.of(context).colorScheme;
-      return Center(
-        child: Padding(
-          padding: const EdgeInsets.all(Spacing.xl),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(Icons.home_outlined,
-                  size: 56, color: cs.onSurfaceVariant),
-              const SizedBox(height: Spacing.md),
-              Text(
-                l.homeEmptyContent,
-                style: TextStyle(
-                    fontSize: TextSize.title,
-                    color: cs.onSurface),
-              ),
-              const SizedBox(height: Spacing.xs),
-              Text(
-                l.homeEmptyContentHint,
-                textAlign: TextAlign.center,
-                style: TextStyle(color: cs.onSurfaceVariant),
-              ),
-            ],
-          ),
-        ),
+      return EmptyState(
+        icon:    Icons.home_outlined,
+        title:   l.homeEmptyContent,
+        message: l.homeEmptyContentHint,
       );
     }
 
     final hasBanner = state.featuredVodItems.isNotEmpty;
     return ListView.separated(
-      padding: const EdgeInsets.symmetric(vertical: Spacing.sm),
+      padding: const EdgeInsets.only(top: Spacing.sm, bottom: Spacing.lg),
       itemCount: sections.length + (hasBanner ? 1 : 0),
-      separatorBuilder: (_, __) => const SizedBox(height: Spacing.md),
+      separatorBuilder: (_, __) => const SizedBox(height: Spacing.xl),
       itemBuilder: (ctx, i) {
         if (hasBanner && i == 0) {
           return _FeaturedBanner(items: state.featuredVodItems);
@@ -923,13 +916,15 @@ class _FeaturedCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final cs = Theme.of(context).colorScheme;
+    final theme   = Theme.of(context);
+    final palette = AppPalette.of(context);
     final l  = AppLocalizations.of(context);
-    // 3 tip: movie (amber), series (mor), live (kırmızı)
-    final (badge, badgeColor) = switch (channel.streamType) {
-      'movie'  => (l.badgeMovieUppercase,  Colors.amber.shade700),
-      'series' => (l.badgeSeriesUppercase, Colors.deepPurple.shade400),
-      _        => (l.playerLiveLabel,       Colors.red.shade600),
+    // 3 tip: movie (amber), series (mor), live (kırmızı). Metin rengi her
+    // zemin icin AA: amber+siyah 10.4:1 (eski beyaz 2.0:1), mor+beyaz 5.1:1.
+    final (badge, badgeColor, badgeFg) = switch (channel.streamType) {
+      'movie'  => (l.badgeMovieUppercase,  palette.proBadgeBg, palette.proBadgeFg),
+      'series' => (l.badgeSeriesUppercase, const Color(0xFF6A45B8), Colors.white),
+      _        => (l.playerLiveLabel,      palette.live,       palette.onLive),
     };
     // Dizi için seriesName, film/canlı için kanal adı
     final title = (channel.streamType == 'series' && channel.seriesName.isNotEmpty)
@@ -939,25 +934,20 @@ class _FeaturedCard extends ConsumerWidget {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: Spacing.sm),
       child: TvFocusableScale(
-        borderRadius: BorderRadius.circular(Radius.card + 4),
-        onTap: () => openChannelGuarded(context, ref, channel),
+        borderRadius: BorderRadius.circular(AppRadius.card + 4),
+        // Dizi → seri detay sheet'i (rastgele bolum degil); digerleri oynat.
+        onTap: () => openSeries(context, ref, channel),
         child: ClipRRect(
-          borderRadius: BorderRadius.circular(Radius.card + 4),
+          borderRadius: BorderRadius.circular(AppRadius.card + 4),
           child: Stack(
             fit: StackFit.expand,
             children: [
-              // Background poster — yoksa solid fallback rengi.
-              if (channel.logoUrl.isNotEmpty)
-                CachedNetworkImage(
-                  imageUrl:    channel.logoUrl,
-                  fit:         BoxFit.cover,
-                  placeholder: (_, __) =>
-                      Container(color: cs.surfaceContainerHighest),
-                  errorWidget: (_, __, ___) =>
-                      Container(color: cs.surfaceContainerHighest),
-                )
-              else
-                Container(color: cs.surfaceContainerHighest),
+              // Background poster — yoksa hash-gradient placeholder.
+              PosterImage(
+                url:   channel.logoUrl,
+                seed:  title,
+                width: MediaQuery.sizeOf(context).width,
+              ),
               // Soldan-alt köşeye dramatik gradient — başlık okunabilirliği için.
               Container(
                 decoration: BoxDecoration(
@@ -974,9 +964,9 @@ class _FeaturedCard extends ConsumerWidget {
               ),
               // Sol-alt: badge + başlık
               PositionedDirectional(
-                start:  16,
-                end:    16,
-                bottom: 16,
+                start:  Spacing.lg,
+                end:    Spacing.lg,
+                bottom: Spacing.lg,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisSize: MainAxisSize.min,
@@ -986,14 +976,13 @@ class _FeaturedCard extends ConsumerWidget {
                           horizontal: 8, vertical: 3),
                       decoration: BoxDecoration(
                         color: badgeColor,
-                        borderRadius: BorderRadius.circular(4),
+                        borderRadius: BorderRadius.circular(AppRadius.badge),
                       ),
                       child: Text(
                         badge,
-                        style: const TextStyle(
-                          fontSize:   10,
-                          fontWeight: FontWeight.bold,
-                          color:      Colors.white,
+                        style: theme.textTheme.labelSmall?.copyWith(
+                          fontWeight: FontWeight.w700,
+                          color:      badgeFg,
                           letterSpacing: 1.0,
                         ),
                       ),
@@ -1003,11 +992,10 @@ class _FeaturedCard extends ConsumerWidget {
                       title,
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        fontSize:   18,
-                        fontWeight: FontWeight.bold,
+                      style: theme.textTheme.titleLarge?.copyWith(
+                        fontWeight: FontWeight.w700,
                         color:      Colors.white,
-                        shadows: [
+                        shadows: const [
                           Shadow(blurRadius: 4, color: Colors.black54),
                         ],
                       ),
@@ -1031,6 +1019,7 @@ void _toggleFavoriteWithFeedback(
     BuildContext context, WidgetRef ref, ChannelModel channel) {
   final l = AppLocalizations.of(context);
   final newFav = !channel.isFavorite;
+  HapticFeedback.mediumImpact();
   ref.read(homeProvider.notifier).toggleFavorite(channel);
   ScaffoldMessenger.of(context).showSnackBar(
     SnackBar(
@@ -1048,6 +1037,7 @@ void _toggleFavoriteWithFeedback(
 Future<void> _confirmClearWatched(
     BuildContext context, WidgetRef ref, ChannelModel channel) async {
   final l = AppLocalizations.of(context);
+  HapticFeedback.mediumImpact();
   final confirmed = await showDialog<bool>(
     context: context,
     builder: (ctx) => AlertDialog(
@@ -1095,32 +1085,33 @@ class _HomeRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    // Poster: 120x180 (2/3 aspect), Logo: 140x80 (landscape)
-    final itemWidth  = style == _HomeCardStyle.poster ? 120.0 : 140.0;
-    final itemHeight = style == _HomeCardStyle.poster ? 200.0 : 110.0;
+    final theme = Theme.of(context);
+    final scale = MediaQuery.textScalerOf(context).scale(1);
+    // Poster: posterW (2:3 gorsel + sabit caption), Logo: 140 landscape.
+    final posterW = Dimens.posterWidthFor(MediaQuery.sizeOf(context).shortestSide);
+    final itemWidth  = style == _HomeCardStyle.poster ? posterW : 140.0;
+    final itemHeight = style == _HomeCardStyle.poster
+        ? Dimens.posterTileHeight(posterW, textScale: scale)
+        : 72 + 4 + 20 * scale.clamp(1.0, 1.3);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Padding(
-          padding: const EdgeInsets.symmetric(horizontal: Spacing.md),
-          child: Text(
-            title,
-            style: TextStyle(
-                fontSize:   TextSize.title,
-                fontWeight: FontWeight.w600,
-                color:      cs.onSurface),
+          padding: const EdgeInsets.symmetric(horizontal: Spacing.lg),
+          child: Semantics(
+            header: true,
+            child: Text(title, style: theme.textTheme.titleMedium),
           ),
         ),
-        const SizedBox(height: 6),
+        const SizedBox(height: Spacing.sm),
         SizedBox(
           height: itemHeight,
           child: FocusTraversalGroup(
             policy: OrderedTraversalPolicy(),
             child: ListView.separated(
               scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(horizontal: Spacing.md),
+              padding: const EdgeInsets.symmetric(horizontal: Spacing.lg),
               itemCount:       items.length,
               separatorBuilder: (_, __) =>
                   const SizedBox(width: Spacing.sm),
@@ -1146,9 +1137,11 @@ class _LogoCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final cs = Theme.of(context).colorScheme;
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
+    final dpr = MediaQuery.devicePixelRatioOf(context);
     return TvFocusableScale(
-      borderRadius: BorderRadius.circular(Radius.card + 3),
+      borderRadius: BorderRadius.circular(AppRadius.card + 3),
       onTap: () => openChannelGuarded(context, ref, channel),
       onLongPress: () => isHistory
           ? _confirmClearWatched(context, ref, channel)
@@ -1159,14 +1152,16 @@ class _LogoCard extends ConsumerWidget {
           Container(
             height: 72,
             decoration: BoxDecoration(
-              color: cs.surfaceContainerHighest,
-              borderRadius: BorderRadius.circular(Radius.card),
+              color: cs.surfaceContainerHigh,
+              borderRadius: BorderRadius.circular(AppRadius.card),
             ),
             padding: const EdgeInsets.all(8),
             child: channel.logoUrl.isNotEmpty
                 ? CachedNetworkImage(
-                    imageUrl:    channel.logoUrl,
-                    fit:         BoxFit.contain,
+                    imageUrl:       channel.logoUrl,
+                    fit:            BoxFit.contain,
+                    memCacheWidth:  (140 * dpr).round(),
+                    fadeInDuration: const Duration(milliseconds: 180),
                     placeholder: (_, __) => const SizedBox.shrink(),
                     errorWidget: (_, __, ___) => Icon(Icons.live_tv,
                         color: cs.onSurfaceVariant, size: 28),
@@ -1181,7 +1176,7 @@ class _LogoCard extends ConsumerWidget {
               channel.name,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: const TextStyle(fontSize: TextSize.caption),
+              style: theme.textTheme.labelMedium,
             ),
           ),
         ],
@@ -1198,41 +1193,45 @@ class _RecentlyWatchedStrip extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final cs = Theme.of(context).colorScheme;
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
     final l = AppLocalizations.of(context);
+    final scale = MediaQuery.textScalerOf(context).scale(1).clamp(1.0, 1.3);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Padding(
           padding: const EdgeInsets.fromLTRB(
               Dimens.channelItemHPad, Spacing.md, 0, Spacing.sm),
-          child: Text(
-            l.homeRecentlyWatchedHeader,
-            style: TextStyle(
-                fontSize:    TextSize.caption,
-                fontWeight:  FontWeight.w700,
-                letterSpacing: 1.2,
-                color: cs.onSurfaceVariant),
+          child: Semantics(
+            header: true,
+            child: Text(
+              l.homeRecentlyWatchedHeader,
+              style: theme.textTheme.labelSmall?.copyWith(
+                  fontWeight:  FontWeight.w700,
+                  letterSpacing: 1.2,
+                  color: cs.onSurfaceVariant),
+            ),
           ),
         ),
         SizedBox(
-          height: 80,
+          height: 52 + 4 + 18 * scale + 4,
           child: ListView.separated(
             scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.symmetric(horizontal: Spacing.md),
+            padding: const EdgeInsets.symmetric(horizontal: Spacing.lg),
             itemCount: channels.length.clamp(0, 10),
             separatorBuilder: (_, __) => const SizedBox(width: Spacing.sm),
             itemBuilder: (ctx, i) {
               final ch = channels[i];
               return TvFocusable(
-                borderRadius: BorderRadius.circular(Radius.cardSm + 3),
+                borderRadius: BorderRadius.circular(AppRadius.cardSm + 3),
                 onTap: () => openChannelGuarded(context, ref, ch),
                 onLongPress: () => _confirmClearWatched(context, ref, ch),
                 semanticLabel: ch.name,
                 child: Column(
                   children: [
                     ClipRRect(
-                      borderRadius: BorderRadius.circular(Radius.cardSm),
+                      borderRadius: BorderRadius.circular(AppRadius.cardSm),
                       child: SizedBox(
                         width:  52,
                         height: 52,
@@ -1240,14 +1239,19 @@ class _RecentlyWatchedStrip extends ConsumerWidget {
                             ? CachedNetworkImage(
                                 imageUrl: ch.logoUrl,
                                 fit:      BoxFit.cover,
+                                memCacheWidth: (52 *
+                                        MediaQuery.devicePixelRatioOf(context))
+                                    .round(),
+                                fadeInDuration:
+                                    const Duration(milliseconds: 180),
                                 errorWidget: (_, __, ___) => Container(
-                                  color: cs.surfaceContainerHighest,
+                                  color: cs.surfaceContainerHigh,
                                   child: Icon(Icons.live_tv,
                                       color: cs.onSurfaceVariant),
                                 ),
                               )
                             : Container(
-                                color: cs.surfaceContainerHighest,
+                                color: cs.surfaceContainerHigh,
                                 child: Icon(Icons.live_tv,
                                     color: cs.onSurfaceVariant)),
                       ),
@@ -1260,7 +1264,8 @@ class _RecentlyWatchedStrip extends ConsumerWidget {
                         maxLines:  1,
                         overflow:  TextOverflow.ellipsis,
                         textAlign: TextAlign.center,
-                        style:     const TextStyle(fontSize: TextSize.micro),
+                        style: theme.textTheme.labelSmall
+                            ?.copyWith(fontWeight: FontWeight.w400),
                       ),
                     ),
                   ],
@@ -1289,7 +1294,9 @@ class _NewlyAddedStrip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
+    final theme = Theme.of(context);
+    final scale = MediaQuery.textScalerOf(context).scale(1);
+    final posterW = Dimens.posterWidthFor(MediaQuery.sizeOf(context).shortestSide);
     // Maks 20 öğe — şerit asırı uzun olmasın; tam liste zaten alttaki grid'de.
     final items = channels.take(20).toList();
     return Column(
@@ -1297,33 +1304,36 @@ class _NewlyAddedStrip extends StatelessWidget {
       children: [
         Padding(
           padding: const EdgeInsets.fromLTRB(
-              Spacing.md, Spacing.md, Spacing.md, Spacing.xs),
-          child: Text(
-            title,
-            style: TextStyle(
-                fontSize:    TextSize.caption,
-                fontWeight:  FontWeight.w700,
-                letterSpacing: 1.0,
-                color: AppColors.accent),
+              Spacing.lg, Spacing.md, Spacing.lg, Spacing.sm),
+          child: Semantics(
+            header: true,
+            child: Text(
+              title,
+              style: theme.textTheme.labelSmall?.copyWith(
+                  fontWeight:  FontWeight.w700,
+                  letterSpacing: 1.0,
+                  color: AppPalette.of(context).accentText),
+            ),
           ),
         ),
         SizedBox(
-          height: 180,
+          height: Dimens.posterTileHeight(posterW, textScale: scale),
           child: FocusTraversalGroup(
             policy: OrderedTraversalPolicy(),
             child: ListView.separated(
               scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(horizontal: Spacing.md),
+              padding: const EdgeInsets.symmetric(horizontal: Spacing.lg),
               itemCount: items.length,
               separatorBuilder: (_, __) => const SizedBox(width: Spacing.sm),
               itemBuilder: (ctx, i) => SizedBox(
-                width: 110,
+                width: posterW,
                 child: _PosterCard(channel: items[i]),
               ),
             ),
           ),
         ),
-        Divider(height: 1, color: cs.outline.withValues(alpha: 0.3)),
+        const SizedBox(height: Spacing.sm),
+        const Divider(height: 1),
       ],
     );
   }
@@ -1338,65 +1348,90 @@ class _PosterCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final cs = Theme.of(context).colorScheme;
+    // History satirlari (Devam Et, Izlediklerin) bolumu dogrudan acar;
+    // diger satirlarda dizi karti seri sheet'ini acar ve dizi adini gosterir.
+    final asSeries = !isHistory &&
+        channel.streamType == 'series' &&
+        channel.seriesName.isNotEmpty;
+    final title = asSeries ? channel.seriesName : channel.name;
 
     return TvFocusableScale(
-      borderRadius: BorderRadius.circular(Radius.card + 3),
-      onTap: () => openChannelGuarded(context, ref, channel),
+      borderRadius: BorderRadius.circular(AppRadius.card + 3),
+      onTap: () => asSeries
+          ? openSeries(context, ref, channel)
+          : openChannelGuarded(context, ref, channel),
       onLongPress: () => isHistory
           ? _confirmClearWatched(context, ref, channel)
           : _toggleFavoriteWithFeedback(context, ref, channel),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Expanded(
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(Radius.card),
-              child: channel.logoUrl.isNotEmpty
-                  ? CachedNetworkImage(
-                      imageUrl:   channel.logoUrl,
-                      fit:        BoxFit.cover,
-                      width:      double.infinity,
-                      placeholder: (_, __) => Container(
-                          color: cs.surfaceContainerHighest),
-                      errorWidget: (_, __, ___) =>
-                          _PosterPlaceholder(name: channel.name),
-                    )
-                  : _PosterPlaceholder(name: channel.name),
+      // Gorsel her yerde 2:3, caption sabit yukseklik — grid/row/strip ayni.
+      child: Semantics(
+        label: title,
+        button: true,
+        excludeSemantics: true,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            AspectRatio(
+              aspectRatio: Dimens.posterAspect,
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(AppRadius.card),
+                child: LayoutBuilder(
+                  builder: (_, c) => PosterImage(
+                    url:   channel.logoUrl,
+                    seed:  title,
+                    width: c.maxWidth,
+                  ),
+                ),
+              ),
             ),
-          ),
-          const SizedBox(height: 4),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 4),
-            child: Text(
-              channel.name,
-              maxLines:  2,
-              overflow:  TextOverflow.ellipsis,
-              style:     const TextStyle(fontSize: TextSize.caption),
-            ),
-          ),
-        ],
+            Expanded(child: PosterCaption(title)),
+          ],
+        ),
       ),
     );
   }
 }
 
-class _PosterPlaceholder extends StatelessWidget {
-  final String name;
-  const _PosterPlaceholder({required this.name});
+/// Ana Sayfa yuklenirken: bir poster seridi + kanal satirlari iskeleti.
+class _HomeRowsSkeleton extends StatelessWidget {
+  const _HomeRowsSkeleton();
 
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    return Container(
-      color: cs.surfaceContainerHighest,
-      child: Center(
-        child: Text(
-          name.isNotEmpty ? name[0].toUpperCase() : '?',
-          style: TextStyle(
-              fontSize: TextSize.titleLg * 1.5,
-              color:    cs.onSurfaceVariant),
-        ),
+    final posterW =
+        Dimens.posterWidthFor(MediaQuery.sizeOf(context).shortestSide);
+    return SkeletonPulse(
+      child: ListView(
+        physics: const NeverScrollableScrollPhysics(),
+        padding: const EdgeInsets.symmetric(vertical: Spacing.md),
+        children: [
+          const Padding(
+            padding: EdgeInsets.symmetric(horizontal: Spacing.lg),
+            child: SkeletonBox(height: 180, radius: AppRadius.lg),
+          ),
+          for (var row = 0; row < 2; row++) ...[
+            const SizedBox(height: Spacing.xl),
+            const Padding(
+              padding: EdgeInsets.symmetric(horizontal: Spacing.lg),
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: SkeletonBox(width: 140, height: 16),
+              ),
+            ),
+            const SizedBox(height: Spacing.sm),
+            SizedBox(
+              height: Dimens.posterTileHeight(posterW),
+              child: ListView.separated(
+                scrollDirection: Axis.horizontal,
+                physics: const NeverScrollableScrollPhysics(),
+                padding: const EdgeInsets.symmetric(horizontal: Spacing.lg),
+                itemCount: 6,
+                separatorBuilder: (_, __) => const SizedBox(width: Spacing.sm),
+                itemBuilder: (_, __) => PosterSkeleton(width: posterW),
+              ),
+            ),
+          ],
+        ],
       ),
     );
   }
@@ -1410,35 +1445,30 @@ class _SearchResults extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final cs = Theme.of(context).colorScheme;
     final l = AppLocalizations.of(context);
 
     if (state.isSearching) {
-      return const Center(child: CircularProgressIndicator());
+      return const ChannelListSkeleton(rows: 6);
     }
     if (state.searchQuery.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.search, size: 56, color: cs.onSurfaceVariant),
-            const SizedBox(height: Spacing.md),
-            Text(l.homeSearchEmpty,
-                style: TextStyle(color: cs.onSurfaceVariant)),
-          ],
-        ),
-      );
+      return EmptyState(icon: Icons.search, title: l.homeSearchEmpty);
     }
     if (state.searchResults.isEmpty) {
-      return Center(
-          child: Text(l.homeSearchNoResults(state.searchQuery),
-              style: TextStyle(color: cs.onSurfaceVariant)));
+      return EmptyState(
+        icon:  Icons.search_off_rounded,
+        title: l.homeSearchNoResults(state.searchQuery),
+      );
     }
 
     return ListView.builder(
+      // Kaydirinca klavye kapansin — sonuclar klavyenin altinda kalmasin.
+      keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
       itemCount:   state.searchResults.length,
-      itemBuilder: (ctx, i) =>
-          ChannelListItem(channel: state.searchResults[i]),
+      // Dizi sonuclari seriesName basina tek satir → seri sheet'i acar.
+      itemBuilder: (ctx, i) => ChannelListItem(
+        channel:          state.searchResults[i],
+        openSeriesDetail: true,
+      ),
     );
   }
 }
@@ -1451,26 +1481,40 @@ class _BottomBar extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final cs = Theme.of(context).colorScheme;
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
     final l = AppLocalizations.of(context);
 
+    // Home indicator alani: SafeArea(bottom:false) ust seviyede; bar kendi
+    // alt boslugunu ekler, icerik gesture cubugunun altinda kalmaz.
+    final bottomInset = MediaQuery.viewPaddingOf(context).bottom;
     return Container(
-      height:  Dimens.bottomBarHeight,
-      color:   cs.surface,
-      padding: const EdgeInsets.symmetric(horizontal: Spacing.md),
+      height:  Dimens.bottomBarHeight + bottomInset,
+      padding: EdgeInsets.only(
+          left: Spacing.lg, right: Spacing.sm, bottom: bottomInset),
+      decoration: BoxDecoration(
+        border: Border(
+          top: BorderSide(color: cs.outlineVariant, width: 0.5),
+        ),
+      ),
       child: Row(
         children: [
-          Text(l.homeContentCount(state.channels.length),
-              style: TextStyle(
-                  fontSize: TextSize.caption,
-                  color:    cs.onSurfaceVariant)),
+          Flexible(
+            child: Text(l.homeContentCount(state.channels.length),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: theme.textTheme.labelMedium?.copyWith(
+                    fontWeight: FontWeight.w400,
+                    fontFeatures: const [FontFeature.tabularFigures()],
+                    color: cs.onSurfaceVariant)),
+          ),
           const Spacer(),
           // Sort (TV-friendly dialog)
           TextButton.icon(
             icon: Icon(Icons.sort, size: 18, color: cs.onSurfaceVariant),
             label: Text(_sortLabel(l, state.sortOrder),
-                style: TextStyle(
-                    fontSize: TextSize.label, color: cs.onSurfaceVariant)),
+                style: theme.textTheme.labelMedium
+                    ?.copyWith(color: cs.onSurfaceVariant)),
             onPressed: () => _showSortDialog(context, ref, state),
           ),
         ],
@@ -1501,6 +1545,7 @@ class _BottomBar extends ConsumerWidget {
       ),
     );
     if (result != null) {
+      if (result != state.sortOrder) HapticFeedback.selectionClick();
       ref.read(homeProvider.notifier).setSortOrder(result);
     }
   }
@@ -1534,6 +1579,7 @@ class _TvSortOptionState extends State<_TvSortOption> {
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
     return Focus(
       autofocus: widget.selected,
       onFocusChange: (v) => setState(() => _focused = v),
@@ -1555,7 +1601,7 @@ class _TvSortOptionState extends State<_TvSortOption> {
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 100),
           color: _focused
-              ? AppColors.accent.withValues(alpha: 0.15)
+              ? cs.primary.withValues(alpha: 0.15)
               : Colors.transparent,
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
           child: Row(
@@ -1565,13 +1611,14 @@ class _TvSortOptionState extends State<_TvSortOption> {
                       ? Icons.radio_button_checked
                       : Icons.radio_button_unchecked,
                   size: 20,
-                  color: AppColors.accent),
+                  color: cs.primary),
               const SizedBox(width: 12),
-              Text(widget.label,
-                  style: TextStyle(
-                      fontSize: TextSize.body,
-                      fontWeight:
-                          _focused ? FontWeight.w600 : FontWeight.normal)),
+              Flexible(
+                child: Text(widget.label,
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        fontWeight:
+                            _focused ? FontWeight.w600 : FontWeight.w400)),
+              ),
             ],
           ),
         ),
@@ -1615,8 +1662,8 @@ class _BackgroundLoadingBar extends StatelessWidget {
                       message!,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        fontSize: TextSize.caption,
+                      style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                        fontWeight: FontWeight.w400,
                         color: cs.onSurfaceVariant,
                       ),
                     ),

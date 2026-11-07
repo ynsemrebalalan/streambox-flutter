@@ -3,27 +3,35 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/providers/app_providers.dart';
-import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_palette.dart';
 import '../../../core/theme/app_tokens.dart';
 import '../../../data/models/channel_model.dart';
 import '../../../data/models/epg_model.dart';
+import '../../../l10n/generated/app_localizations.dart';
 import '../../../data/services/cloud_sync_service.dart';
+import '../../billing/widgets/paywall_trigger.dart';
 import '../../parental/parental_guard.dart';
 import '../home_provider.dart';
+import 'series_section.dart';
 
 // EPG current programme provider for a given tvgId
-final _epgCurrentProvider =
-    FutureProvider.autoDispose.family<EpgProgrammeModel?, String>(
-  (ref, tvgId) {
-    if (tvgId.isEmpty) return Future.value(null);
-    return ref.read(epgRepoProvider).getCurrent(tvgId);
-  },
+// EPG now/next (Android kanal satırı: şimdiki program + "Sonra: …").
+final _epgCurrentProvider = FutureProvider.autoDispose
+    .family<({EpgProgrammeModel? now, EpgProgrammeModel? next}), String>(
+  (ref, tvgId) => ref.read(epgRepoProvider).getNowNext(tvgId),
 );
 
 class ChannelListItem extends ConsumerStatefulWidget {
   final ChannelModel channel;
+  /// true ise (arama sonuclari) dizi satiri dizi adini gosterir ve tiklayinca
+  /// seri detay sheet'ini acar; bolum dogrudan oynatilmaz.
+  final bool openSeriesDetail;
 
-  const ChannelListItem({super.key, required this.channel});
+  const ChannelListItem({
+    super.key,
+    required this.channel,
+    this.openSeriesDetail = false,
+  });
 
   @override
   ConsumerState<ChannelListItem> createState() => _ChannelListItemState();
@@ -32,14 +40,33 @@ class ChannelListItem extends ConsumerStatefulWidget {
 class _ChannelListItemState extends ConsumerState<ChannelListItem> {
   bool _focused = false;
 
+  bool get _asSeries =>
+      widget.openSeriesDetail &&
+      widget.channel.streamType == 'series' &&
+      widget.channel.seriesName.isNotEmpty;
+
   void _openPlayer() {
+    if (_asSeries) {
+      openSeries(context, ref, widget.channel);
+      return;
+    }
     openChannelGuarded(context, ref, widget.channel);
+  }
+
+  void _toggleFavorite() {
+    HapticFeedback.lightImpact();
+    ref.read(homeProvider.notifier).toggleFavorite(widget.channel);
   }
 
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
+    final l = AppLocalizations.of(context);
     final channel = widget.channel;
+    // D-pad / klavye ipucu sadece geleneksel (non-touch) focus modunda.
+    final showRemoteHint = _focused &&
+        FocusManager.instance.highlightMode == FocusHighlightMode.traditional;
 
     return Focus(
       onFocusChange: (v) => setState(() => _focused = v),
@@ -59,7 +86,7 @@ class _ChannelListItemState extends ConsumerState<ChannelListItem> {
         // (Google TV kumandalarinda sag ok yatay scroll yapar,
         //  ama liste tek kolonsa favori icin kullanilabilir)
         if (key == LogicalKeyboardKey.arrowRight) {
-          ref.read(homeProvider.notifier).toggleFavorite(channel);
+          _toggleFavorite();
           return KeyEventResult.handled;
         }
         return KeyEventResult.ignored;
@@ -70,13 +97,12 @@ class _ChannelListItemState extends ConsumerState<ChannelListItem> {
           duration: const Duration(milliseconds: 120),
           decoration: BoxDecoration(
             color: _focused
-                ? AppColors.accent.withValues(alpha: 0.18)
+                ? cs.primary.withValues(alpha: 0.14)
                 : Colors.transparent,
             // Focus halinde sol kenar belirgin cizgi (TV'de hangi
             // kanal secili oldugunu net gosterir)
             border: _focused
-                ? const Border(
-                    left: BorderSide(color: AppColors.accent, width: 3))
+                ? Border(left: BorderSide(color: cs.primary, width: 3))
                 : null,
           ),
           padding: const EdgeInsets.symmetric(
@@ -91,11 +117,10 @@ class _ChannelListItemState extends ConsumerState<ChannelListItem> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    channel.name,
+                    _asSeries ? channel.seriesName : channel.name,
                     maxLines:  1,
                     overflow:  TextOverflow.ellipsis,
-                    style:     TextStyle(
-                        fontSize:   TextSize.channel,
+                    style: theme.textTheme.titleSmall?.copyWith(
                         fontWeight: _focused
                             ? FontWeight.w700
                             : FontWeight.w500),
@@ -104,7 +129,7 @@ class _ChannelListItemState extends ConsumerState<ChannelListItem> {
                   // Diğer durumlarda tek başına chip (kompakt badge).
                   if (channel.streamType == 'live' && channel.tvgId.isNotEmpty)
                     Padding(
-                      padding: const EdgeInsets.only(top: 2),
+                      padding: const EdgeInsets.only(top: 3),
                       child: Row(
                         children: [
                           if (channel.category.isNotEmpty) ...[
@@ -117,7 +142,7 @@ class _ChannelListItemState extends ConsumerState<ChannelListItem> {
                     )
                   else if (channel.category.isNotEmpty)
                     Padding(
-                      padding: const EdgeInsets.only(top: 2),
+                      padding: const EdgeInsets.only(top: 3),
                       child: _categoryChip(context, channel.category),
                     ),
                 ],
@@ -129,23 +154,27 @@ class _ChannelListItemState extends ConsumerState<ChannelListItem> {
             Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                if (_focused)
-                  Text('►',
-                      style: TextStyle(
-                          fontSize: 10,
-                          color: cs.onSurfaceVariant.withValues(alpha: 0.5))),
+                if (showRemoteHint)
+                  ExcludeSemantics(
+                    child: Text('►',
+                        style: theme.textTheme.labelSmall?.copyWith(
+                            color: cs.onSurfaceVariant.withValues(alpha: 0.5))),
+                  ),
                 if (channel.streamType != 'live')
                   _WatchlistButton(channel: channel),
                 IconButton(
                   iconSize: 26,
+                  tooltip: channel.isFavorite
+                      ? l.playerFavoriteRemove
+                      : l.playerFavoriteAdd,
+                  isSelected: channel.isFavorite,
                   icon: Icon(
                     channel.isFavorite ? Icons.star : Icons.star_border,
                     color: channel.isFavorite
-                        ? AppColors.accent
+                        ? AppPalette.of(context).accentText
                         : cs.onSurfaceVariant,
                   ),
-                  onPressed: () =>
-                      ref.read(homeProvider.notifier).toggleFavorite(channel),
+                  onPressed: _toggleFavorite,
                 ),
               ],
             ),
@@ -157,24 +186,24 @@ class _ChannelListItemState extends ConsumerState<ChannelListItem> {
   }
 }
 
-/// v6: Kategori chip — Material3 secondaryContainer üzerinde kompakt badge.
-/// Channel kart altında tip/kategori göstermek için kullanılır.
+/// v6: Kategori chip — secondaryContainer (sessiz lacivert) üzerinde kompakt
+/// badge. Channel kart altında tip/kategori göstermek için kullanılır.
 Widget _categoryChip(BuildContext context, String category) {
-  final cs = Theme.of(context).colorScheme;
+  final theme = Theme.of(context);
+  final cs = theme.colorScheme;
   return Container(
-    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
     decoration: BoxDecoration(
       color: cs.secondaryContainer,
-      borderRadius: BorderRadius.circular(8),
+      borderRadius: BorderRadius.circular(AppRadius.xs),
     ),
     child: Text(
       category,
       maxLines: 1,
       overflow: TextOverflow.ellipsis,
-      style: TextStyle(
-        fontSize: 11,
+      style: theme.textTheme.labelMedium?.copyWith(
         color: cs.onSecondaryContainer,
-        fontWeight: FontWeight.w500,
+        height: 1.1,
       ),
     ),
   );
@@ -206,22 +235,25 @@ class _WatchlistButtonState extends ConsumerState<_WatchlistButton> {
 
   Future<void> _refresh() async {
     final repo = ref.read(watchlistRepoProvider);
-    final pid  = ref.read(activePlaylistProvider);
-    final v = await repo.isInWatchlist(widget.channel.id, pid);
+    final v = await repo.isInWatchlist(
+        widget.channel.id, widget.channel.playlistId);
     if (mounted) setState(() => _local = v);
   }
 
   Future<void> _toggle() async {
     if (_busy) return;
-    final repo = ref.read(watchlistRepoProvider);
-    final pid  = ref.read(activePlaylistProvider);
     final prev = _local ?? false;
+    // Ekleme Pro (Android paritesi); cikarma her zaman serbest.
+    if (!prev && !await ensureWatchlistAddAllowed(context, ref)) return;
+    if (!mounted) return;
+    HapticFeedback.lightImpact();
+    final repo = ref.read(watchlistRepoProvider);
     setState(() {
       _local = !prev;
       _busy = true;
     });
     try {
-      await repo.toggle(widget.channel.id, pid);
+      await repo.toggle(widget.channel);
       // Cloud sync — Pro + auth ise yedeklenir, değilse no-op.
       // ignore: unawaited_futures
       CloudSyncService.pushWatchlist(widget.channel, added: !prev);
@@ -235,13 +267,15 @@ class _WatchlistButtonState extends ConsumerState<_WatchlistButton> {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
+    final l = AppLocalizations.of(context);
     final inList = _local ?? false;
     return IconButton(
       iconSize: 24,
-      tooltip: inList ? 'Listeden Çıkar' : 'Listeme Ekle',
+      tooltip: inList ? l.watchlistRemoveTooltip : l.watchlistAddTooltip,
+      isSelected: inList,
       icon: Icon(
         inList ? Icons.bookmark : Icons.bookmark_outline,
-        color: inList ? AppColors.accent : cs.onSurfaceVariant,
+        color: inList ? AppPalette.of(context).accentText : cs.onSurfaceVariant,
       ),
       onPressed: _toggle,
     );
@@ -255,6 +289,11 @@ class _ChannelLogo extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
+    final dpr = MediaQuery.devicePixelRatioOf(context);
+    final fallback = Container(
+      color: cs.surfaceContainerHigh,
+      child: Icon(Icons.live_tv, color: cs.onSurfaceVariant, size: 24),
+    );
     return ClipRRect(
       borderRadius: BorderRadius.circular(Dimens.channelLogoRadius),
       child: SizedBox(
@@ -262,21 +301,15 @@ class _ChannelLogo extends StatelessWidget {
         height: Dimens.channelLogoSize,
         child: url.isNotEmpty
             ? CachedNetworkImage(
-                imageUrl:    url,
-                fit:         BoxFit.cover,
+                imageUrl:       url,
+                fit:            BoxFit.cover,
+                memCacheWidth:  (Dimens.channelLogoSize * dpr).round(),
+                fadeInDuration: const Duration(milliseconds: 180),
                 placeholder: (_, __) =>
-                    Container(color: cs.surfaceContainerHighest),
-                errorWidget: (_, __, ___) => Container(
-                  color: cs.surfaceContainerHighest,
-                  child: Icon(Icons.live_tv,
-                      color: cs.onSurfaceVariant, size: 24),
-                ),
+                    Container(color: cs.surfaceContainerHigh),
+                errorWidget: (_, __, ___) => fallback,
               )
-            : Container(
-                color: cs.surfaceContainerHighest,
-                child: Icon(Icons.live_tv,
-                    color: cs.onSurfaceVariant, size: 24),
-              ),
+            : fallback,
       ),
     );
   }
@@ -296,31 +329,45 @@ class _EpgLine extends ConsumerWidget {
     return async.when(
       loading: () => const SizedBox.shrink(),
       error:   (_, __) => const SizedBox.shrink(),
-      data: (prog) {
-        if (prog == null) return const SizedBox.shrink();
-        return Row(
+      data: (nn) {
+        final prog = nn.now;
+        final next = nn.next;
+        if (prog == null && next == null) return const SizedBox.shrink();
+        final style = Theme.of(context).textTheme.labelMedium?.copyWith(
+            fontWeight: FontWeight.w400, color: cs.onSurfaceVariant);
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
           children: [
-            Expanded(
-              child: Text(
-                prog.title,
-                maxLines:  1,
-                overflow:  TextOverflow.ellipsis,
-                style:     TextStyle(
-                    fontSize: TextSize.caption,
-                    color:    cs.onSurfaceVariant),
+            if (prog != null)
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(prog.title,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: style),
+                  ),
+                  const SizedBox(width: 4),
+                  SizedBox(
+                    width: 40,
+                    child: LinearProgressIndicator(
+                      value:            prog.progress,
+                      backgroundColor:  cs.surfaceContainerHighest,
+                      color:            cs.primary,
+                      minHeight:        3,
+                      borderRadius:     BorderRadius.circular(2),
+                    ),
+                  ),
+                ],
               ),
-            ),
-            const SizedBox(width: 4),
-            SizedBox(
-              width: 40,
-              child: LinearProgressIndicator(
-                value:            prog.progress,
-                backgroundColor:  cs.surfaceContainerHighest,
-                color:            AppColors.accent,
-                minHeight:        3,
-                borderRadius:     BorderRadius.circular(2),
+            if (next != null)
+              Text(
+                AppLocalizations.of(context).epgNextProgram(next.title),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: style?.copyWith(fontSize: 11),
               ),
-            ),
           ],
         );
       },

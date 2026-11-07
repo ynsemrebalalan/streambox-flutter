@@ -36,8 +36,10 @@ class PurchasesService {
   PurchasesService._();
   static final PurchasesService instance = PurchasesService._();
 
-  /// RevenueCat'te tanımlı entitlement adı (Dashboard ile aynı).
-  static const String entitlementId = 'pro';
+  /// RevenueCat'te tanımlı entitlement adı (Dashboard ile aynı: "İPTV Ai Player Pro").
+  /// Eski ad 'pro' ve "herhangi aktif entitlement" fallback olarak kalır (Android ile aynı kural).
+  static const String entitlementId = 'İPTV Ai Player Pro';
+  static const String legacyEntitlementId = 'pro';
 
   bool _configured = false;
 
@@ -58,6 +60,34 @@ class PurchasesService {
   /// configure tamamlanmadan gelen kimlik işlemleri burada bekler.
   String? _pendingAppUserId;
   bool _pendingLogOut = false;
+
+  /// logIn / logOut cagrilari SIRAYLA calisir. Auth akisi (signOut → anonim
+  /// yeniden giris) logOut + logIn'i art arda tetikliyor; paralel kosarlarsa
+  /// logOut, logIn'den SONRA bitip kullaniciyi yeni bir RC anonim ID'sinde
+  /// birakabiliyordu.
+  Future<void> _identityQueue = Future.value();
+
+  /// Her gercek logOut'ta artar. Notifier downgrade korumasini kimlik
+  /// sifirlandiginda uygulamaz (cikis yapan kullanicinin Pro'su tasinmasin).
+  int _identityEpoch = 0;
+  int get identityEpoch => _identityEpoch;
+
+  /// Son satin alma — receipt dogrulama gecikmesinde 5 dk iyimser Pro.
+  String? lastPurchasedProductId;
+  DateTime? lastPurchaseAt;
+
+  /// CustomerInfo gercek bilgi tasiyor mu (aktif ya da inaktif en az bir
+  /// entitlement)? Bos info RC lag / ag hatasi olabilir (Android ile ayni).
+  static bool isAuthoritative(CustomerInfo info) =>
+      info.entitlements.active.isNotEmpty || info.entitlements.all.isNotEmpty;
+
+  Future<void> _serialized(Future<void> Function() op) {
+    final next = _identityQueue.then((_) => op()).catchError((Object e) {
+      debugPrint('[Purchases] identity op failed: $e');
+    });
+    _identityQueue = next;
+    return next;
+  }
 
   /// `configure` çağrılmış mı? `entitlementProvider` cached false döner
   /// configure edilmediyse — initialization race'i önler.
@@ -153,12 +183,14 @@ class PurchasesService {
       debugPrint('[Purchases] logIn kuyruga alindi (RC henuz configure degil)');
       return;
     }
-    try {
-      final result = await Purchases.logIn(uid);
-      _emit(result.customerInfo);
-    } catch (e) {
-      debugPrint('[Purchases] logIn fail: $e');
-    }
+    await _serialized(() async {
+      try {
+        final result = await Purchases.logIn(uid);
+        _emit(result.customerInfo);
+      } catch (e) {
+        debugPrint('[Purchases] logIn fail: $e');
+      }
+    });
   }
 
   /// SADECE kullanıcı gerçekten hesabından çıktığında çağır. Auth stream'inin
@@ -170,13 +202,16 @@ class PurchasesService {
       _pendingAppUserId = null;
       return;
     }
-    try {
-      final info = await Purchases.logOut();
-      _emit(info);
-    } catch (e) {
-      // RC anon user'da logOut throw edebilir — kabul edilebilir.
-      debugPrint('[Purchases] logOut: $e');
-    }
+    await _serialized(() async {
+      try {
+        _identityEpoch++;
+        final info = await Purchases.logOut();
+        _emit(info);
+      } catch (e) {
+        // RC anon user'da logOut throw edebilir — kabul edilebilir.
+        debugPrint('[Purchases] logOut: $e');
+      }
+    });
   }
 
   Future<void> _flushPendingIdentity() async {
@@ -239,8 +274,33 @@ class PurchasesService {
     return Purchases.getOfferings();
   }
 
+  /// Ürün başına deneme / tanıtım fiyatı uygunluğu: true / false / null
+  /// (bilinmiyor). Hata → boş harita (kart "bilinmiyor" davranır).
+  Future<Map<String, bool?>> introEligibility(List<String> productIds) async {
+    if (!_configured || productIds.isEmpty) return const {};
+    try {
+      final m =
+          await Purchases.checkTrialOrIntroductoryPriceEligibility(productIds);
+      return {
+        for (final e in m.entries)
+          e.key: switch (e.value.status) {
+            IntroEligibilityStatus.introEligibilityStatusEligible => true,
+            IntroEligibilityStatus.introEligibilityStatusIneligible => false,
+            IntroEligibilityStatus.introEligibilityStatusNoIntroOfferExists =>
+              false,
+            _ => null,
+          },
+      };
+    } catch (e) {
+      debugPrint('[Purchases] intro eligibility failed: $e');
+      return const {};
+    }
+  }
+
   Future<CustomerInfo> purchasePackage(Package pkg) async {
     final result = await Purchases.purchase(PurchaseParams.package(pkg));
+    lastPurchasedProductId = pkg.storeProduct.identifier;
+    lastPurchaseAt = DateTime.now();
     _emit(result.customerInfo);
     return result.customerInfo;
   }
@@ -264,7 +324,8 @@ class PurchasesService {
   /// (RC dashboard'unda tek "Pro" entitlement, 3 product bagli).
   Entitlement parseEntitlement(CustomerInfo? info) {
     if (info == null) return Entitlement.free;
-    var ent = info.entitlements.active[entitlementId];
+    var ent = info.entitlements.active[entitlementId] ??
+        info.entitlements.active[legacyEntitlementId];
     ent ??= info.entitlements.active.values.isNotEmpty
         ? info.entitlements.active.values.first
         : null;

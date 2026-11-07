@@ -1,29 +1,33 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:package_info_plus/package_info_plus.dart';
-import 'package:url_launcher/url_launcher.dart';
 import '../../core/providers/app_providers.dart';
 import '../../core/router/app_router.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/theme/app_tokens.dart';
 import '../../core/utils/responsive.dart';
 import '../../data/repositories/settings_repository.dart';
-import '../../data/services/epg_presets.dart';
-import '../../data/services/epg_service.dart';
 import '../../l10n/generated/app_localizations.dart';
 import '../auth/data/auth_state.dart';
 import '../auth/providers/auth_providers.dart';
 import '../billing/providers/purchases_providers.dart';
 import '../billing/widgets/paywall_trigger.dart';
+import '../billing/widgets/paywall_widgets.dart';
 import '../cloud_sync/widgets/cloud_sync_tile.dart';
 import '../epg/widgets/epg_auto_refresh_tile.dart';
+import '../onboarding/legal_notice_screen.dart';
 import '../other_apps/other_apps_screen.dart';
+import 'logic/locale_label.dart';
+import 'services/review_service.dart';
+import 'widgets/ai_player_settings.dart';
+import 'widgets/feedback_dialog.dart';
+import 'widgets/settings_data_tiles.dart';
 
 // ── State ─────────────────────────────────────────────────────────────────────
 
 class SettingsState {
-  final String epgUrl;
   final String openAiApiKey;
   final String openAiLanguage;
   final String groqProxyUrl;
@@ -34,7 +38,6 @@ class SettingsState {
   final String subtitleBgColor;
 
   const SettingsState({
-    this.epgUrl           = '',
     this.openAiApiKey     = '',
     this.openAiLanguage   = '',
     this.groqProxyUrl     = '',
@@ -46,7 +49,6 @@ class SettingsState {
   });
 
   SettingsState copyWith({
-    String? epgUrl,
     String? openAiApiKey,
     String? openAiLanguage,
     String? groqProxyUrl,
@@ -56,7 +58,6 @@ class SettingsState {
     String? subtitleTextColor,
     String? subtitleBgColor,
   }) => SettingsState(
-    epgUrl:            epgUrl            ?? this.epgUrl,
     openAiApiKey:      openAiApiKey      ?? this.openAiApiKey,
     openAiLanguage:    openAiLanguage    ?? this.openAiLanguage,
     groqProxyUrl:      groqProxyUrl      ?? this.groqProxyUrl,
@@ -81,7 +82,6 @@ class SettingsScreenNotifier extends AsyncNotifier<SettingsState> {
     final repo = ref.read(settingsRepoProvider);
     final all  = await repo.getAll();
     return SettingsState(
-      epgUrl:           all[SettingsKeys.epgUrl]           ?? '',
       openAiApiKey:     all[SettingsKeys.openAiApiKey]     ?? '',
       openAiLanguage:   all[SettingsKeys.openAiLanguage]   ?? '',
       groqProxyUrl:     all[SettingsKeys.groqProxyUrl]     ?? '',
@@ -92,7 +92,6 @@ class SettingsScreenNotifier extends AsyncNotifier<SettingsState> {
     );
   }
 
-  void setEpgUrl(String v) => _update((s) => s.copyWith(epgUrl: v));
   void setSubtitleFontSize(String v) {
     _update((s) => s.copyWith(subtitleFontSize: v));
     ref.read(settingsRepoProvider).set(SettingsKeys.subtitleFontSize, v);
@@ -104,15 +103,6 @@ class SettingsScreenNotifier extends AsyncNotifier<SettingsState> {
   void setSubtitleBgColor(String v) {
     _update((s) => s.copyWith(subtitleBgColor: v));
     ref.read(settingsRepoProvider).set(SettingsKeys.subtitleBgColor, v);
-  }
-
-  Future<void> save() async {
-    final s = state.value;
-    if (s == null) return;
-    _update((st) => st.copyWith(isSaving: true));
-    final repo = ref.read(settingsRepoProvider);
-    await repo.set(SettingsKeys.epgUrl, s.epgUrl);
-    _update((st) => st.copyWith(isSaving: false));
   }
 
   void _update(SettingsState Function(SettingsState) fn) {
@@ -141,8 +131,6 @@ class SettingsScreen extends ConsumerStatefulWidget {
 }
 
 class _SettingsScreenState extends ConsumerState<SettingsScreen> {
-  final _epgCtrl = TextEditingController();
-  bool _initialized = false;
   String _appVersion = '';
 
   @override
@@ -165,13 +153,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           body: Center(child: CircularProgressIndicator())),
       error: (e, _) => Scaffold(
           body: Center(child: Text(l.errorWithDetails('$e')))),
-      data: (state) {
-        if (!_initialized) {
-          _epgCtrl.text = state.epgUrl;
-          _initialized = true;
-        }
-        return _buildScaffold(context, state);
-      },
+      data: (state) => _buildScaffold(context, state),
     );
   }
 
@@ -181,29 +163,13 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     return Scaffold(
       appBar: AppBar(
         title:   Text(l.settingsTitle),
-        leading: BackButton(onPressed: () => context.go(AppRoutes.home)),
-        actions: [
-          if (state.isSaving)
-            const Padding(
-              padding: EdgeInsets.all(14),
-              child: SizedBox(
-                  width: 20, height: 20,
-                  child: CircularProgressIndicator(strokeWidth: 2)),
-            )
-          else
-            IconButton(
-              icon:    const Icon(Icons.save_outlined),
-              tooltip: l.save,
-              onPressed: () async {
-                await ref.read(settingsScreenProvider.notifier).save();
-                if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text(l.settingsSaved)),
-                  );
-                }
-              },
-            ),
-        ],
+        // Diger ekranlarla tutarli: geri = pop. Yigin yoksa (deep link /
+        // context.go ile gelindiyse) Home'a dus.
+        leading: BackButton(
+          onPressed: () => context.canPop()
+              ? context.pop()
+              : context.go(AppRoutes.home),
+        ),
       ),
       body: ResponsiveCenter(
         maxWidth: Responsive.formMaxWidth(context),
@@ -223,14 +189,19 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             _GroupedCard(children: const [_AppearanceSection()]),
 
             _SectionLabel(text: l.settingsEpgSection),
-            _GroupedCard(
-                children: [_EpgSection(epgCtrl: _epgCtrl, state: state)]),
+            _GroupedCard(children: const [_EpgSection()]),
 
             _SectionLabel(text: l.settingsSubtitleSection),
             _GroupedCard(children: [_SubtitleSection(state: state)]),
 
+            _SectionLabel(text: l.settingsAiSection),
+            _GroupedCard(children: const [AiSubtitleSettingsSection()]),
+
             _SectionLabel(text: l.settingsPlayerSection),
             _GroupedCard(children: const [_PlayerSection()]),
+
+            _SectionLabel(text: l.settingsSupportSection),
+            _GroupedCard(children: const [_SupportSection()]),
 
             _SectionLabel(text: l.settingsAboutSection),
             _GroupedCard(children: [_AboutSection(appVersion: _appVersion)]),
@@ -240,11 +211,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     );
   }
 
-  @override
-  void dispose() {
-    _epgCtrl.dispose();
-    super.dispose();
-  }
 }
 
 // ── Profile Header ──────────────────────────────────────────────────────────
@@ -284,19 +250,19 @@ class _ProfileHeaderCard extends ConsumerWidget {
                     begin: Alignment.topLeft,
                     end:   Alignment.bottomRight,
                     colors: isPro
-                        ? const [Color(0xFFFFD54F), Color(0xFFFF8F00)]
+                        ? [cs.tertiary, cs.primary]
                         : [cs.primary, cs.tertiary],
                   ),
                 ),
                 alignment: Alignment.center,
                 child: initial != null
                     ? Text(initial,
-                        style: const TextStyle(
+                        style: TextStyle(
                             fontSize: 22,
                             fontWeight: FontWeight.w700,
-                            color: Colors.white))
-                    : const Icon(Icons.person_outline,
-                        size: 26, color: Colors.white),
+                            color: cs.onPrimary))
+                    : Icon(Icons.person_outline,
+                        size: 26, color: cs.onPrimary),
               ),
               const SizedBox(width: Spacing.md),
               Expanded(
@@ -316,15 +282,13 @@ class _ProfileHeaderCard extends ConsumerWidget {
                           : (isAuth ? l.authFreeTier : l.settingsTapToSignIn),
                       style: TextStyle(
                           fontSize: 13,
-                          color: isPro
-                              ? const Color(0xFFFF8F00)
-                              : cs.onSurfaceVariant,
+                          color: isPro ? cs.primary : cs.onSurfaceVariant,
                           fontWeight: isPro ? FontWeight.w600 : null),
                     ),
                   ],
                 ),
               ),
-              if (!isPro && isAuth)
+              if (!isPro)
                 FilledButton.tonal(
                   style: FilledButton.styleFrom(
                     visualDensity: VisualDensity.compact,
@@ -336,18 +300,6 @@ class _ProfileHeaderCard extends ConsumerWidget {
                     extra: <String, dynamic>{'trigger': 'settingsCta'},
                   ),
                   child: Text(l.authUpgradeToPro,
-                      style: const TextStyle(
-                          fontSize: 12, fontWeight: FontWeight.w600)),
-                )
-              else if (!isAuth)
-                FilledButton(
-                  style: FilledButton.styleFrom(
-                    visualDensity: VisualDensity.compact,
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 16, vertical: 8),
-                  ),
-                  onPressed: () => context.push(AppRoutes.login),
-                  child: Text(l.authSignInButton,
                       style: const TextStyle(
                           fontSize: 12, fontWeight: FontWeight.w600)),
                 )
@@ -389,17 +341,19 @@ class _SectionLabel extends StatelessWidget {
             Container(
               padding:
                   const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              // Tema rol cifti (tertiaryContainer / onTertiaryContainer) M3'te
+              // AA kontrastli; sabit amber premium temalarda okunmuyordu.
               decoration: BoxDecoration(
-                color: const Color(0xFFFFB300).withValues(alpha: 0.18),
+                color: cs.tertiaryContainer,
                 borderRadius: BorderRadius.circular(4),
               ),
-              child: const Text(
+              child: Text(
                 'PRO',
                 style: TextStyle(
-                    fontSize: 9,
+                    fontSize: 10,
                     fontWeight: FontWeight.w800,
                     letterSpacing: 0.6,
-                    color: Color(0xFFFF8F00)),
+                    color: cs.onTertiaryContainer),
               ),
             ),
           ],
@@ -501,6 +455,10 @@ class _ContentSection extends ConsumerWidget {
           subtitle: l.settingsCategoryFilterSubtitle,
           onTap: () => context.push(AppRoutes.categoryFilter),
         ),
+        const _TileDivider(),
+        const PlaylistAutoRefreshTile(),
+        const _TileDivider(),
+        const ClearWatchHistoryTile(),
       ],
     );
   }
@@ -534,7 +492,7 @@ class _AppearanceSection extends ConsumerWidget {
         _NavTile(
           icon: Icons.language,
           title: l.language,
-          trailingText: _localeLabel(l, ref.watch(localeProvider)),
+          trailingText: localeLabel(l, ref.watch(localeProvider)),
           onTap: () => _showLanguagePicker(context, ref, l),
         ),
       ],
@@ -562,92 +520,15 @@ class _AppearanceSection extends ConsumerWidget {
 
 // ── EPG section ─────────────────────────────────────────────────────────────
 
-class _EpgSection extends ConsumerWidget {
-  final TextEditingController epgCtrl;
-  final SettingsState state;
-  const _EpgSection({required this.epgCtrl, required this.state});
+class _EpgSection extends StatelessWidget {
+  const _EpgSection();
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     final l = AppLocalizations.of(context);
-    final cs = Theme.of(context).colorScheme;
-
     return Column(
       children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(
-              Spacing.lg, Spacing.md, Spacing.lg, Spacing.md),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              TextField(
-                controller: epgCtrl,
-                decoration: InputDecoration(
-                  labelText: l.settingsEpgUrlLabel,
-                  hintText:  'https://epg.example.com/epg.xml.gz',
-                  isDense: true,
-                  border:    const OutlineInputBorder(),
-                  prefixIcon: const Icon(Icons.rss_feed, size: 20),
-                ),
-                onChanged: (v) =>
-                    ref.read(settingsScreenProvider.notifier).setEpgUrl(v),
-              ),
-              const SizedBox(height: Spacing.sm),
-              Wrap(
-                spacing:    Spacing.sm,
-                runSpacing: Spacing.sm,
-                children: [
-                  for (final p in kTurkishEpgPresets)
-                    _EpgPresetChip(
-                      label:    p.label,
-                      selected: state.epgUrl == p.url,
-                      onTap: () {
-                        epgCtrl.text = p.url;
-                        ref.read(settingsScreenProvider.notifier).setEpgUrl(p.url);
-                      },
-                    ),
-                ],
-              ),
-              const SizedBox(height: Spacing.sm),
-              SizedBox(
-                width: double.infinity,
-                child: OutlinedButton.icon(
-                  icon:  const Icon(Icons.sync, size: 18),
-                  label: Text(l.settingsEpgRefreshNow),
-                  style: OutlinedButton.styleFrom(
-                    visualDensity: VisualDensity.compact,
-                  ),
-                  onPressed: () async {
-                    await ref.read(settingsScreenProvider.notifier).save();
-                    final activeId = ref.read(activePlaylistProvider);
-                    if (activeId.isEmpty) {
-                      if (context.mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text(l.settingsSelectPlaylistFirst)),
-                        );
-                      }
-                      return;
-                    }
-                    try {
-                      await ref.read(epgServiceProvider).syncEpg(activeId);
-                      if (context.mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text(l.settingsEpgUpdated)),
-                        );
-                      }
-                    } catch (e) {
-                      if (context.mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text(l.settingsEpgError('$e'))),
-                        );
-                      }
-                    }
-                  },
-                ),
-              ),
-            ],
-          ),
-        ),
+        const EpgUrlEditor(),
         const _TileDivider(),
         _NavTile(
           icon: Icons.live_tv,
@@ -655,11 +536,7 @@ class _EpgSection extends ConsumerWidget {
           onTap: () => context.push(AppRoutes.epgGuide),
         ),
         const _TileDivider(),
-        // Subtle background tint so Pro tile siniri belirgin olsun
-        Container(
-          color: cs.surface.withValues(alpha: 0.0),
-          child: const EpgAutoRefreshTile(),
-        ),
+        const EpgAutoRefreshTile(),
       ],
     );
   }
@@ -720,6 +597,8 @@ class _SubtitleSection extends ConsumerWidget {
               .read(settingsScreenProvider.notifier)
               .setSubtitleBgColor(v),
         ),
+        const _TileDivider(),
+        const SubtitleDefaultOnTile(),
       ],
     );
   }
@@ -737,9 +616,15 @@ class _PlayerSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Column(
+    // iOS'ta PiP çalışmıyor (media_kit texture render) → ayar gizli.
+    final showPip = defaultTargetPlatform != TargetPlatform.iOS;
+    return Column(
       children: [
-        _PipAutoTile(),
+        const BufferDurationTile(),
+        if (showPip) ...[
+          const _TileDivider(),
+          const _PipAutoTile(),
+        ],
       ],
     );
   }
@@ -781,29 +666,63 @@ class _AboutSection extends StatelessWidget {
           ),
         ),
         const _TileDivider(),
+        // Apple 5.1.1(i): Gizlilik + Kullanim Sartlari her zaman erisilebilir.
+        // URL'ler Android SettingsScreen ile ayni.
+        _NavTile(
+          icon: Icons.privacy_tip_outlined,
+          title: l.paywallPrivacyLink,
+          onTap: () => openExternalUrl(LegalUrls.privacy),
+        ),
+        const _TileDivider(),
+        _NavTile(
+          icon: Icons.description_outlined,
+          title: l.paywallTermsLink,
+          onTap: () => openExternalUrl(LegalUrls.terms),
+        ),
+        const _TileDivider(),
         _NavTile(
           icon: Icons.gavel_outlined,
           title: l.settingsLegalNotice,
-          onTap: () =>
-              _launchUrl('https://iptvaiplayer.com.tr/index.php'),
+          onTap: () => Navigator.of(context).push(MaterialPageRoute<void>(
+              builder: (_) => const LegalNoticeScreen())),
         ),
         const _TileDivider(),
         _NavTile(
           icon: Icons.delete_outline,
           title: l.settingsDataDeletion,
           subtitle: l.settingsDataDeletionSubtitle,
-          onTap: () =>
-              _launchUrl('https://iptvaiplayer.com.tr/verisilme.php'),
+          onTap: () => openExternalUrl(LegalUrls.dataDeletion),
         ),
       ],
     );
   }
+}
 
-  Future<void> _launchUrl(String url) async {
-    final uri = Uri.parse(url);
-    if (await canLaunchUrl(uri)) {
-      await launchUrl(uri, mode: LaunchMode.externalApplication);
-    }
+// ── Support section (geri bildirim + degerlendirme) ────────────────────────
+
+class _SupportSection extends StatelessWidget {
+  const _SupportSection();
+
+  @override
+  Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context);
+    return Column(
+      children: [
+        _NavTile(
+          icon: Icons.feedback_outlined,
+          title: l.settingsFeedbackTitle,
+          subtitle: l.settingsFeedbackSubtitle,
+          onTap: () => showFeedbackDialog(context),
+        ),
+        const _TileDivider(),
+        _NavTile(
+          icon: Icons.star_outline,
+          title: l.settingsRateApp,
+          subtitle: l.settingsRateAppSubtitle,
+          onTap: PlaybackMilestones.openStoreListing,
+        ),
+      ],
+    );
   }
 }
 
@@ -940,65 +859,7 @@ class _PipAutoTileState extends ConsumerState<_PipAutoTile> {
   }
 }
 
-// ── EPG preset chip ──────────────────────────────────────────────────────────
-
-class _EpgPresetChip extends StatelessWidget {
-  final String label;
-  final bool   selected;
-  final VoidCallback onTap;
-  const _EpgPresetChip({
-    required this.label,
-    required this.selected,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    return Material(
-      color: selected ? cs.primaryContainer : cs.surfaceContainerHighest,
-      borderRadius: BorderRadius.circular(8),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(8),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              if (selected) ...[
-                Icon(Icons.check_circle, size: 14, color: cs.primary),
-                const SizedBox(width: 4),
-              ],
-              Text(label,
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight:
-                        selected ? FontWeight.bold : FontWeight.normal,
-                    color: selected
-                        ? cs.onPrimaryContainer
-                        : cs.onSurfaceVariant,
-                  )),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
 // ── Picker helpers ──────────────────────────────────────────────────────────
-
-String _localeLabel(AppLocalizations l, Locale? locale) {
-  switch (locale?.languageCode) {
-    case 'tr': return l.languageTurkish;
-    case 'en': return l.languageEnglish;
-    case 'de': return l.languageGerman;
-    case 'it': return l.languageItalian;
-    case 'ar': return l.languageArabic;
-    default:   return l.languageSystem;
-  }
-}
 
 Future<void> _showLanguagePicker(
   BuildContext context,

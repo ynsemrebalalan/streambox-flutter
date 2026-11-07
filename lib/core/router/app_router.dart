@@ -14,9 +14,9 @@ import '../../features/epg/epg_guide_screen.dart';
 import '../../features/parental/parental_lock_screen.dart';
 import '../../features/playlists/playlists_screen.dart';
 import '../../features/profiles/profiles_screen.dart';
-import '../../features/search/search_screen.dart';
 import '../../features/settings/theme_picker_screen.dart';
 import '../../features/watchlist/watchlist_screen.dart';
+import '../../l10n/generated/app_localizations.dart';
 
 abstract final class AppRoutes {
   static const disclaimer = '/disclaimer';
@@ -25,7 +25,6 @@ abstract final class AppRoutes {
   static const player     = '/player';
   static const settings   = '/settings';
   static const playlists  = '/playlists';
-  static const search         = '/search';
   static const categoryFilter = '/category-filter';
   static const login    = '/login';
   static const register = '/register';
@@ -73,45 +72,18 @@ final appRouter = GoRouter(
     ),
     GoRoute(
       path: AppRoutes.player,
-      builder: (ctx, state) {
-        // Defensive: extra null veya yanlis tipte gelirse home'a geri don.
-        // Player'a manuel navigation hatasinda crash yerine graceful fallback.
-        final raw = state.extra;
-        if (raw is! Map) {
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            if (ctx.mounted) ctx.go(AppRoutes.home);
-          });
-          return const Scaffold(
-            backgroundColor: Colors.black,
-            body: Center(child: CircularProgressIndicator()),
-          );
-        }
-        final extra = Map<String, dynamic>.from(raw);
-        final channelId  = extra['channelId']  as String? ?? '';
-        final channelUrl = extra['channelUrl'] as String? ?? '';
-        final title      = extra['title']      as String? ?? '';
-        if (channelUrl.isEmpty) {
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            if (ctx.mounted) ctx.go(AppRoutes.home);
-          });
-          return const Scaffold(
-            backgroundColor: Colors.black,
-            body: Center(
-              child: Text(
-                'Yayin URL bulunamadi',
-                style: TextStyle(color: Colors.white70),
-              ),
-            ),
-          );
-        }
-        return PlayerScreen(
-          channelId:       channelId,
-          channelUrl:      channelUrl,
-          title:           title,
-          initialPosition: extra['initialPosition'] as int? ?? 0,
-          streamType:      extra['streamType']      as String? ?? 'live',
-        );
-      },
+      // Oynatici tam ekran siyah zemine gecis: yatay slide yerine kisa fade
+      // (iOS/Android'de video ekranlari icin dogal olan).
+      pageBuilder: (ctx, state) => CustomTransitionPage<void>(
+        key: state.pageKey,
+        transitionDuration: const Duration(milliseconds: 220),
+        reverseTransitionDuration: const Duration(milliseconds: 180),
+        transitionsBuilder: (_, animation, __, child) => FadeTransition(
+          opacity: CurvedAnimation(parent: animation, curve: Curves.easeOut),
+          child: child,
+        ),
+        child: _playerPage(ctx, state),
+      ),
     ),
     GoRoute(
       path:    AppRoutes.settings,
@@ -126,13 +98,6 @@ final appRouter = GoRouter(
       builder: (ctx, state) => const CategoryFilterScreen(),
     ),
     GoRoute(
-      path:    AppRoutes.search,
-      builder: (ctx, state) {
-        final extra = state.extra as Map<String, dynamic>?;
-        return SearchScreen(playlistId: extra?['playlistId'] as String? ?? '');
-      },
-    ),
-    GoRoute(
       path:    AppRoutes.login,
       builder: (ctx, state) => const LoginScreen(),
     ),
@@ -144,14 +109,19 @@ final appRouter = GoRouter(
       path:    AppRoutes.account,
       builder: (ctx, state) => const AccountScreen(),
     ),
+    // Paywall alttan acilan modal (fullscreenDialog) — kapatma X ile.
     GoRoute(
       path: AppRoutes.paywall,
-      builder: (ctx, state) {
+      pageBuilder: (ctx, state) {
         final extra = state.extra;
         final trigger = (extra is Map && extra['trigger'] is String)
             ? extra['trigger'] as String
             : 'unknown';
-        return PaywallScreen(trigger: trigger);
+        return MaterialPage<bool>(
+          key: state.pageKey,
+          fullscreenDialog: true,
+          child: PaywallScreen(trigger: trigger),
+        );
       },
     ),
     // Phase 1 — Pro feature ekranları
@@ -177,3 +147,43 @@ final appRouter = GoRouter(
     ),
   ],
 );
+
+Widget _playerPage(BuildContext ctx, GoRouterState state) {
+  // Defensive: extra null veya yanlis tipte gelirse home'a geri don.
+  // Player'a manuel navigation hatasinda crash yerine graceful fallback.
+  final raw = state.extra;
+  if (raw is! Map) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (ctx.mounted) ctx.go(AppRoutes.home);
+    });
+    return const Scaffold(
+      backgroundColor: Colors.black,
+      body: Center(child: CircularProgressIndicator()),
+    );
+  }
+  final extra = Map<String, dynamic>.from(raw);
+  final channelId  = extra['channelId']  as String? ?? '';
+  final channelUrl = extra['channelUrl'] as String? ?? '';
+  final title      = extra['title']      as String? ?? '';
+  if (channelUrl.isEmpty) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (ctx.mounted) ctx.go(AppRoutes.home);
+    });
+    return Scaffold(
+      backgroundColor: Colors.black,
+      body: Center(
+        child: Text(
+          AppLocalizations.of(ctx).playerUrlMissing,
+          style: const TextStyle(color: Colors.white70),
+        ),
+      ),
+    );
+  }
+  return PlayerScreen(
+    channelId:       channelId,
+    channelUrl:      channelUrl,
+    title:           title,
+    initialPosition: extra['initialPosition'] as int? ?? 0,
+    streamType:      extra['streamType']      as String? ?? 'live',
+  );
+}

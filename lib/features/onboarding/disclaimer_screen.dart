@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/providers/app_providers.dart';
 import '../../core/theme/app_colors.dart';
+import '../../core/theme/app_theme.dart';
 import '../../core/utils/responsive.dart';
 import '../../data/repositories/settings_repository.dart';
 import '../../l10n/generated/app_localizations.dart';
@@ -47,130 +48,138 @@ class _DisclaimerScreenState extends ConsumerState<DisclaimerScreen> {
   }
 
   void _openLegal() {
-    Navigator.of(context).push(MaterialPageRoute(
-      builder: (_) => const LegalNoticeScreen(),
-      fullscreenDialog: true,
-    ));
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => const LegalNoticeScreen(),
+        fullscreenDialog: true,
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context);
-    return Scaffold(
-      backgroundColor: AppColors.darkBg,
-      body: SafeArea(
-        child: ResponsiveCenter(
-          maxWidth: Responsive.formMaxWidth(context),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 24),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const Spacer(),
-                Icon(Icons.play_circle_outline,
-                    size: 72, color: AppColors.accent),
-                const SizedBox(height: 20),
-                Text(
-                  l.homeAppTitle,
-                  style: const TextStyle(
-                    fontSize: 28,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
+    // Sabit koyu zemin: tema aydinlik olsa bile butonlar/metinler koyu
+    // temanin rollerini kullansin (aksi halde lacivert primary gorunmez).
+    return Theme(
+      data: AppTheme.dark,
+      child: Scaffold(
+        backgroundColor: AppColors.darkBg,
+        body: SafeArea(
+          child: ResponsiveCenter(
+            maxWidth: Responsive.formMaxWidth(context),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Spacer(),
+                  Icon(
+                    Icons.play_circle_outline,
+                    size: 72,
+                    color: AppColors.accent,
                   ),
-                ),
-                const SizedBox(height: 12),
-                Text(
-                  l.disclaimerWelcome,
-                  style: const TextStyle(
-                    fontSize: 18,
-                    color: Colors.white70,
-                  ),
-                ),
-                const SizedBox(height: 28),
-                // Kisa aciklama (EN + TR), VLC/GSE pattern
-                Container(
-                  padding: const EdgeInsets.all(18),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.04),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(
-                      color: Colors.white.withValues(alpha: 0.08),
+                  const SizedBox(height: 20),
+                  Text(
+                    l.homeAppTitle,
+                    style: const TextStyle(
+                      fontSize: 28,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
                     ),
                   ),
-                  child: Column(
-                    children: [
-                      Text(
-                        l.disclaimerBodyEn,
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(
-                          fontSize: 13,
-                          height: 1.5,
-                          color: Colors.white70,
-                        ),
-                      ),
-                      const SizedBox(height: 10),
-                      const Divider(height: 1, color: Colors.white12),
-                      const SizedBox(height: 10),
-                      Text(
-                        l.disclaimerBodyTr,
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(
-                          fontSize: 12,
-                          height: 1.5,
-                          color: Colors.white54,
-                        ),
-                      ),
-                    ],
+                  const SizedBox(height: 12),
+                  Text(
+                    l.disclaimerWelcome,
+                    style: const TextStyle(fontSize: 18, color: Colors.white70),
                   ),
-                ),
-                const SizedBox(height: 16),
-                TextButton.icon(
-                  onPressed: _openLegal,
-                  icon: const Icon(Icons.description_outlined, size: 18),
-                  label: Text(l.disclaimerLegalNoticeButton),
-                  style: TextButton.styleFrom(
-                    foregroundColor: Colors.white54,
-                  ),
-                ),
-                const Spacer(),
-                SizedBox(
-                  width: double.infinity,
-                  height: 52,
-                  child: FilledButton(
-                    onPressed: _accepting ? null : _accept,
-                    style: FilledButton.styleFrom(
-                      backgroundColor: AppColors.accent,
-                      foregroundColor: Colors.black,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
+                  const SizedBox(height: 28),
+                  // Kisa aciklama (EN + TR), VLC/GSE pattern
+                  Container(
+                    padding: const EdgeInsets.all(18),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.04),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: Colors.white.withValues(alpha: 0.08),
                       ),
                     ),
-                    child: _accepting
-                        ? const SizedBox(
-                            height: 20,
-                            width: 20,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              color: Colors.black,
-                            ),
-                          )
-                        : Text(
-                            l.disclaimerContinue,
-                            style: const TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 16,
-                            ),
+                    child: Column(
+                      children: [
+                        Text(
+                          l.disclaimerBodyEn,
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            fontSize: 13,
+                            height: 1.5,
+                            color: Colors.white70,
                           ),
+                        ),
+                        const SizedBox(height: 10),
+                        const Divider(height: 1, color: Colors.white12),
+                        const SizedBox(height: 10),
+                        Text(
+                          l.disclaimerBodyTr,
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            fontSize: 12,
+                            height: 1.5,
+                            color: Colors.white54,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-                const SizedBox(height: 10),
-                Text(
-                  l.disclaimerFooter,
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(fontSize: 11, color: Colors.white38),
-                ),
-                const SizedBox(height: 20),
-              ],
+                  const SizedBox(height: 16),
+                  TextButton.icon(
+                    onPressed: _openLegal,
+                    icon: const Icon(Icons.description_outlined, size: 18),
+                    label: Text(l.disclaimerLegalNoticeButton),
+                    style: TextButton.styleFrom(
+                      foregroundColor: Colors.white54,
+                    ),
+                  ),
+                  const Spacer(),
+                  SizedBox(
+                    width: double.infinity,
+                    height: 52,
+                    child: FilledButton(
+                      onPressed: _accepting ? null : _accept,
+                      style: FilledButton.styleFrom(
+                        backgroundColor: AppColors.accent,
+                        foregroundColor: Colors.black,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      child:
+                          _accepting
+                              ? const SizedBox(
+                                height: 20,
+                                width: 20,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: Colors.black,
+                                ),
+                              )
+                              : Text(
+                                l.disclaimerContinue,
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 16,
+                                ),
+                              ),
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  Text(
+                    l.disclaimerFooter,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(fontSize: 11, color: Colors.white60),
+                  ),
+                  const SizedBox(height: 20),
+                ],
+              ),
             ),
           ),
         ),

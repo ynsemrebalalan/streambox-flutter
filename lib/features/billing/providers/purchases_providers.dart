@@ -3,10 +3,12 @@ import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:purchases_flutter/purchases_flutter.dart' show CustomerInfo;
 
 import '../../../data/repositories/settings_repository.dart';
 import '../data/entitlement.dart';
 import '../data/purchases_service.dart';
+import '../logic/entitlement_resolver.dart';
 
 /// Singleton service.
 final purchasesServiceProvider = Provider<PurchasesService>((ref) {
@@ -50,6 +52,12 @@ class PurchasesNotifier extends AsyncNotifier<Entitlement> {
   bool _ready = false;
   bool _disposed = false;
 
+  /// Downgrade korumasinin (bos info + onceden Pro) basladigi an.
+  DateTime? _proKeptSince;
+
+  /// Son gorulen RC kimlik epoch'u — degistiyse (logOut) koruma uygulanmaz.
+  int _seenEpoch = 0;
+
   @override
   Future<Entitlement> build() async {
     final svc = ref.read(purchasesServiceProvider);
@@ -59,9 +67,10 @@ class PurchasesNotifier extends AsyncNotifier<Entitlement> {
 
     // 1) Kalıcı stream'e subscribe — configure sonrası gelen her güncelleme
     //    (logIn/logOut/purchase/refresh/RC push) buradan akar.
+    _seenEpoch = svc.identityEpoch;
     final sub = svc.customerInfoStream().listen((info) {
       if (!_ready) return; // build sonunda latestInfo ile yakalanacak
-      _apply(svc.parseEntitlement(info));
+      _applyInfo(info);
     });
     ref.onDispose(sub.cancel);
 
@@ -86,7 +95,7 @@ class PurchasesNotifier extends AsyncNotifier<Entitlement> {
     if (latest != null) {
       final ent = svc.parseEntitlement(latest);
       if (ent != initial) {
-        scheduleMicrotask(() => _apply(ent));
+        scheduleMicrotask(() => _applyInfo(latest));
       }
     }
     return initial;
@@ -116,6 +125,20 @@ class PurchasesNotifier extends AsyncNotifier<Entitlement> {
     }
   }
 
+  /// Pro kapisindan once: RC'den taze durumu en fazla [timeout] bekle
+  /// (Android `refreshIsPro`). Zaman asiminda bilinen son deger doner —
+  /// acilista RC gec kalinca Pro kullanici paywall'a dusmesin.
+  Future<bool> refreshPro({
+    Duration timeout = const Duration(seconds: 2),
+  }) async {
+    try {
+      await refresh().timeout(timeout);
+      // Stream emit'i mikro-gorevde state'e duser.
+      await Future<void>.delayed(Duration.zero);
+    } catch (_) {}
+    return state.valueOrNull?.isPro ?? false;
+  }
+
   /// UI'dan tetiklenen restore. RC throw eder → UI snackbar'a düşer.
   Future<void> restore() async {
     final svc = ref.read(purchasesServiceProvider);
@@ -139,6 +162,35 @@ class PurchasesNotifier extends AsyncNotifier<Entitlement> {
   /// CustomerInfo'yu parse edip state'i hemen guncelle. Paywall purchase
   /// callback'inden cagrilir, "tikledim ama Pro acilmadi" race'i engeller.
   void setEntitlement(Entitlement ent) => _apply(ent);
+
+  /// RC CustomerInfo → state, Android downgrade korumasi ile
+  /// ([resolveEntitlement]).
+  void _applyInfo(CustomerInfo info) {
+    if (_disposed) return;
+    final svc = ref.read(purchasesServiceProvider);
+    final parsed = svc.parseEntitlement(info);
+    final epoch = svc.identityEpoch;
+    final identityReset = epoch != _seenEpoch;
+    _seenEpoch = epoch;
+    final authoritative = PurchasesService.isAuthoritative(info);
+    final now = DateTime.now();
+    final resolved = resolveEntitlement(
+      parsed: parsed,
+      current: state.valueOrNull ?? Entitlement.free,
+      infoIsAuthoritative: authoritative,
+      now: now,
+      lastPurchasedProductId: svc.lastPurchasedProductId,
+      lastPurchaseAt: svc.lastPurchaseAt,
+      proKeptSince: _proKeptSince,
+      identityReset: identityReset,
+    );
+    final kept = !authoritative && !parsed.isPro && resolved.isPro;
+    _proKeptSince = kept ? (_proKeptSince ?? now) : null;
+    if (kept) {
+      debugPrint('[Purchases] bos CustomerInfo — onceki Pro korunuyor');
+    }
+    _apply(resolved);
+  }
 
   void _apply(Entitlement ent) {
     if (_disposed) return;

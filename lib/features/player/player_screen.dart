@@ -1,31 +1,52 @@
 import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:media_kit_video/media_kit_video.dart';
 import 'package:screen_brightness/screen_brightness.dart';
+
 import '../../core/analytics/analytics.dart';
 import '../../core/providers/app_providers.dart';
-import '../../core/theme/app_colors.dart';
-import '../../core/theme/app_tokens.dart';
+import '../../core/router/app_router.dart';
 import '../../data/models/channel_model.dart';
-import '../../data/repositories/settings_repository.dart';
+import '../../data/services/stalker/stalker_protocol.dart';
+import '../../data/services/stalker/stalker_stream_resolver.dart';
 import '../../l10n/generated/app_localizations.dart';
 import '../billing/providers/purchases_providers.dart';
 import '../billing/widgets/paywall_trigger.dart';
 import '../home/home_provider.dart';
+import '../parental/parental_guard.dart';
+import '../settings/services/review_service.dart';
+import 'logic/ai_error.dart';
+import 'logic/ai_error_messages.dart';
+import 'logic/next_episode.dart';
+import 'logic/playback_error.dart';
+import 'logic/playback_policy.dart';
+import 'logic/supported_ai_languages.dart';
+import 'logic/track_prefs.dart';
+import 'services/ai_subtitle_gate.dart';
 import 'services/airplay_service.dart';
 import 'services/audio_session_service.dart';
+import 'services/external_player.dart';
 import 'services/pip_service.dart';
+import 'services/player_system_ui.dart';
+import 'services/player_prefs.dart';
+import 'widgets/channel_panel.dart';
+import 'widgets/error_report_dialog.dart';
+import 'widgets/player_controls.dart';
+import 'widgets/player_overlays.dart';
+import 'widgets/player_track_buttons.dart';
 import 'widgets/subtitle_overlay.dart';
 
 class PlayerScreen extends ConsumerStatefulWidget {
   final String channelId;
   final String channelUrl;
   final String title;
-  final int    initialPosition; // ms — VOD resume icin
-  final String streamType;      // 'live' | 'movie' | 'series'
+  final int initialPosition; // ms — VOD resume
+  final String streamType; // 'live' | 'movie' | 'series'
 
   const PlayerScreen({
     super.key,
@@ -33,7 +54,7 @@ class PlayerScreen extends ConsumerStatefulWidget {
     required this.channelUrl,
     required this.title,
     this.initialPosition = 0,
-    this.streamType      = 'live',
+    this.streamType = 'live',
   });
 
   @override
@@ -41,269 +62,322 @@ class PlayerScreen extends ConsumerStatefulWidget {
 }
 
 class _PlayerScreenState extends ConsumerState<PlayerScreen> {
-  late final Player       _player;
+  late final Player _player;
   late final VideoController _controller;
-  bool    _controlsVisible = true;
-  Timer?  _hideTimer;
+  bool _controlsVisible = true;
+  Timer? _hideTimer;
 
-  // ── Stall watchdog (canli yayin donma tespiti) ─────────────────────────────
-  Timer?   _watchdog;
+  // ── Stall watchdog / reconnect ────────────────────────────────────────────
+  Timer? _watchdog;
   Duration _lastPosition = Duration.zero;
   DateTime _lastProgress = DateTime.now();
-  bool     _isBuffering  = false;
-  bool     _isReconnecting = false;
-  int      _reconnectAttempts = 0;
-  /// 2026-05-25: dispose() sonrasinda _player'a erisim (race fix).
-  /// mounted bayragi yetersiz — Future.delayed sirasinda widget'tan
-  /// kopuldugunda native player pointer'ina seek crash yapabilir.
-  bool     _disposed = false;
-  StreamSubscription<bool>?     _playingSub;
-  StreamSubscription<bool>?     _bufferingSub;
-  StreamSubscription<Duration>? _positionSub;
-  StreamSubscription<String>?   _errorSub;
-  StreamSubscription<bool>?     _completedSub;
+  bool _isBuffering = false;
+  bool _isReconnecting = false;
+  int _reconnectAttempts = 0;
+  bool _disposed = false; // Future.delayed sonrası native player'a erişimi engeller
+  final _subs = <StreamSubscription<dynamic>>[];
+  String _lastError = '';
+  String? _blockingError; // yeniden bağlanma tükendi → bloklayıcı hata ekranı
 
+  static const _stallThreshold = Duration(seconds: 8);
+  static const _bufferingStallThreshold = Duration(seconds: 12);
+  static const _maxReconnectAttempts = 10;
+
+  // ── Kanal / ayarlar ───────────────────────────────────────────────────────
+  ChannelModel? _channel;
+  /// Oynatılan gerçek URL — Stalker komutu (`ffrt http://localhost/..`)
+  /// açılıştan önce `create_link` ile çözülür; diğer kaynaklarda aynısı.
+  late String _playUrl = widget.channelUrl;
+  PlayerPrefs _prefs = const PlayerPrefs();
+  final _trackStore = TrackPrefStore();
+  bool _trackPrefsApplied = false;
+  bool _hasVideo = true;
+  List<ChannelModel>? _categoryChannels;
+
+  // ── VOD ilerleme ──────────────────────────────────────────────────────────
+  Timer? _progressTimer;
+  int _progressTicks = 0;
+  bool _watchedMarked = false;
+  bool _playbackCounted = false;
+  bool _autoNextFired = false;
+  final _endDetector = EndOfMediaDetector();
+
+  // ── UI durumu ─────────────────────────────────────────────────────────────
   bool _aiSubtitleEnabled = false;
-  BoxFit _videoFit = BoxFit.contain; // 20.2: Original=contain | Fill=cover | Stretch=fill
-
-  // ── Phase 4: PiP / AirPlay durumu ──────────────────────────────────────────
+  BoxFit _videoFit = BoxFit.contain;
+  bool _orientationLocked = false;
+  double _volumeBeforeMute = 100;
   bool _inPipMode = false;
-  StreamSubscription<bool>? _pipModeSub;
-  /// Butonlarin gorunurlugu — calismayan butonu hic gosterme.
-  /// iOS: PiP desteklenmiyor (media_kit texture render), AirPlay ses icin var.
   bool _pipSupported = false;
   bool _airplaySupported = false;
 
-  // ── Swipe gesture state (sol yarı = parlaklık, sağ yarı = ses) ──────────────
-  // Android paritesi (StreamBox PlayerScreen.kt). Tuzaklar: memory
-  // `feedback_brightness_gesture_init.md` — drag eşiği 40px, min brightness
-  // 0.05, dispose'da restore zorunlu.
-  double? _initialBrightness;       // dispose'da geri yüklenir
-  double  _gestureStartBrightness = 0.0;
-  double  _gestureStartVolume = 0.0;
-  String  _gestureType  = '';        // '' | 'volume' | 'brightness'
-  double  _gestureValue = 0.0;       // 0..1 — overlay'de gösterilir
-  double  _gestureAccDy = 0.0;       // toplam dy
-  Timer?  _gestureHideTimer;
-  static const _gestureMinDy = 40.0; // titremeden ayırt etmek için
+  // Swipe: sol yarı parlaklık, sağ yarı ses (eşik 40 px, min parlaklık 0.05).
+  double? _initialBrightness;
+  double _gestureStartBrightness = 0.0;
+  double _gestureStartVolume = 0.0;
+  String _gestureType = '';
+  double _gestureValue = 0.0;
+  double _gestureAccDy = 0.0;
+  Timer? _gestureHideTimer;
+  static const _gestureMinDy = 40.0;
+  Offset? _doubleTapPos;
 
-  // ── Aksiyon feedback overlay (her buton işleminde kısa "uyarı") ─────────────
-  // Kullanıcı hangi butona basarsa bassın ekran ortasında kısa süreli bir pill
-  // belirir (örn: "Duraklatıldı", "+10 sn", "Altyazı: TR"). TV/kumanda ile
-  // kullanımda işlemin gerçekleştiğini görmek kritik.
   IconData? _actionIcon;
-  String    _actionText = '';
-  Timer?    _actionTimer;
+  String _actionText = '';
+  Alignment _actionAlign = Alignment.center;
+  Timer? _actionTimer;
 
-  void _showActionFeedback(IconData icon, String text) {
+  bool get _isLive => widget.streamType == 'live';
+
+  void _showActionFeedback(IconData icon, String text, {Alignment align = Alignment.center}) {
     if (!mounted) return;
     setState(() {
       _actionIcon = icon;
       _actionText = text;
+      _actionAlign = align;
     });
     _actionTimer?.cancel();
     _actionTimer = Timer(const Duration(milliseconds: 1100), () {
-      if (mounted) {
-        setState(() {
-          _actionText = '';
-          _actionIcon = null;
-        });
-      }
+      if (mounted) setState(() => _actionText = '');
     });
   }
-
-  // Takildi sayilan esik (saniye). IPTV kaynak donmasinda bu surede
-  // pozisyon ilerlemezse otomatik yeniden baglan.
-  static const _stallThreshold = Duration(seconds: 8);
-  // Sadece buffering'de ise biraz daha sabirli ol (agda gecici tikanma).
-  static const _bufferingStallThreshold = Duration(seconds: 12);
-  static const _maxReconnectAttempts = 10;
 
   @override
   void initState() {
     super.initState();
-    _player     = Player(
-      configuration: const PlayerConfiguration(
-        // Canli yayin icin buffer'i genisletip jitter'a dayaniklilik saglar.
-        bufferSize: 32 * 1024 * 1024, // 32 MB
-      ),
-    );
+    _player = Player(configuration: const PlayerConfiguration(bufferSize: 32 * 1024 * 1024));
     _controller = VideoController(_player);
-    // iOS: ses oturumunu SADECE oynatma penceresinde aktif tut. Acilista
-    // aktif etmek kullanicinin dinledigi muzigi bosuna susturuyordu.
+    // iOS: ses oturumu SADECE oynatma penceresinde aktif.
+    // Ref-counted: kanal degisiminde (pushReplacement) eski ekranin
+    // dispose'u yeninin actigi oturum/PiP/immersive'i geri kapatmasin.
     AudioSessionService.instance.activate();
-    _applyLiveStreamOptions();
-    _play();
-    _attachListeners();
-    _startWatchdog();
-    _startHideTimer();
-    SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
-    // Bug #1 fix: iOS Portrait Lock acikken player landscape'e donmuyordu.
-    // Player ekranina ozel olarak landscape orientation'lari aciyoruz.
-    SystemChrome.setPreferredOrientations(const [
-      DeviceOrientation.portraitUp,
-      DeviceOrientation.landscapeLeft,
-      DeviceOrientation.landscapeRight,
-    ]);
-    // Mark channel as watched
-    Future.microtask(() => ref
-        .read(homeProvider.notifier)
-        .markWatched(widget.channelId));
-
-    // ── Phase 4: PiP — auto-PiP setup. Pro user + auto pref ON ise
-    //    Home tusuna basinca otomatik PiP'e gec.
+    unawaited(PipService.instance.acquirePlayer());
+    PlayerSystemUi.acquire();
+    _applyOrientation();
     _setupAutoPip();
     _resolveCastButtons();
-    _pipModeSub = PipService.instance.modeStream.listen((inPip) {
+    _subs.add(PipService.instance.modeStream.listen((inPip) {
       if (mounted) setState(() => _inPipMode = inPip);
-    });
-    // İlk parlaklık değerini sakla — dispose'da bu değere geri dön.
-    // Ekrana özel override yapmadığımız sürece sistem değeri.
-    ScreenBrightness().application.then((b) {
-      _initialBrightness = b;
-    }).catchError((_) {});
+    }));
+    ScreenBrightness().application.then((b) => _initialBrightness = b).catchError((_) => 0.0);
+    _startHideTimer();
+    _init();
   }
 
-  /// libmpv/FFmpeg icin HLS ve genel ag kopmalarina karsi otomatik
-  /// yeniden baglanma ayarlari. Provider-side donmalarda segment/manifest
-  /// indirme basarisiz olunca FFmpeg kendi basina yeniden dener.
-  Future<void> _applyLiveStreamOptions() async {
-    final platform = _player.platform;
-    if (platform == null) return;
+  Future<void> _init() async {
     try {
-      // dynamic cast: NativePlayer.setProperty(name, value)
-      final dynamic native = platform;
-      // FFmpeg lavf reconnect ayarlari (HLS, HTTP/TS, mp4 vs.)
-      await native.setProperty(
-        'stream-lavf-o',
-        'reconnect=1,'
-        'reconnect_streamed=1,'
-        'reconnect_delay_max=5,'
-        'reconnect_on_network_error=1,'
-        'reconnect_on_http_error=4xx,5xx,'
-        'reconnect_at_eof=1,'
-        'rw_timeout=15000000', // 15 sn I/O timeout (mikrosaniye)
+      _prefs = await PlayerPrefs.load();
+    } catch (_) {}
+    try {
+      _channel = await ref.read(channelRepoProvider).getById(widget.channelId);
+    } catch (_) {}
+    if (_disposed) return;
+    if (mounted) setState(() {});
+    // Çözülemezse dinleyiciler yine kurulur: hata ekranındaki Tekrar Dene
+    // (reconnect) normal oynatma akışına döner.
+    final resolved = await _resolvePlayUrl();
+    await _applyStreamOptions();
+    if (_disposed) return;
+    _attachListeners();
+    _startWatchdog();
+    if (!_isLive) {
+      _progressTimer = Timer.periodic(const Duration(milliseconds: 500), (_) => _onProgressTick());
+    }
+    // VOD'da kayıtlı konumu sıfırlamadan "izlendi" damgası (son izlenenler).
+    unawaited(ref.read(homeProvider.notifier).markWatched(
+          widget.channelId,
+          position: _isLive ? 0 : widget.initialPosition,
+          duration: _channel?.duration ?? 0,
+        ).catchError((_) {}));
+    if (resolved) await _play();
+  }
+
+  /// Stalker linkini çözer (Stalker dışı: anında true). Başarısızsa
+  /// bloklayıcı hata ekranı (Tekrar Dene → reconnect yeniden çözer).
+  Future<bool> _resolvePlayUrl() async {
+    if (!stalkerNeedsResolve(widget.channelUrl)) return true;
+    String? url;
+    try {
+      url = await StalkerStreamResolver.resolveForPlaylist(
+        ref.read(playlistRepoProvider),
+        _channel?.playlistId,
+        widget.channelUrl,
+        lang: Localizations.localeOf(context).languageCode,
       );
-      // Canli yayinda geride kalmayi engelle (live edge'e yakin kal).
-      await native.setProperty('cache', 'yes');
-      await native.setProperty('cache-secs', '10');
-      await native.setProperty('demuxer-max-bytes', '50MiB');
-      await native.setProperty('demuxer-max-back-bytes', '25MiB');
-      // Network error'da otomatik yeniden dene.
-      await native.setProperty('network-timeout', '15');
-      // HLS canli yayinda buffer dolunca frame atla (geride kalmayalim).
-      await native.setProperty('hr-seek', 'yes');
-    } catch (_) {
-      // Opsiyonlar uygulanamazsa sessizce devam et.
+    } catch (e) {
+      debugPrint('[Player] stalker resolve failed: $e');
+    }
+    if (_disposed) return false;
+    if (url == null || url.isEmpty) {
+      _lastError = 'stalker create_link failed';
+      if (mounted) setState(() => _blockingError = _lastError);
+      return false;
+    }
+    _playUrl = url;
+    return true;
+  }
+
+  /// FFmpeg reconnect + ön bellek + User-Agent (Android: `StreamBox/<ver>`).
+  Future<void> _applyStreamOptions() async {
+    final platform = _player.platform;
+    if (platform is! NativePlayer) return;
+    final opts = <String, String>{
+      'stream-lavf-o': 'reconnect=1,reconnect_streamed=1,reconnect_delay_max=5,'
+          'reconnect_on_network_error=1,reconnect_on_http_error=4xx,5xx,'
+          'reconnect_at_eof=1,rw_timeout=15000000',
+      'user-agent': _prefs.userAgent,
+      'cache': 'yes',
+      'cache-secs': '${cacheSecsForBufferMs(_prefs.bufferMs)}',
+      'demuxer-readahead-secs': '${cacheSecsForBufferMs(_prefs.bufferMs)}',
+      'demuxer-max-bytes': '50MiB',
+      'demuxer-max-back-bytes': '25MiB',
+      'network-timeout': '15',
+      'hr-seek': 'yes',
+    };
+    for (final e in opts.entries) {
+      try {
+        await platform.setProperty(e.key, e.value);
+      } catch (_) {}
     }
   }
 
   void _attachListeners() {
-    _playingSub = _player.stream.playing.listen((playing) {
-      // Oynatiliyorsa progress zamanini guncelle.
-      if (playing) {
-        _lastProgress = DateTime.now();
-      }
-    });
-    _bufferingSub = _player.stream.buffering.listen((buffering) {
-      if (!mounted) return;
-      setState(() => _isBuffering = buffering);
-    });
-    _positionSub = _player.stream.position.listen((pos) {
-      // Pozisyon degistiginde watchdog sayacini resetle.
-      if (pos != _lastPosition) {
-        _lastPosition = pos;
-        _lastProgress = DateTime.now();
-        if (_reconnectAttempts != 0) {
-          _reconnectAttempts = 0; // basarili oynatim, sayaci sifirla
+    _subs
+      ..add(_player.stream.playing.listen((p) {
+        if (p) _lastProgress = DateTime.now();
+      }))
+      ..add(_player.stream.buffering.listen((b) {
+        if (mounted) setState(() => _isBuffering = b);
+      }))
+      ..add(_player.stream.position.listen((pos) {
+        if (pos != _lastPosition) {
+          _lastPosition = pos;
+          _lastProgress = DateTime.now();
+          _reconnectAttempts = 0;
+          // Gercek oynatma (>=3 sn ilerleme): ilk oynatma analytics +
+          // degerlendirme sayaci (Android ReviewHelper).
+          if (!_playbackCounted && pos.inSeconds >= 3) {
+            _playbackCounted = true;
+            unawaited(PlaybackMilestones.onPlaybackStarted(streamType: widget.streamType));
+          }
         }
-      }
-    });
-    _errorSub = _player.stream.error.listen((err) {
-      debugPrint('[Player] error: $err');
-      Analytics.playbackError(
-          errorCode: err, streamType: widget.streamType);
-      _scheduleReconnect(reason: 'error: $err');
-    });
-    _completedSub = _player.stream.completed.listen((completed) {
-      // Canli yayinlarda completed genelde stream kopmasidir → reconnect.
-      // VOD/film/dizi'de completed normaldir (video bitti) → reconnect ETME.
-      // 2026-05-25 (kullanici raporu: VOD'da ileri alinca basa donuyor).
-      if (completed && widget.streamType == 'live') {
-        _scheduleReconnect(reason: 'stream ended (live)');
-      }
-    });
+      }))
+      ..add(_player.stream.error.listen((err) {
+        debugPrint('[Player] error: $err');
+        _lastError = err;
+        Analytics.playbackError(errorCode: err, streamType: widget.streamType);
+        _scheduleReconnect(reason: 'error: $err');
+      }))
+      ..add(_player.stream.completed.listen((completed) {
+        if (!completed) return;
+        // Canlıda completed = kopma → reconnect; VOD'da bitti → sonraki bölüm.
+        if (_isLive) {
+          _scheduleReconnect(reason: 'stream ended (live)');
+        } else {
+          _onMediaEnded('completed');
+        }
+      }))
+      ..add(_player.stream.tracks.listen(_onTracks));
   }
+
+  // ── Parçalar: yalnız-ses tespiti + kayıtlı dil tercihleri ──────────────────
+
+  Future<void> _onTracks(Tracks tracks) async {
+    final video = realTracks(tracks.video, (t) => t.id);
+    final audio = realTracks(tracks.audio, (t) => t.id);
+    final hasVideo = video.isNotEmpty || audio.isEmpty;
+    if (hasVideo != _hasVideo && mounted) setState(() => _hasVideo = hasVideo);
+
+    if (_trackPrefsApplied || audio.isEmpty) return;
+    _trackPrefsApplied = true;
+    final subs = realTracks(tracks.subtitle, (t) => t.id);
+    final ch = _channel;
+    final prefs = ch == null ? null : await _trackStore.load(ch);
+    if (_disposed) return;
+    try {
+      final a = pickByLanguage<AudioTrack>(audio, (t) => t.language, prefs?.audioLang);
+      if (a != null) await _player.setAudioTrack(a);
+
+      if (subs.isEmpty) return;
+      final decided = prefs?.subtitleEnabled;
+      if (decided == true) {
+        final s = pickByLanguage<SubtitleTrack>(subs, (t) => t.language, prefs?.subtitleLang);
+        if (s != null) await _player.setSubtitleTrack(s);
+      } else if (decided == null && _prefs.subtitleDefaultOn && !_aiSubtitleEnabled) {
+        // "Altyazı varsayılan açık": cihaz dilindeki parça, yoksa ilki.
+        if (!mounted) return;
+        final device = Localizations.localeOf(context).languageCode;
+        final s = subs.firstWhere(
+          (t) => (t.language ?? '').toLowerCase().startsWith(device),
+          orElse: () => subs.first,
+        );
+        await _player.setSubtitleTrack(s);
+      }
+    } catch (e) {
+      debugPrint('[Player] track prefs apply failed: $e');
+    }
+  }
+
+  void _onAudioSelected(AudioTrack t) {
+    final ch = _channel;
+    if (ch != null) unawaited(_trackStore.saveAudio(ch, t.language));
+  }
+
+  void _onEmbeddedSubtitleSelected(SubtitleTrack? t) {
+    final ch = _channel;
+    if (ch != null) {
+      unawaited(_trackStore.saveSubtitle(ch, enabled: t != null, lang: t?.language));
+    }
+  }
+
+  // ── Watchdog / reconnect ──────────────────────────────────────────────────
 
   void _startWatchdog() {
     _watchdog?.cancel();
-    // 2026-05-25: Sadece canli yayinlarda watchdog calistir. VOD/film/dizi'de
-    // libmpv kendi reconnect/buffer mantigini yapiyor; ayrica buyuk bir seek
-    // sirasinda position 8+ sn ayni kalabilir → yanlis pozitif "stall" →
-    // _scheduleReconnect _player.open(...) cagiriyor ve kullanicinin ileri
-    // aldigi yer kayboluyor (basa donuyor). Sleuth raporu, kullanici #1.
-    if (widget.streamType != 'live') return;
+    // Yalnız canlıda: VOD'da büyük seek sırasında yanlış pozitif "stall" olur.
+    if (!_isLive) return;
     _watchdog = Timer.periodic(const Duration(seconds: 2), (_) {
-      if (!mounted || _isReconnecting) return;
-      // 2026-05-11: Pause sırasında stall sayma. Kullanıcı bilerek pause
-      // yaptıysa watchdog reconnect tetiklemesin (yanlış pozitif).
+      if (!mounted || _isReconnecting || _blockingError != null) return;
       if (!_player.state.playing) return;
       final since = DateTime.now().difference(_lastProgress);
-      final threshold =
-          _isBuffering ? _bufferingStallThreshold : _stallThreshold;
-      if (since > threshold) {
-        _scheduleReconnect(
-            reason: 'stall ${since.inSeconds}s (buffering=$_isBuffering)');
+      if (since > (_isBuffering ? _bufferingStallThreshold : _stallThreshold)) {
+        _scheduleReconnect(reason: 'stall ${since.inSeconds}s (buffering=$_isBuffering)');
       }
     });
   }
 
   Future<void> _scheduleReconnect({required String reason}) async {
-    if (_isReconnecting || !mounted) return;
-    // 2026-05-11: setState ile UI'a yansıyor — reconnect banner görünür.
+    if (_isReconnecting || !mounted || _blockingError != null) return;
     setState(() => _isReconnecting = true);
     _reconnectAttempts++;
     debugPrint('[Player] reconnect #$_reconnectAttempts → $reason');
 
     if (_reconnectAttempts > _maxReconnectAttempts) {
-      if (mounted) setState(() => _isReconnecting = false);
+      if (_lastError.isEmpty) _lastError = reason;
+      try {
+        await _player.pause();
+      } catch (_) {}
       if (mounted) {
-        final l = AppLocalizations.of(context);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(l.playerStreamRepeatedError),
-            duration: const Duration(seconds: 4),
-          ),
-        );
+        setState(() {
+          _isReconnecting = false;
+          _blockingError = _lastError;
+        });
       }
       return;
     }
 
-    // Exponential-ish backoff: 0, 1, 2, 3, 4, 5, 5, 5...
-    final delay = Duration(seconds: (_reconnectAttempts - 1).clamp(0, 5));
-    await Future.delayed(delay);
-    if (!mounted) return;
-
-    // 2026-05-25: VOD'da reconnect öncesi mevcut pozisyonu yakala — gercek
-    // bir error / nadir race durumunda bile kullanici izlediği yeri
-    // kaybetmesin. Live'da pozisyon korumanın anlami yok (kanal akiş
-    // basindan baslar). Sleuth raporu Fix #3.
-    final preservePos = widget.streamType != 'live'
-        ? _player.state.position
-        : Duration.zero;
-
+    await Future<void>.delayed(Duration(seconds: (_reconnectAttempts - 1).clamp(0, 5)));
+    if (!mounted || _disposed) return;
+    // VOD'da reconnect öncesi konumu koru.
+    final preservePos = _isLive ? Duration.zero : _player.state.position;
     try {
       await _player.stop();
-      await _player.open(Media(widget.channelUrl), play: true);
+      // Stalker play_token'ları kısa ömürlü — her yeniden bağlanmada taze link.
+      if (!await _resolvePlayUrl()) return;
+      await _player.open(Media(_playUrl), play: true);
       if (preservePos > const Duration(seconds: 2)) {
-        // libmpv open ile play=true başladıktan sonra seek edilebilir
-        // duruma kısa sürede gelir; 500ms guard pratikte yeterli.
-        await Future.delayed(const Duration(milliseconds: 500));
-        // _disposed bayragi: Future.delayed sirasinda widget kapatildiysa
-        // _player'a seek ETMEYELIM (native crash riski).
-        if (mounted && !_disposed) {
-          await _player.seek(preservePos);
-        }
+        await Future<void>.delayed(const Duration(milliseconds: 500));
+        if (mounted && !_disposed) await _player.seek(preservePos);
       }
       _lastProgress = DateTime.now();
       _lastPosition = preservePos;
@@ -314,29 +388,151 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
     }
   }
 
-  void _play() {
-    _player.open(Media(widget.channelUrl));
-    // VOD resume: canli yayinda resume olmaz, sadece film/dizi.
-    if (widget.initialPosition > 0 && widget.streamType != 'live') {
-      // Player acilinca stream hazir olunca seek et.
+  void _manualReconnect() {
+    _reconnectAttempts = 0;
+    _lastProgress = DateTime.now();
+    setState(() => _blockingError = null);
+    _scheduleReconnect(reason: 'manual');
+  }
+
+  // ── Oynatma başlangıcı + resume ───────────────────────────────────────────
+
+  Future<void> _play() async {
+    final saved = widget.initialPosition;
+    final offer = shouldOfferResume(
+        savedMs: saved, streamType: widget.streamType, durationMs: _channel?.duration ?? 0);
+    await _player.open(Media(_playUrl), play: !offer);
+    if (!offer || !mounted) return;
+    final resume = await showResumeDialog(context, Duration(milliseconds: saved));
+    if (!mounted || _disposed) return;
+    await _player.play();
+    if (resume == true) {
+      // Akış hazır olunca seek (play=true sonrası libmpv seek edilebilir hale gelir).
       _player.stream.playing.firstWhere((p) => p).then((_) {
-        if (mounted) {
-          _player.seek(Duration(milliseconds: widget.initialPosition));
-        }
+        if (mounted && !_disposed) _player.seek(Duration(milliseconds: saved));
       }).ignore();
     }
   }
 
-  void _manualReconnect() {
-    _reconnectAttempts = 0;
-    _lastProgress = DateTime.now();
-    _scheduleReconnect(reason: 'manual');
+  // ── VOD ilerleme kaydı + bitiş tespiti ────────────────────────────────────
+
+  void _onProgressTick() {
+    if (_disposed || !mounted) return;
+    final pos = _player.state.position.inMilliseconds;
+    final dur = _player.state.duration.inMilliseconds;
+    if (_endDetector.tick(
+        positionMs: pos, durationMs: dur, playWhenReady: _player.state.playing)) {
+      _onMediaEnded('position-stall');
+    }
+    _progressTicks++;
+    // ~5 sn'de bir yerel kayıt → uygulama öldürülse/çökse de ilerleme korunur.
+    if (_progressTicks % 10 == 0 && pos > 0) unawaited(_saveProgressLocal(pos, dur));
+    if (!_watchedMarked && reachedWatchedThreshold(positionMs: pos, durationMs: dur)) {
+      _watchedMarked = true;
+      unawaited(ref.read(channelRepoProvider).markWatched(widget.channelId).catchError((_) {}));
+    }
   }
+
+  /// Yalnız yerel DB (bulut push'u her 5 sn'de yapılmasın diye
+  /// ChannelRepository.updateWatched yerine). Bulut + Home satırları çıkışta
+  /// homeProvider.markWatched ile güncellenir.
+  Future<void> _saveProgressLocal(int pos, int dur) async {
+    try {
+      await ref.read(channelRepoProvider).updatePositionLocal(widget.channelId, pos, dur);
+    } catch (e) {
+      debugPrint('[Player] progress save failed: $e');
+    }
+  }
+
+  Future<void> _persistProgress() async {
+    if (_isLive) return;
+    final pos = _player.state.position.inMilliseconds;
+    final dur = _player.state.duration.inMilliseconds;
+    if (pos <= 0) return;
+    try {
+      await ref.read(homeProvider.notifier).markWatched(widget.channelId, position: pos, duration: dur);
+    } catch (_) {}
+  }
+
+  /// Bölüm bitti → sonraki bölüm (sezon atlama dahil), yoksa çık.
+  Future<void> _onMediaEnded(String reason) async {
+    if (_autoNextFired || _isLive || _disposed) return;
+    _autoNextFired = true;
+    final ch = _channel;
+    ChannelModel? next;
+    if (ch != null && ch.streamType == 'series' && ch.seriesName.isNotEmpty) {
+      try {
+        final eps = await ref.read(channelRepoProvider).getSeriesEpisodes(ch.playlistId, ch.seriesName);
+        next = selectNextEpisode(ch, eps);
+      } catch (e) {
+        debugPrint('[Player] next episode lookup failed: $e');
+      }
+    }
+    debugPrint('[Player] auto-next ($reason) → ${next?.name ?? "yok"}');
+    if (!mounted || _disposed) return;
+    if (next == null) {
+      await _stopAndPop();
+      return;
+    }
+    _showActionFeedback(Icons.skip_next, AppLocalizations.of(context).playerNextEpisode(next.name));
+    final switched = await _switchTo(next);
+    if (!switched && mounted) await _stopAndPop();
+  }
+
+  /// Oynatıcıdan çıkmadan başka içeriğe geç (route değiştirilir → temiz durum).
+  /// Ebeveyn kilidi hedef kategori için de uygulanır.
+  Future<bool> _switchTo(ChannelModel target) async {
+    if (!await ensureCategoryUnlocked(context, ref, target.category)) return false;
+    if (!mounted) return false;
+    final router = GoRouter.of(context);
+    await _persistProgress();
+    try {
+      await _player.stop();
+    } catch (_) {}
+    if (!mounted) return false;
+    router.pushReplacement(AppRoutes.player, extra: {
+      'channelId': target.id,
+      'channelUrl': target.streamUrl,
+      'title': target.name,
+      'initialPosition': target.lastPosition,
+      'streamType': target.streamType,
+    });
+    return true;
+  }
+
+  // ── Canlı: kanal paneli + önceki/sonraki ──────────────────────────────────
+
+  Future<List<ChannelModel>> _loadCategoryChannels() async {
+    final cached = _categoryChannels;
+    if (cached != null) return cached;
+    final ch = _channel;
+    if (ch == null) return const [];
+    final repo = ref.read(channelRepoProvider);
+    var list = await repo.getByCategory(ch.playlistId, ch.streamType, ch.category);
+    if (list.isEmpty) list = await repo.getByType(ch.playlistId, ch.streamType);
+    return _categoryChannels = list;
+  }
+
+  Future<void> _openChannelPanel() async {
+    final list = await _loadCategoryChannels();
+    if (!mounted || list.isEmpty) return;
+    final picked = await showChannelPanel(context, channels: list, currentId: widget.channelId);
+    if (picked != null && mounted) await _switchTo(picked);
+  }
+
+  Future<void> _stepChannel(int delta) async {
+    final list = await _loadCategoryChannels();
+    if (list.length <= 1 || !mounted) return;
+    final i = list.indexWhere((c) => c.id == widget.channelId);
+    final next = list[((i < 0 ? 0 : i) + delta) % list.length];
+    _showActionFeedback(delta > 0 ? Icons.skip_next : Icons.skip_previous, next.name);
+    await _switchTo(next);
+  }
+
+  // ── Kontroller ────────────────────────────────────────────────────────────
 
   void _startHideTimer() {
     _hideTimer?.cancel();
-    // 4 sn çok kısaydı — kullanıcı kontrol panellerini bulmadan kayboluyordu.
-    // 8 sn modern video oynatıcı standartı (YouTube/VLC/Netflix mobile).
     _hideTimer = Timer(const Duration(seconds: 8), () {
       if (mounted) setState(() => _controlsVisible = false);
     });
@@ -347,9 +543,6 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
     _startHideTimer();
   }
 
-  /// Bug #4 fix: tap koşulsuz `_showControls()` çağırıyordu; toggle değildi.
-  /// D-pad menü tuşundaki (LogicalKeyboardKey.contextMenu) pattern ile aynı:
-  /// görünürse gizle, gizliyse göster.
   void _toggleControls() {
     if (_controlsVisible) {
       _hideTimer?.cancel();
@@ -359,75 +552,79 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
     }
   }
 
-  @override
-  void dispose() {
-    // 2026-05-25 race fix: _scheduleReconnect Future.delayed sonrasi seek
-    // cagrisi widget dispose olduktan sonra calismaya devam ederse native
-    // player'a crash yapabilir. _disposed bayragi ile guvene al.
-    _disposed = true;
-    // Bug #9 fix: VOD resume markWatched dispose'da fire-and-forget cagriliyordu;
-    // hizli cikiste DB write tamamlanmadan tear down oluyordu. Artik
-    // _stopAndPop() icinde await ile cagriliyor — burada sadece guvenli fallback
-    // (cikis sirasinda _stopAndPop devre disi kalirsa diye) tutmuyoruz.
-    _hideTimer?.cancel();
-    _gestureHideTimer?.cancel();
-    _actionTimer?.cancel();
-    // Parlaklık override'ını kaldır — kullanıcı player'da değiştirdiyse
-    // restore et, yoksa sistem default'una geri dön.
-    if (_initialBrightness != null) {
-      ScreenBrightness()
-          .setApplicationScreenBrightness(_initialBrightness!)
-          .catchError((_) {});
+  void _seekRelative(int deltaMs, {Alignment align = Alignment.center}) {
+    if (_isLive) return;
+    final target = seekTargetMs(
+      currentMs: _player.state.position.inMilliseconds,
+      deltaMs: deltaMs,
+      durationMs: _player.state.duration.inMilliseconds,
+    );
+    _player.seek(Duration(milliseconds: target));
+    // Büyük seek'te konum bir süre sabit kalabilir — sayaçları sıfırla.
+    _lastPosition = Duration(milliseconds: target);
+    _lastProgress = DateTime.now();
+    final l = AppLocalizations.of(context);
+    _showActionFeedback(deltaMs < 0 ? Icons.replay_10 : Icons.forward_10,
+        deltaMs < 0 ? l.playerSeekBackward : l.playerSeekForward,
+        align: align);
+  }
+
+  void _onDoubleTap() {
+    final pos = _doubleTapPos;
+    if (pos == null || _isLive) return;
+    final left = pos.dx < MediaQuery.of(context).size.width / 2;
+    _seekRelative(left ? -10000 : 10000,
+        align: left ? Alignment.centerLeft : Alignment.centerRight);
+  }
+
+  void _toggleMute() {
+    final l = AppLocalizations.of(context);
+    final vol = _player.state.volume;
+    if (vol > 0) {
+      _volumeBeforeMute = vol;
+      _player.setVolume(0);
+      _showActionFeedback(Icons.volume_off, l.playerMuted);
     } else {
-      ScreenBrightness().resetApplicationScreenBrightness().catchError((_) {});
+      _player.setVolume(_volumeBeforeMute > 0 ? _volumeBeforeMute : 100);
+      _showActionFeedback(Icons.volume_up, l.playerUnmuted);
     }
-    _watchdog?.cancel();
-    _playingSub?.cancel();
-    _bufferingSub?.cancel();
-    _positionSub?.cancel();
-    _errorSub?.cancel();
-    _completedSub?.cancel();
-    _pipModeSub?.cancel();
-    // PiP auto-mode kapat (player kapanirken Home tusu PiP'e gecmesin).
-    PipService.instance.setPlayerActive(false);
-    PipService.instance.setAutoPip(false);
-    // Explicit stop önce — bazı backend'lerde (özellikle iOS AVPlayer +
-    // Android MediaSession aktif olduğunda) sadece dispose() background'da
-    // playback'i sustaramaz; stop() native pipeline'ı tertip eder. Future
-    // fire-and-forget — dispose sync sözleşmesini bozmaz.
-    _player.stop().catchError((_) {});
-    _player.dispose();
-    // iOS ses oturumunu birak — arka plandaki muzik uygulamasi kaldigi
-    // yerden devam edebilsin (.notifyOthersOnDeactivation).
-    AudioSessionService.instance.deactivate();
-    SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
-    // Player kapanirken orientation kisitini KALDIR — bos liste "Info.plist /
-    // sistem ne diyorsa o" demek.
-    //
-    // 2026-08-29 fix: eskiden burada `[portraitUp]` kilidi kaliyordu. Sonuc:
-    //   * Uygulama ACILISTA donuyordu (Info.plist portrait+landscape), bir kez
-    //     player acilip kapandiktan SONRA hicbir ekran donmuyordu — tutarsiz.
-    //   * iPad'de Info.plist 4 yon + UIRequiresFullScreen=false (multitasking)
-    //     ilan ediyor; portrait kilidi bunu bozuyor ve Apple'in "multitasking
-    //     destekleyen iPad uygulamasi tum yonleri desteklemeli" kuralina
-    //     aykiri dusuyordu.
-    SystemChrome.setPreferredOrientations(const []);
-    super.dispose();
+  }
+
+  void _applyOrientation() {
+    if (!_orientationLocked) {
+      SystemChrome.setPreferredOrientations(const [
+        DeviceOrientation.portraitUp,
+        DeviceOrientation.landscapeLeft,
+        DeviceOrientation.landscapeRight,
+      ]);
+      return;
+    }
+    final landscape = MediaQuery.of(context).orientation == Orientation.landscape;
+    SystemChrome.setPreferredOrientations(landscape
+        ? const [DeviceOrientation.landscapeLeft, DeviceOrientation.landscapeRight]
+        : const [DeviceOrientation.portraitUp]);
+  }
+
+  void _toggleOrientationLock() {
+    final l = AppLocalizations.of(context);
+    setState(() => _orientationLocked = !_orientationLocked);
+    _applyOrientation();
+    _showActionFeedback(
+      _orientationLocked ? Icons.screen_lock_rotation : Icons.screen_rotation,
+      _orientationLocked ? l.playerOrientationLock : l.playerOrientationUnlocked,
+    );
   }
 
   KeyEventResult _onKeyEvent(FocusNode node, KeyEvent event) {
     if (event is! KeyDownEvent) return KeyEventResult.ignored;
     final key = event.logicalKey;
-
-    // Back button → exit (en yuksek oncelik, her zaman calisir)
     if (key == LogicalKeyboardKey.escape ||
         key == LogicalKeyboardKey.browserBack ||
-        key == LogicalKeyboardKey.goBack) {
+        key == LogicalKeyboardKey.goBack ||
+        key == LogicalKeyboardKey.mediaStop) {
       Navigator.maybePop(context);
       return KeyEventResult.handled;
     }
-
-    // Play/Pause: Space, Enter, mediaPlayPause, Select, numpadEnter, gameButtonA
     if (key == LogicalKeyboardKey.mediaPlayPause ||
         key == LogicalKeyboardKey.mediaPlay ||
         key == LogicalKeyboardKey.mediaPause ||
@@ -436,7 +633,6 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
         key == LogicalKeyboardKey.enter ||
         key == LogicalKeyboardKey.numpadEnter ||
         key == LogicalKeyboardKey.gameButtonA) {
-      // Eger kontroller gorunmuyorsa once goster, ikinci basista play/pause
       if (!_controlsVisible) {
         _showControls();
         return KeyEventResult.handled;
@@ -445,103 +641,54 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
       _showControls();
       return KeyEventResult.handled;
     }
-
-    // Seek 10s forward/backward
-    if (key == LogicalKeyboardKey.arrowRight ||
-        key == LogicalKeyboardKey.mediaFastForward) {
-      _seekRelative(const Duration(seconds: 10));
+    if (key == LogicalKeyboardKey.arrowRight || key == LogicalKeyboardKey.mediaFastForward) {
+      _seekRelative(10000);
       _showControls();
       return KeyEventResult.handled;
     }
-    if (key == LogicalKeyboardKey.arrowLeft ||
-        key == LogicalKeyboardKey.mediaRewind) {
-      _seekRelative(const Duration(seconds: -10));
+    if (key == LogicalKeyboardKey.arrowLeft || key == LogicalKeyboardKey.mediaRewind) {
+      _seekRelative(-10000);
       _showControls();
       return KeyEventResult.handled;
     }
-
-    // Volume up/down (sistem ses tuslari)
-    if (key == LogicalKeyboardKey.audioVolumeUp) {
-      final vol = _player.state.volume;
-      _player.setVolume((vol + 10).clamp(0, 100));
-      _showControls();
+    if (_isLive && (key == LogicalKeyboardKey.channelUp || key == LogicalKeyboardKey.channelDown)) {
+      _stepChannel(key == LogicalKeyboardKey.channelUp ? 1 : -1);
       return KeyEventResult.handled;
     }
-    if (key == LogicalKeyboardKey.audioVolumeDown) {
-      final vol = _player.state.volume;
-      _player.setVolume((vol - 10).clamp(0, 100));
+    final volStep = switch (key) {
+      LogicalKeyboardKey.audioVolumeUp => 10,
+      LogicalKeyboardKey.audioVolumeDown => -10,
+      LogicalKeyboardKey.arrowUp => 5,
+      LogicalKeyboardKey.arrowDown => -5,
+      _ => 0,
+    };
+    if (volStep != 0) {
+      _player.setVolume((_player.state.volume + volStep).clamp(0, 100).toDouble());
       _showControls();
       return KeyEventResult.handled;
     }
     if (key == LogicalKeyboardKey.audioVolumeMute) {
-      final vol = _player.state.volume;
-      _player.setVolume(vol > 0 ? 0 : 100);
-      _showControls();
+      _toggleMute();
       return KeyEventResult.handled;
     }
-
-    // Up/Down → controls goster + ses ayarla
-    if (key == LogicalKeyboardKey.arrowUp) {
-      final vol = _player.state.volume;
-      _player.setVolume((vol + 5).clamp(0, 100));
-      _showControls();
-      return KeyEventResult.handled;
-    }
-    if (key == LogicalKeyboardKey.arrowDown) {
-      final vol = _player.state.volume;
-      _player.setVolume((vol - 5).clamp(0, 100));
-      _showControls();
-      return KeyEventResult.handled;
-    }
-
-    // Menu tusu → kontrolleri toggle et
     if (key == LogicalKeyboardKey.contextMenu ||
         key == LogicalKeyboardKey.f1 ||
         key == LogicalKeyboardKey.info) {
-      if (_controlsVisible) {
-        setState(() => _controlsVisible = false);
-        _hideTimer?.cancel();
-      } else {
-        _showControls();
-      }
+      _toggleControls();
       return KeyEventResult.handled;
     }
-
-    // Medya tuslari
-    if (key == LogicalKeyboardKey.mediaStop) {
-      Navigator.maybePop(context);
-      return KeyEventResult.handled;
-    }
-
-    // Any other key → show controls
     _showControls();
     return KeyEventResult.ignored;
   }
 
-  void _seekRelative(Duration delta) {
-    final cur = _player.state.position;
-    final dur = _player.state.duration;
-    var target = cur + delta;
-    if (target < Duration.zero) target = Duration.zero;
-    if (dur > Duration.zero && target > dur) target = dur;
-    _player.seek(target);
-    // 2026-05-25: Buyuk seek sirasinda libmpv yeni segmenti indirirken
-    // position 5-10+ sn ayni kalabilir → watchdog yanlis pozitif "stall"
-    // tetiklemesin diye sayaclari hemen sifirla. Live'da watchdog disable
-    // edildi ama defansif olarak burada da reset.
-    _lastPosition = target;
-    _lastProgress = DateTime.now();
-  }
+  // ── Swipe (parlaklık / ses) ───────────────────────────────────────────────
 
-  // ── Swipe gesture handlers ───────────────────────────────────────────────────
-
-  void _onVerticalDragStart(DragStartDetails d) async {
-    final width = MediaQuery.of(context).size.width;
-    final isRightSide = d.localPosition.dx > width / 2;
-    _gestureType   = isRightSide ? 'volume' : 'brightness';
-    _gestureAccDy  = 0;
-    _gestureStartVolume = _player.state.volume / 100.0; // 0..1
-    if (!isRightSide) {
+  Future<void> _onVerticalDragStart(DragStartDetails d) async {
+    final isRight = d.localPosition.dx > MediaQuery.of(context).size.width / 2;
+    _gestureType = isRight ? 'volume' : 'brightness';
+    _gestureAccDy = 0;
+    _gestureStartVolume = _player.state.volume / 100.0;
+    if (!isRight) {
       try {
         _gestureStartBrightness = await ScreenBrightness().application;
       } catch (_) {
@@ -553,76 +700,45 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
   void _onVerticalDragUpdate(DragUpdateDetails d) {
     if (_gestureType.isEmpty) return;
     _gestureAccDy += d.delta.dy;
-    // Eşiğin altında: titreme/phantom touch — overlay gösterme
     if (_gestureAccDy.abs() < _gestureMinDy) return;
-
-    final height = MediaQuery.of(context).size.height;
-    // Yukarı = artır, aşağı = azalt → -dy ratio
-    final ratio = -_gestureAccDy / height;
-
+    final ratio = -_gestureAccDy / MediaQuery.of(context).size.height;
     if (_gestureType == 'volume') {
-      final newVol = (_gestureStartVolume + ratio).clamp(0.0, 1.0);
-      _player.setVolume(newVol * 100);
-      setState(() => _gestureValue = newVol);
+      final v = (_gestureStartVolume + ratio).clamp(0.0, 1.0);
+      _player.setVolume(v * 100);
+      setState(() => _gestureValue = v);
     } else {
-      // Min 0.05 — kullanıcı ekranı tamamen siyaha indirmesin
-      final newBright = (_gestureStartBrightness + ratio).clamp(0.05, 1.0);
-      ScreenBrightness()
-          .setApplicationScreenBrightness(newBright)
-          .catchError((_) {});
-      setState(() => _gestureValue = newBright);
+      final b = (_gestureStartBrightness + ratio).clamp(0.05, 1.0);
+      ScreenBrightness().setApplicationScreenBrightness(b).catchError((_) {});
+      setState(() => _gestureValue = b);
     }
   }
 
   void _onVerticalDragEnd(DragEndDetails d) {
-    // Overlay 800ms görünür kalsın, sonra fade
     _gestureHideTimer?.cancel();
     _gestureHideTimer = Timer(const Duration(milliseconds: 800), () {
       if (mounted) setState(() => _gestureType = '');
     });
   }
 
-  /// Player'ı kapatmadan önce ses/video'yu kesin durdur, sonra route'tan çık.
-  ///
-  /// [dispose] async olamadığı için sadece `_player.dispose()` çağırmak ses
-  /// pipeline'ını anında susturmuyor (native thread asenkron biter, kullanıcı
-  /// Home'a dönünce 1-2 saniye daha ses duyabiliyor). Bu helper hem custom
-  /// back button (`onClose`) hem sistem back tuşu (`PopScope`) tarafından
-  /// çağrılır → pop **öncesi** await ile stop sequence garanti edilir.
+  // ── Çıkış ─────────────────────────────────────────────────────────────────
+
+  /// Pop ÖNCESİ ilerlemeyi kaydet ve sesi kesin durdur (dispose async değil).
   Future<void> _stopAndPop() async {
-    // Bug #9 fix: VOD resume — markWatched() onceden dispose() icinde
-    // fire-and-forget cagriliyordu; hizli cikis senaryolarinda DB write
-    // tamamlanmadan widget agaci tear down oluyordu. Artik pop oncesi
-    // await ile cagriyoruz, position guvenli sekilde kayit edilir.
-    if (widget.streamType != 'live') {
-      final pos = _player.state.position.inMilliseconds;
-      final dur = _player.state.duration.inMilliseconds;
-      if (pos > 0) {
-        try {
-          await ref.read(homeProvider.notifier).markWatched(
-            widget.channelId,
-            position: pos,
-            duration: dur,
-          );
-        } catch (_) {}
-      }
-    }
-    try { await _player.setVolume(0);     } catch (_) {}
-    try { await _player.pause();          } catch (_) {}
-    try { await _player.stop();           } catch (_) {}
+    await _persistProgress();
+    try { await _player.setVolume(0); } catch (_) {}
+    try { await _player.pause(); } catch (_) {}
+    try { await _player.stop(); } catch (_) {}
     if (mounted) Navigator.of(context).pop();
   }
 
-  /// Phase 4: PiP — Pro auto-mode ayarini DB'den oku, native'e ilet.
-  /// Player aktiflik bayragi da set edilir → onUserLeaveHint dogru karar verir.
-  /// Buton gorunurluklerini platformdan belirle. iOS'ta PiP hic desteklenmiyor
-  /// (media_kit Texture render), AirPlay ise yalnizca SES yonlendirmesi yapar.
+  // ── PiP / AirPlay ─────────────────────────────────────────────────────────
+
   Future<void> _resolveCastButtons() async {
     await PipService.instance.ensureInitialized();
     final airplay = await AirplayService.instance.isAvailable();
     if (!mounted) return;
     setState(() {
-      _pipSupported     = PipService.instance.isSupported;
+      _pipSupported = PipService.instance.isSupported;
       _airplaySupported = airplay;
     });
   }
@@ -630,1363 +746,258 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
   Future<void> _setupAutoPip() async {
     try {
       await PipService.instance.ensureInitialized();
-      await PipService.instance.setPlayerActive(true);
-      final repo = SettingsRepository();
-      final autoPref = await repo.get('pip_auto_enabled') == 'true';
-      final isPro = ref.read(isProProvider);
-      // Auto-PiP sadece Pro user'a + tercih ON ise aktif.
-      await PipService.instance.setAutoPip(isPro && autoPref);
+      final autoPref = await ref.read(settingsRepoProvider).get('pip_auto_enabled') == 'true';
+      if (_disposed) return;
+      await PipService.instance.setAutoPipForActivePlayer(ref.read(isProProvider) && autoPref);
     } catch (e) {
       debugPrint('[Player] auto-PiP setup failed: $e');
     }
   }
 
-  /// Phase 4: PiP — manuel buton. Pro check + native enter.
   Future<void> _enterPip() async {
+    final l = AppLocalizations.of(context);
     if (!PipService.instance.isSupported) {
-      _showSnack(AppLocalizations.of(context).playerPipUnavailable);
+      _showSnack(l.playerPipUnavailable);
       return;
     }
     final allowed = await requirePro(context, ref, PaywallTrigger.pip);
     if (!allowed || !mounted) return;
-    final ok = await PipService.instance.enter();
-    if (!ok && mounted) {
-      _showSnack(AppLocalizations.of(context).playerPipUnavailable);
-    }
+    if (!await PipService.instance.enter() && mounted) _showSnack(l.playerPipUnavailable);
   }
 
-  /// AirPlay — sistem ses cikisi secici.
-  ///
-  /// **2026-08-29 — ne yaptigi konusunda durustlestirildi.**
-  /// Oynatici `media_kit` (libmpv) ve video Flutter texture'ina ciziliyor;
-  /// ortada `AVPlayerLayer` olmadigi icin AirPlay'e GORUNTU gonderilemez —
-  /// sistem yalnizca AVAudioSession'i (sesi) yonlendirir. Onceden bu buton
-  /// "AirPlay (Pro)" adiyla Pro kilidi arkasindaydi ve kullanici Apple TV'yi
-  /// secince sadece ses gidiyordu. Artik:
-  ///   * Pro kilidi YOK (sistem ses cikisi ucretli bir ozellik degil),
-  ///   * ad "AirPlay (ses)",
-  ///   * secici acilmadan once goruntu icin Ekran Yansitma yonlendirmesi.
   Future<void> _showAirplay() async {
-    if (!mounted) return;
+    final l = AppLocalizations.of(context);
     if (!_airplaySupported) {
-      _showSnack(AppLocalizations.of(context).playerAirplayUnavailable);
+      _showSnack(l.playerAirplayUnavailable);
       return;
     }
-    _showSnack(
-      AppLocalizations.of(context).playerAirplayAudioOnlyHint,
-      duration: const Duration(seconds: 5),
-    );
+    _showSnack(l.playerAirplayAudioOnlyHint, duration: const Duration(seconds: 5));
     await AirplayService.instance.showRoutePicker();
   }
 
-  void _showSnack(String msg, {Duration duration = const Duration(seconds: 2)}) {
+  void _showSnack(String msg, {Duration duration = const Duration(seconds: 3)}) {
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(msg), duration: duration),
-    );
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg), duration: duration));
   }
 
-  /// Adim 22 Phase D: AI altyazi gating.
-  /// Kapali → açıyorsa Pro check; aksi durumda dogrudan kapat.
+  // ── AI altyazı (yalnız VOD) ───────────────────────────────────────────────
+
+  bool _aiGateBusy = false;
+
   Future<void> _toggleAiSubtitle() async {
+    if (_isLive) return;
     if (_aiSubtitleEnabled) {
-      // Aciksa → kapat (Pro gerektirmez).
       setState(() => _aiSubtitleEnabled = false);
       return;
     }
-    final allowed =
-        await requirePro(context, ref, PaywallTrigger.aiSubtitle);
-    if (!allowed || !mounted) return;
-    setState(() => _aiSubtitleEnabled = true);
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final l = AppLocalizations.of(context);
-    return PopScope(
-      // canPop:false + manuel pop — sistem back tuşu (Android back / iOS edge
-      // swipe) tetiklendiğinde önce stop bekleyelim, sonra pop. Default
-      // davranış pop'u önce çalıştırıyor, _stopAndPop fırsatı bulamadan
-      // dispose() tetikleniyordu.
-      canPop: false,
-      onPopInvokedWithResult: (didPop, _) async {
-        if (didPop) return;
-        await _stopAndPop();
-      },
-      child: Scaffold(
-      backgroundColor: Colors.black,
-      body: Focus(
-        autofocus: true,
-        onKeyEvent: _onKeyEvent,
-        child: GestureDetector(
-          onTap: _toggleControls,
-          onVerticalDragStart:  _onVerticalDragStart,
-          onVerticalDragUpdate: _onVerticalDragUpdate,
-          onVerticalDragEnd:    _onVerticalDragEnd,
-          child: Stack(
-            children: [
-            // Video — media_kit_video default MaterialVideoControls'i KAPAT.
-            // Bizim custom overlay (Stack icindeki _PlayPauseButton + seek bar
-            // + ust bar) zaten butun kontrolleri sagliyor. Default controls'u
-            // birakirsak iki play/pause butonu ust uste cikiyor.
-            Center(
-              child: Video(
-                controller: _controller,
-                controls: (_) => const SizedBox.shrink(),
-                fit: _videoFit,
-              ),
-            ),
-
-            // AI Subtitle overlay
-            SubtitleOverlay(
-              channelId: widget.channelId,
-              streamUrl: widget.channelUrl,
-              streamType: widget.streamType,
-              positionStream: _player.stream.position,
-              enabled: _aiSubtitleEnabled,
-              onError: (msg) {
-                if (!mounted) return;
-                setState(() => _aiSubtitleEnabled = false);
-                _showSnack(msg);
-              },
-            ),
-
-            // Buffering / reconnect indicator
-            if (_isBuffering || _isReconnecting)
-              Center(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const CircularProgressIndicator(
-                      color: Colors.white,
-                      strokeWidth: 2.5,
-                    ),
-                    const SizedBox(height: 12),
-                    Text(
-                      _isReconnecting
-                          ? (_reconnectAttempts > 1
-                              ? l.playerReconnectingMulti(_reconnectAttempts)
-                              : l.playerReconnecting)
-                          : l.playerLoading,
-                      style: const TextStyle(color: Colors.white70, fontSize: 13),
-                    ),
-                  ],
-                ),
-              ),
-
-            // Controls overlay — gizlendiginde focus tree'den cikar,
-            // yoksa gorunmez butonlara D-pad ile atlanir.
-            // PiP modundayken kontroller hep gizli (mini pencerede gorunmemeli).
-            if (_controlsVisible && !_inPipMode)
-              AnimatedOpacity(
-                opacity:  1.0,
-                duration: const Duration(milliseconds: 250),
-                child: _ControlsOverlay(
-                  player:           _player,
-                  title:            widget.title,
-                  onClose:          _stopAndPop,
-                  onTap:            _toggleControls,
-                  onReconnect:      _manualReconnect,
-                  volume:           _player.state.volume,
-                  subtitleEnabled:  _aiSubtitleEnabled,
-                  onSubtitleToggle: _toggleAiSubtitle,
-                  videoFit:         _videoFit,
-                  onFitChange:      (f) {
-                    setState(() => _videoFit = f);
-                    _showActionFeedback(
-                      Icons.aspect_ratio,
-                      switch (f) {
-                        BoxFit.cover => 'Görüntü: Doldur',
-                        BoxFit.fill  => 'Görüntü: Esnet',
-                        _            => 'Görüntü: Orijinal',
-                      },
-                    );
-                  },
-                  onPip:            _enterPip,
-                  onAirplay:        _showAirplay,
-                  showPip:          _pipSupported,
-                  showAirplay:      _airplaySupported,
-                  onFeedback:       _showActionFeedback,
-                  streamType:       widget.streamType,
-                  channelId:        widget.channelId,
-                ),
-              ),
-            // Swipe gesture feedback overlay — sol yarı parlaklık, sağ yarı ses
-            if (_gestureType.isNotEmpty)
-              _GestureOverlay(
-                type:  _gestureType,
-                value: _gestureValue,
-              ),
-            // Aksiyon feedback pill — buton işlemlerinde kısa süreli görünür.
-            if (_actionText.isNotEmpty)
-              _ActionFeedbackOverlay(icon: _actionIcon, text: _actionText),
-            ],
-          ),
-        ),
-      ),
-      ),  // PopScope close
-    );
-  }
-}
-
-// ── Controls overlay ──────────────────────────────────────────────────────────
-
-class _ControlsOverlay extends StatefulWidget {
-  final Player      player;
-  final String      title;
-  final VoidCallback onClose;
-  final VoidCallback onTap;
-  final VoidCallback onReconnect;
-  final double       volume;
-  final bool         subtitleEnabled;
-  final VoidCallback onSubtitleToggle;
-  final BoxFit              videoFit;
-  final ValueChanged<BoxFit> onFitChange;
-  final VoidCallback onPip;
-  final VoidCallback onAirplay;
-  /// Butonlar yalnizca gercekten calistiklari platformda gorunur — calismayan
-  /// bir butonu gosterip "kullanilamiyor" demek kullaniciyi yaniltiyordu.
-  final bool showPip;
-  final bool showAirplay;
-  /// Her buton işleminde ekran ortasında kısa süreli pill göstermek için.
-  final void Function(IconData icon, String text) onFeedback;
-  final String      streamType;       // 'live' | 'movie' | 'series'
-  final String      channelId;        // Favori toggle için (2026-05-11)
-
-  const _ControlsOverlay({
-    required this.player,
-    required this.title,
-    required this.onClose,
-    required this.onTap,
-    required this.onReconnect,
-    required this.volume,
-    required this.subtitleEnabled,
-    required this.onSubtitleToggle,
-    required this.videoFit,
-    required this.onFitChange,
-    required this.onPip,
-    required this.onAirplay,
-    required this.showPip,
-    required this.showAirplay,
-    required this.onFeedback,
-    required this.streamType,
-    required this.channelId,
-  });
-
-  @override
-  State<_ControlsOverlay> createState() => _ControlsOverlayState();
-}
-
-class _ControlsOverlayState extends State<_ControlsOverlay> {
-  @override
-  Widget build(BuildContext context) {
-    final l = AppLocalizations.of(context);
-    return FocusTraversalGroup(
-      policy: OrderedTraversalPolicy(),
-      child: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end:   Alignment.bottomCenter,
-            colors: [
-              Color(0xCC000000),
-              Colors.transparent,
-              Colors.transparent,
-              Color(0xCC000000),
-            ],
-            stops: [0, 0.25, 0.75, 1],
-          ),
-        ),
-        // Gradient tum alani kaplasin ama icerik (butonlar, seekbar, vs)
-        // SafeArea icinde kalsin — iPhone notch/Dynamic Island/home
-        // indicator + landscape'te yan kameralar.
-        child: SafeArea(
-          child: Column(
-          children: [
-            // Top bar
-            Padding(
-              padding: const EdgeInsets.all(Spacing.lg),
-              child: Row(
-                children: [
-                  FocusTraversalOrder(
-                    order: const NumericFocusOrder(1),
-                    child: _TvIconButton(
-                      icon: Icons.arrow_back,
-                      tooltip: l.back,
-                      onTap: widget.onClose,
-                    ),
-                  ),
-                  const SizedBox(width: Spacing.sm),
-                  Expanded(
-                    child: Text(
-                      widget.title,
-                      style: const TextStyle(
-                          color:      Colors.white,
-                          fontSize:   TextSize.titleSm,
-                          fontWeight: FontWeight.w600),
-                      maxLines:  1,
-                      overflow:  TextOverflow.ellipsis,
-                    ),
-                  ),
-                  // AirPlay — yalnizca iOS. Ses cikisini Apple TV/hoparlore
-                  // yonlendirir; goruntu icin Kontrol Merkezi > Ekran
-                  // Yansitma gerekir (media_kit texture render, AVPlayerLayer
-                  // olmadigi icin AirPlay video mumkun degil).
-                  if (widget.showAirplay)
-                    FocusTraversalOrder(
-                      order: const NumericFocusOrder(1.7),
-                      child: _TvIconButton(
-                        icon: Icons.airplay,
-                        tooltip: l.playerAirplayTooltip,
-                        onTap: widget.onAirplay,
-                      ),
-                    ),
-                  // PiP — yalnizca destekleyen platformda (Android). iOS'ta
-                  // media_kit texture render oldugu icin sistem PiP calismaz.
-                  if (widget.showPip)
-                    FocusTraversalOrder(
-                      order: const NumericFocusOrder(1.8),
-                      child: _TvIconButton(
-                        icon: Icons.picture_in_picture_alt,
-                        tooltip: l.playerPipTooltip,
-                        onTap: widget.onPip,
-                      ),
-                    ),
-                  // Favori toggle — 2026-05-11 kullanıcı isteği.
-                  FocusTraversalOrder(
-                    order: const NumericFocusOrder(1.9),
-                    child: _FavoriteButton(channelId: widget.channelId),
-                  ),                  // _ControlsOverlay scope — widget.channelId burada available
-                  FocusTraversalOrder(
-                    order: const NumericFocusOrder(2),
-                    child: _TvIconButton(
-                      icon: Icons.refresh,
-                      tooltip: l.playerReconnectTooltip,
-                      onTap: widget.onReconnect,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-
-            const Spacer(),
-
-            // Center play/pause + 10s seek butonları (TV+touch friendly)
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                _TvIconButton(
-                  icon: Icons.replay_10,
-                  tooltip: '-10s',
-                  onTap: () {
-                    widget.player.seek(
-                      widget.player.state.position -
-                          const Duration(seconds: 10),
-                    );
-                    widget.onFeedback(Icons.replay_10, '-10 sn');
-                  },
-                  size: 32,
-                ),
-                const SizedBox(width: Spacing.xl),
-                FocusTraversalOrder(
-                  order: const NumericFocusOrder(3),
-                  child: StreamBuilder<bool>(
-                    stream: widget.player.stream.playing,
-                    builder: (ctx, snap) {
-                      final playing = snap.data ?? false;
-                      return _PlayPauseButton(
-                        playing: playing,
-                        // 2026-05-11: Explicit play/pause — playOrPause toggle
-                        // bazen state race'inde ters atıyor. Mevcut state'e
-                        // göre kesin komut.
-                        onTap: () {
-                          if (widget.player.state.playing) {
-                            widget.player.pause();
-                            widget.onFeedback(Icons.pause, 'Duraklatıldı');
-                          } else {
-                            widget.player.play();
-                            widget.onFeedback(Icons.play_arrow, 'Oynatılıyor');
-                          }
-                        },
-                      );
-                    },
-                  ),
-                ),
-                const SizedBox(width: Spacing.xl),
-                _TvIconButton(
-                  icon: Icons.forward_10,
-                  tooltip: '+10s',
-                  onTap: () {
-                    final pos = widget.player.state.position;
-                    final dur = widget.player.state.duration;
-                    var target = pos + const Duration(seconds: 10);
-                    if (dur > Duration.zero && target > dur) target = dur;
-                    widget.player.seek(target);
-                    widget.onFeedback(Icons.forward_10, '+10 sn');
-                  },
-                  size: 32,
-                ),
-              ],
-            ),
-
-            const Spacer(),
-
-            // Bottom seek bar + time. Sol alttaki sabit ses göstergesi
-            // kaldırıldı (kullanıcı isteği) — gesture sırasında ekran ortasında
-            // beliren overlay zaten görsel feedback sağlıyor.
-            //
-            // 2026-05-26: Tek StreamBuilder (position). Duration sync API ile
-            // alinir — `widget.player.stream.duration` bazi IPTV VOD'larinda
-            // hic emit etmiyordu, eski iç içe StreamBuilder yapisinda onChanged:
-            // null donderiyordu (Slider disabled) ve dokunulamiyordu.
-            // state.duration genelde dolu — degilse seek bar kapatip izlemeye
-            // devam edilebilir.
-            Builder(
-              builder: (ctx) {
-                final isLive = widget.streamType == 'live';
-                if (isLive) {
-                  // Canli yayinda seek bar yok, sadece kirmizi rozet.
-                  return Padding(
-                    padding: const EdgeInsets.fromLTRB(
-                        Spacing.lg, 0, Spacing.lg, Spacing.xl),
-                    child: Row(
-                      children: [
-                        const Icon(Icons.circle,
-                            color: AppColors.live, size: 8),
-                        const SizedBox(width: 6),
-                        Text(l.playerLiveLabel,
-                            style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: TextSize.caption,
-                                fontWeight: FontWeight.w700,
-                                letterSpacing: 1)),
-                      ],
-                    ),
-                  );
-                }
-
-                return Padding(
-                  padding: const EdgeInsets.fromLTRB(
-                      Spacing.lg, 0, Spacing.lg, Spacing.xl),
-                  child: Column(
-                    children: [
-                      StreamBuilder<Duration>(
-                        // Position her saniye emit eder; Slider value & alt
-                        // saat metni her tick'te yenilenir.
-                        stream: widget.player.stream.position,
-                        builder: (ctx, posSnap) {
-                          final pos = posSnap.data ??
-                              widget.player.state.position;
-                          // Duration sync — IPTV VOD bazen stream'i emit
-                          // etmiyor. _player.state.duration native player'dan
-                          // gerceklesen son degeri donderir.
-                          final duration = widget.player.state.duration;
-                          final durMs = duration.inMilliseconds;
-                          final hasDuration = durMs > 0;
-                          // Slider value clamping: durMs<=0 ise gecici max=1,
-                          // value=0 → thumb solda. hasDuration false ise
-                          // onChanged null (UI gri ama tap kaybolmaz cunku
-                          // GestureDetector parent'ina dusmesin diye Stack
-                          // icinde fizikselsel olarak orada).
-                          final maxMs = hasDuration ? durMs : 1;
-                          final valMs =
-                              pos.inMilliseconds.clamp(0, maxMs);
-                          return Column(
-                            children: [
-                              SliderTheme(
-                                data: SliderTheme.of(ctx).copyWith(
-                                  trackHeight: 4,
-                                  activeTrackColor: AppColors.accent,
-                                  inactiveTrackColor: Colors.white24,
-                                  thumbColor: AppColors.accent,
-                                  overlayColor:
-                                      AppColors.accent.withValues(alpha: 0.2),
-                                  thumbShape: const RoundSliderThumbShape(
-                                      enabledThumbRadius: 7),
-                                  overlayShape: const RoundSliderOverlayShape(
-                                      overlayRadius: 16),
-                                  trackShape:
-                                      const RoundedRectSliderTrackShape(),
-                                ),
-                                child: Slider(
-                                  min: 0,
-                                  max: maxMs.toDouble(),
-                                  value: valMs.toDouble(),
-                                  onChanged: hasDuration
-                                      ? (v) {
-                                          // Drag sirasinda her tick'te seek.
-                                          // VOD'da watchdog kapali oldugundan
-                                          // serbestce seek edilebilir.
-                                          final cap = (durMs - 3000)
-                                              .clamp(0, durMs);
-                                          final ms = v
-                                              .toInt()
-                                              .clamp(0, cap);
-                                          widget.player.seek(
-                                              Duration(milliseconds: ms));
-                                        }
-                                      : null,
-                                ),
-                              ),
-                                Row(
-                                  mainAxisAlignment:
-                                      MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    Text(_fmt(pos),
-                                        style: const TextStyle(
-                                            color:    Colors.white70,
-                                            fontSize: TextSize.caption)),
-                                    // Ortada kumanda ipucu
-                                    Text(l.playerSeekHint,
-                                        style: const TextStyle(
-                                            color: Colors.white30,
-                                            fontSize: 10)),
-                                    Text(_fmt(duration),
-                                        style: const TextStyle(
-                                            color:    Colors.white70,
-                                            fontSize: TextSize.caption)),
-                                  ],
-                                ),
-                              ],
-                            );
-                          },
-                        ),
-                      const SizedBox(height: Spacing.sm),
-                      // Subtitle + speed + audio + aspect-ratio + resolution + mute
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                        children: [
-                          FocusTraversalOrder(
-                            order: const NumericFocusOrder(3.5),
-                            child: _SubtitleButton(
-                              aiEnabled: widget.subtitleEnabled,
-                              player:    widget.player,
-                              onAiToggle: widget.onSubtitleToggle,
-                              onFeedback: widget.onFeedback,
-                            ),
-                          ),
-                          FocusTraversalOrder(
-                            order: const NumericFocusOrder(4),
-                            child: _SpeedButton(
-                              player: widget.player,
-                              onFeedback: widget.onFeedback,
-                            ),
-                          ),
-                          FocusTraversalOrder(
-                            order: const NumericFocusOrder(5),
-                            child: _AudioTrackButton(
-                              player: widget.player,
-                              onFeedback: widget.onFeedback,
-                            ),
-                          ),
-                          FocusTraversalOrder(
-                            order: const NumericFocusOrder(5.5),
-                            child: _AspectRatioButton(
-                              fit:      widget.videoFit,
-                              onChange: widget.onFitChange,
-                            ),
-                          ),
-                          FocusTraversalOrder(
-                            order: const NumericFocusOrder(5.8),
-                            child: _ResolutionButton(
-                              player: widget.player,
-                              onFeedback: widget.onFeedback,
-                            ),
-                          ),
-                          FocusTraversalOrder(
-                            order: const NumericFocusOrder(6),
-                            child: StreamBuilder<double>(
-                              stream: widget.player.stream.volume,
-                              builder: (ctx, snap) {
-                                final vol = snap.data ?? 100.0;
-                                return _TvIconButton(
-                                  icon: vol > 0
-                                      ? Icons.volume_up
-                                      : Icons.volume_off,
-                                  tooltip: vol > 0 ? l.playerMuteTooltip : l.playerUnmuteTooltip,
-                                  onTap: () {
-                                    final mute = vol > 0;
-                                    widget.player.setVolume(mute ? 0 : 100);
-                                    widget.onFeedback(
-                                      mute ? Icons.volume_off : Icons.volume_up,
-                                      mute ? 'Sessiz' : 'Ses açık',
-                                    );
-                                  },
-                                );
-                              },
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                );
-              },
-            ),
-          ],
-        ),
-        ),
-      ),
-    );
-  }
-
-  String _fmt(Duration d) {
-    final h  = d.inHours;
-    final m  = d.inMinutes.remainder(60).toString().padLeft(2, '0');
-    final s  = d.inSeconds.remainder(60).toString().padLeft(2, '0');
-    return h > 0 ? '$h:$m:$s' : '$m:$s';
-  }
-}
-
-// ── Favori toggle butonu (player üst bar) ───────────────────────────────────
-//
-// 2026-05-11: Channel ID ile DB'den isFavorite okuyup toggle eder. Player'da
-// oynayan kanal listede ne durumda olursa olsun bağımsız çalışır.
-
-class _FavoriteButton extends ConsumerStatefulWidget {
-  final String channelId;
-  const _FavoriteButton({required this.channelId});
-
-  @override
-  ConsumerState<_FavoriteButton> createState() => _FavoriteButtonState();
-}
-
-class _FavoriteButtonState extends ConsumerState<_FavoriteButton> {
-  bool? _isFavorite;
-  ChannelModel? _channel;
-
-  @override
-  void initState() {
-    super.initState();
-    _loadChannel();
-  }
-
-  Future<void> _loadChannel() async {
+    if (_aiGateBusy) return;
+    _aiGateBusy = true;
     try {
-      final repo = ref.read(channelRepoProvider);
-      final ch = await repo.getById(widget.channelId);
-      if (mounted) {
-        setState(() {
-          _channel = ch;
-          _isFavorite = ch?.isFavorite ?? false;
-        });
-      }
-    } catch (_) {
-      if (mounted) setState(() => _isFavorite = false);
+      final ok = await runAiSubtitleGate(context, ref);
+      if (ok && mounted) setState(() => _aiSubtitleEnabled = true);
+    } finally {
+      _aiGateBusy = false;
     }
   }
 
-  Future<void> _toggle() async {
-    if (_channel == null || _isFavorite == null) return;
-    final newFav = !_isFavorite!;
-    setState(() => _isFavorite = newFav);
-    try {
-      await ref
-          .read(channelRepoProvider)
-          .toggleFavorite(_channel!.id, newFav);
-      _channel = _channel!.copyWith(isFavorite: newFav);
-      // Home liste cache'i de güncellenmeli
-      ref.invalidate(homeProvider);
-    } catch (_) {
-      // Hata olursa state'i geri al
-      if (mounted) setState(() => _isFavorite = !newFav);
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final fav = _isFavorite ?? false;
-    return _TvIconButton(
-      icon: fav ? Icons.star : Icons.star_border,
-      tooltip: fav ? 'Favoriden Çıkar' : 'Favorilere Ekle',
-      onTap: _toggle,
-    );
-  }
-}
-
-// ── TV-friendly icon button with visible focus ring ─────────────────────────
-
-class _TvIconButton extends StatefulWidget {
-  final IconData icon;
-  final String tooltip;
-  final VoidCallback onTap;
-  final double size;
-
-  const _TvIconButton({
-    required this.icon,
-    required this.tooltip,
-    required this.onTap,
-    this.size = 28,
-  });
-
-  @override
-  State<_TvIconButton> createState() => _TvIconButtonState();
-}
-
-class _TvIconButtonState extends State<_TvIconButton> {
-  bool _focused = false;
-
-  @override
-  Widget build(BuildContext context) {
-    return Focus(
-      onFocusChange: (v) => setState(() => _focused = v),
-      onKeyEvent: (node, event) {
-        if (event is! KeyDownEvent) return KeyEventResult.ignored;
-        final key = event.logicalKey;
-        if (key == LogicalKeyboardKey.select ||
-            key == LogicalKeyboardKey.enter ||
-            key == LogicalKeyboardKey.numpadEnter ||
-            key == LogicalKeyboardKey.space ||
-            key == LogicalKeyboardKey.gameButtonA) {
-          widget.onTap();
-          return KeyEventResult.handled;
-        }
-        return KeyEventResult.ignored;
-      },
-      child: Tooltip(
-        message: widget.tooltip,
-        child: GestureDetector(
-          onTap: widget.onTap,
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 120),
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: _focused
-                  ? AppColors.accent.withValues(alpha: 0.3)
-                  : Colors.transparent,
-              border: Border.all(
-                color: _focused ? AppColors.accent : Colors.transparent,
-                width: 2.5,
-              ),
-            ),
-            child: Icon(widget.icon, color: Colors.white, size: widget.size),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-// ── Play/Pause button (TV-friendly: autofocus + scale-on-focus) ───────────────
-
-class _PlayPauseButton extends StatefulWidget {
-  final bool playing;
-  final VoidCallback onTap;
-  const _PlayPauseButton({required this.playing, required this.onTap});
-
-  @override
-  State<_PlayPauseButton> createState() => _PlayPauseButtonState();
-}
-
-class _PlayPauseButtonState extends State<_PlayPauseButton> {
-  bool _focused = false;
-  // 2026-05-11: Optimistic state — basıldığında stream event beklemeden
-  // ikon değişir, kullanıcı tepki alır. Stream event geldiğinde widget.playing
-  // ile teyit edilir.
-  bool? _optimisticPlaying;
-  DateTime? _lastTapAt;
-
-  bool get _displayPlaying => _optimisticPlaying ?? widget.playing;
-
-  @override
-  void didUpdateWidget(_PlayPauseButton old) {
-    super.didUpdateWidget(old);
-    // Stream gerçek değeri optimistic'le eşleşirse temizle (state teyit edildi)
-    if (_optimisticPlaying != null && widget.playing == _optimisticPlaying) {
-      _optimisticPlaying = null;
-    }
-  }
-
-  void _handleTap() {
-    // Debounce: 300ms içinde ikinci basışı yut (toggle çakışmasını önler)
-    final now = DateTime.now();
-    if (_lastTapAt != null &&
-        now.difference(_lastTapAt!) < const Duration(milliseconds: 300)) {
+  Future<void> _onAiError(AiError e, {required bool initial}) async {
+    if (!mounted) return;
+    final l = AppLocalizations.of(context);
+    if (e.code == AiErrorCode.proRequired) {
+      setState(() => _aiSubtitleEnabled = false);
+      final purchased = await showAiTrialEndedPaywall(context, ref);
+      if (purchased && mounted) setState(() => _aiSubtitleEnabled = true);
       return;
     }
-    _lastTapAt = now;
-    // Optimistic toggle — UI hemen değişir
-    setState(() => _optimisticPlaying = !_displayPlaying);
-    widget.onTap();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Focus(
-      autofocus: true,
-      onFocusChange: (v) => setState(() => _focused = v),
-      onKeyEvent: (node, event) {
-        if (event is! KeyDownEvent) return KeyEventResult.ignored;
-        if (event.logicalKey == LogicalKeyboardKey.select ||
-            event.logicalKey == LogicalKeyboardKey.enter ||
-            event.logicalKey == LogicalKeyboardKey.space) {
-          _handleTap();
-          return KeyEventResult.handled;
-        }
-        return KeyEventResult.ignored;
-      },
-      child: GestureDetector(
-        onTap: _handleTap,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 150),
-          decoration: BoxDecoration(
-            color: _focused
-                ? AppColors.accent.withValues(alpha: 0.35)
-                : Colors.white.withValues(alpha: 0.15),
-            shape: BoxShape.circle,
-            border: Border.all(
-              color: _focused ? AppColors.accent : Colors.transparent,
-              width: 3,
-            ),
-          ),
-          padding: EdgeInsets.all(_focused ? 24 : 20),
-          child: Icon(
-            _displayPlaying ? Icons.pause : Icons.play_arrow,
-            color: Colors.white,
-            size: 44,
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-// ── Audio track button (TV-friendly dialog) ───────────────────────────────────
-
-class _AudioTrackButton extends StatefulWidget {
-  final Player player;
-  final void Function(IconData icon, String text) onFeedback;
-  const _AudioTrackButton({required this.player, required this.onFeedback});
-
-  @override
-  State<_AudioTrackButton> createState() => _AudioTrackButtonState();
-}
-
-class _AudioTrackButtonState extends State<_AudioTrackButton> {
-  @override
-  Widget build(BuildContext context) {
-    final l = AppLocalizations.of(context);
-    return StreamBuilder<Tracks>(
-      stream: widget.player.stream.tracks,
-      builder: (ctx, tracksSnap) {
-        final tracks = tracksSnap.data;
-        final audioTracks = tracks?.audio ?? [];
-        if (audioTracks.length <= 1) return const SizedBox.shrink();
-
-        return StreamBuilder<Track>(
-          stream: widget.player.stream.track,
-          builder: (ctx, trackSnap) {
-            final current = trackSnap.data;
-            return _TvIconButton(
-              icon: Icons.audiotrack,
-              tooltip: l.playerAudioTrackTooltip,
-              onTap: () => _showAudioDialog(
-                  context, widget.player, audioTracks, current?.audio,
-                  widget.onFeedback),
-            );
-          },
-        );
-      },
-    );
-  }
-
-  static Future<void> _showAudioDialog(
-    BuildContext context,
-    Player player,
-    List<AudioTrack> tracks,
-    AudioTrack? current,
-    void Function(IconData icon, String text) onFeedback,
-  ) async {
-    final l = AppLocalizations.of(context);
-    final selected = await showDialog<AudioTrack>(
-      context: context,
-      builder: (ctx) => SimpleDialog(
-        title: Text(l.playerAudioTrackDialog),
-        children: tracks.map((t) {
-          final label = t.title?.isNotEmpty == true
-              ? t.title!
-              : t.language?.isNotEmpty == true
-                  ? t.language!
-                  : l.playerAudioTrackFallback(tracks.indexOf(t) + 1);
-          final isSelected = current == t;
-          return _TvDialogOption(
-            autofocus: isSelected,
-            selected: isSelected,
-            label: label,
-            onTap: () => Navigator.pop(ctx, t),
-          );
-        }).toList(),
-      ),
-    );
-    if (selected != null) {
-      player.setAudioTrack(selected);
-      final label = selected.title?.isNotEmpty == true
-          ? selected.title!
-          : (selected.language?.isNotEmpty == true
-              ? selected.language!
-              : '${tracks.indexOf(selected) + 1}');
-      onFeedback(Icons.audiotrack, 'Ses: $label');
+    if (initial && e.code != AiErrorCode.noSpeech) {
+      setState(() => _aiSubtitleEnabled = false);
     }
+    _showSnack(aiErrorMessage(l, e.code), duration: const Duration(seconds: 4));
   }
-}
 
-// ── TV-friendly dialog option (D-pad Enter/Select/gameButtonA support) ──────
+  // ── Bloklayıcı hata ──────────────────────────────────────────────────────
 
-class _TvDialogOption extends StatefulWidget {
-  final bool autofocus;
-  final bool selected;
-  final String label;
-  final VoidCallback onTap;
+  String _blockingMessage(AppLocalizations l, String raw) =>
+      switch (classifyPlaybackError(raw)) {
+        PlaybackErrorKind.unsupportedFormat => l.playerErrorUnsupportedFormat,
+        PlaybackErrorKind.corruptStream => l.playerErrorCorruptStream,
+        PlaybackErrorKind.unavailable => l.playerErrorStreamUnavailable,
+      };
 
-  const _TvDialogOption({
-    this.autofocus = false,
-    this.selected  = false,
-    required this.label,
-    required this.onTap,
-  });
-
-  @override
-  State<_TvDialogOption> createState() => _TvDialogOptionState();
-}
-
-class _TvDialogOptionState extends State<_TvDialogOption> {
-  bool _focused = false;
-
-  @override
-  Widget build(BuildContext context) {
-    return Focus(
-      autofocus: widget.autofocus,
-      onFocusChange: (v) => setState(() => _focused = v),
-      onKeyEvent: (node, event) {
-        if (event is! KeyDownEvent) return KeyEventResult.ignored;
-        final key = event.logicalKey;
-        if (key == LogicalKeyboardKey.select ||
-            key == LogicalKeyboardKey.enter ||
-            key == LogicalKeyboardKey.numpadEnter ||
-            key == LogicalKeyboardKey.space ||
-            key == LogicalKeyboardKey.gameButtonA) {
-          widget.onTap();
-          return KeyEventResult.handled;
-        }
-        return KeyEventResult.ignored;
-      },
-      child: InkWell(
-        onTap: widget.onTap,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 100),
-          color: _focused
-              ? AppColors.accent.withValues(alpha: 0.15)
-              : Colors.transparent,
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-          child: Row(
-            children: [
-              Icon(
-                  widget.selected
-                      ? Icons.radio_button_checked
-                      : Icons.radio_button_unchecked,
-                  size: 20,
-                  color: AppColors.accent),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Text(widget.label,
-                    style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: _focused
-                            ? FontWeight.w600
-                            : FontWeight.normal)),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-// ── Speed button (TV-friendly dialog) ─────────────────────────────────────────
-
-class _SpeedButton extends StatefulWidget {
-  final Player player;
-  final void Function(IconData icon, String text) onFeedback;
-  const _SpeedButton({required this.player, required this.onFeedback});
-
-  @override
-  State<_SpeedButton> createState() => _SpeedButtonState();
-}
-
-class _SpeedButtonState extends State<_SpeedButton> {
-  double _speed = 1.0;
-  bool _focused = false;
-
-  static const _speeds = [0.5, 0.75, 1.0, 1.25, 1.5, 2.0];
-
-  Future<void> _showSpeedDialog() async {
+  Future<void> _openExternal() async {
     final l = AppLocalizations.of(context);
-    final selected = await showDialog<double>(
-      context: context,
-      builder: (ctx) => SimpleDialog(
-        title: Text(l.playerSpeedDialog),
-        children: _speeds.map((s) {
-          final isSel = s == _speed;
-          return _TvDialogOption(
-            autofocus: isSel,
-            selected: isSel,
-            label: '${s}x',
-            onTap: () => Navigator.pop(ctx, s),
-          );
-        }).toList(),
-      ),
-    );
-    if (selected != null) {
-      setState(() => _speed = selected);
-      widget.player.setRate(selected);
-      widget.onFeedback(Icons.speed, 'Hız ${selected}x');
+    final r = await openInExternalPlayer(_playUrl);
+    if (r != ExternalPlayerResult.opened) _showSnack(l.playerExternalNotFound);
+  }
+
+  @override
+  void dispose() {
+    _disposed = true;
+    if (_playbackCounted) unawaited(PlaybackMilestones.maybeRequestReview());
+    _hideTimer?.cancel();
+    _gestureHideTimer?.cancel();
+    _actionTimer?.cancel();
+    _watchdog?.cancel();
+    _progressTimer?.cancel();
+    for (final s in _subs) {
+      s.cancel();
     }
+    if (_initialBrightness != null) {
+      ScreenBrightness().setApplicationScreenBrightness(_initialBrightness!).catchError((_) {});
+    } else {
+      ScreenBrightness().resetApplicationScreenBrightness().catchError((_) {});
+    }
+    // Ref-counted: yalnız SON player kapanınca PiP/oturum/sistem UI geri
+    // yüklenir (kanal değişiminde yeni ekran zaten aktif).
+    unawaited(PipService.instance.releasePlayer());
+    _player.stop().catchError((_) {});
+    _player.dispose();
+    AudioSessionService.instance.deactivate();
+    PlayerSystemUi.release();
+    super.dispose();
   }
-
-  @override
-  Widget build(BuildContext context) {
-    return Focus(
-      onFocusChange: (v) => setState(() => _focused = v),
-      onKeyEvent: (node, event) {
-        if (event is! KeyDownEvent) return KeyEventResult.ignored;
-        final key = event.logicalKey;
-        if (key == LogicalKeyboardKey.select ||
-            key == LogicalKeyboardKey.enter ||
-            key == LogicalKeyboardKey.numpadEnter ||
-            key == LogicalKeyboardKey.space ||
-            key == LogicalKeyboardKey.gameButtonA) {
-          _showSpeedDialog();
-          return KeyEventResult.handled;
-        }
-        return KeyEventResult.ignored;
-      },
-      child: GestureDetector(
-        onTap: _showSpeedDialog,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 120),
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(16),
-            color: _focused
-                ? AppColors.accent.withValues(alpha: 0.3)
-                : Colors.transparent,
-            border: Border.all(
-              color: _focused ? AppColors.accent : Colors.transparent,
-              width: 2,
-            ),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Icon(Icons.speed, color: Colors.white, size: 20),
-              const SizedBox(width: 4),
-              Text('${_speed}x',
-                  style: const TextStyle(
-                      color: Colors.white, fontSize: TextSize.label)),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-// ── Subtitle picker (AI / Embedded tracks / Off) ────────────────────────────
-
-class _SubtitleButton extends StatelessWidget {
-  final bool aiEnabled;
-  final Player player;
-  final VoidCallback onAiToggle;
-  final void Function(IconData icon, String text) onFeedback;
-
-  const _SubtitleButton({
-    required this.aiEnabled,
-    required this.player,
-    required this.onAiToggle,
-    required this.onFeedback,
-  });
 
   @override
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context);
-    return _TvIconButton(
-      icon: aiEnabled ? Icons.subtitles : Icons.subtitles_off_outlined,
-      tooltip: l.playerSubtitleEnable,
-      onTap: () async {
-        final tracks = player.state.tracks.subtitle;
-        // 'no' / 'auto' tracks otomatik gelir, gerçek embedded'ları ayır
-        final embedded = tracks.where((t) => t.id != 'no' && t.id != 'auto').toList();
-        final result = await showDialog<String>(
-          context: context,
-          builder: (ctx) {
-            final ll = AppLocalizations.of(ctx);
-            return SimpleDialog(
-              title: Text(ll.playerSubtitleDialogTitle),
-              children: [
-                _TvDialogOption(
-                  label: aiEnabled
-                      ? '${ll.playerSubtitleAi} ${ll.playerSubtitleAiActive}'
-                      : ll.playerSubtitleAi,
-                  onTap: () => Navigator.pop(ctx, 'ai'),
-                ),
-                for (var i = 0; i < embedded.length; i++)
-                  _TvDialogOption(
-                    label: ll.playerSubtitleEmbedded(i + 1) +
-                        (embedded[i].language != null
-                            ? ' (${embedded[i].language})'
-                            : ''),
-                    onTap: () => Navigator.pop(ctx, 'emb_${embedded[i].id}'),
-                  ),
-                _TvDialogOption(
-                  label: ll.playerSubtitleOff,
-                  onTap: () => Navigator.pop(ctx, 'off'),
-                ),
-              ],
-            );
-          },
-        );
-        if (result == null) return;
-        if (result == 'ai') {
-          // AI toggle — varsa kapat, yoksa aç. Feedback'i SubtitleOverlay
-          // ("AI altyazı hazırlanıyor…") + onError zinciri saglar.
-          onAiToggle();
-          // Embedded varsa onu da kapat
-          await player.setSubtitleTrack(SubtitleTrack.no());
-        } else if (result == 'off') {
-          if (aiEnabled) onAiToggle();
-          onFeedback(Icons.subtitles_off, 'Altyazı kapalı');
-          await player.setSubtitleTrack(SubtitleTrack.no());
-        } else if (result.startsWith('emb_')) {
-          if (aiEnabled) onAiToggle(); // AI varsa kapat
-          final id = result.substring(4);
-          final track = embedded.firstWhere((t) => t.id == id,
-              orElse: () => SubtitleTrack.no());
-          // Anlık feedback — setSubtitleTrack yüklemesi birkaç saniye sürebilir;
-          // kullanıcı butona bastığında işlemin başladığını hemen görsün.
-          final lang = track.language;
-          onFeedback(
-            Icons.subtitles,
-            (lang != null && lang.isNotEmpty)
-                ? 'Altyazı: $lang'
-                : 'Altyazı yükleniyor…',
-          );
-          await player.setSubtitleTrack(track);
-        }
+    final style = _prefs.subtitleStyle;
+    final ch = _channel;
+    final title = ch?.name.isNotEmpty == true && widget.title.isEmpty ? ch!.name : widget.title;
+    final targetLang = resolveAiTargetLang(
+        pref: _prefs.aiTargetPref, deviceLang: Localizations.localeOf(context).languageCode);
+    final controlsShown = _controlsVisible && !_inPipMode && _blockingError == null;
+
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) async {
+        if (!didPop) await _stopAndPop();
       },
-    );
-  }
-}
-
-// ── Aspect ratio (Orijinal / Doldur / Esnet) ────────────────────────────────
-
-class _AspectRatioButton extends StatelessWidget {
-  final BoxFit fit;
-  final ValueChanged<BoxFit> onChange;
-
-  const _AspectRatioButton({required this.fit, required this.onChange});
-
-  @override
-  Widget build(BuildContext context) {
-    final l = AppLocalizations.of(context);
-    return _TvIconButton(
-      icon: Icons.aspect_ratio,
-      tooltip: l.playerScreenSizeTooltip,
-      onTap: () async {
-        final result = await showDialog<BoxFit>(
-          context: context,
-          builder: (ctx) {
-            final ll = AppLocalizations.of(ctx);
-            return SimpleDialog(
-              title: Text(ll.playerScreenSizeDialog),
+      child: Scaffold(
+        backgroundColor: Colors.black,
+        body: Focus(
+          autofocus: true,
+          onKeyEvent: _onKeyEvent,
+          child: GestureDetector(
+            onTap: _toggleControls,
+            onDoubleTapDown: _isLive ? null : (d) => _doubleTapPos = d.localPosition,
+            onDoubleTap: _isLive ? null : _onDoubleTap,
+            onVerticalDragStart: _onVerticalDragStart,
+            onVerticalDragUpdate: _onVerticalDragUpdate,
+            onVerticalDragEnd: _onVerticalDragEnd,
+            child: Stack(
               children: [
-                _TvDialogOption(
-                  label: '${ll.playerFitOriginal}${fit == BoxFit.contain ? " ✓" : ""}',
-                  onTap: () => Navigator.pop(ctx, BoxFit.contain),
-                ),
-                _TvDialogOption(
-                  label: '${ll.playerFitCover}${fit == BoxFit.cover ? " ✓" : ""}',
-                  onTap: () => Navigator.pop(ctx, BoxFit.cover),
-                ),
-                _TvDialogOption(
-                  label: '${ll.playerFitStretch}${fit == BoxFit.fill ? " ✓" : ""}',
-                  onTap: () => Navigator.pop(ctx, BoxFit.fill),
-                ),
-              ],
-            );
-          },
-        );
-        if (result != null) onChange(result);
-      },
-    );
-  }
-}
-
-// ── Resolution / Quality picker (HLS / Multi-bitrate) ───────────────────────
-
-class _ResolutionButton extends StatelessWidget {
-  final Player player;
-  final void Function(IconData icon, String text) onFeedback;
-  const _ResolutionButton({required this.player, required this.onFeedback});
-
-  @override
-  Widget build(BuildContext context) {
-    final l = AppLocalizations.of(context);
-    return _TvIconButton(
-      icon: Icons.high_quality,
-      tooltip: l.playerResolutionTooltip,
-      onTap: () async {
-        final tracks = player.state.tracks.video;
-        // Auto (id='auto') + gerçek varyantları göster
-        final variants = tracks
-            .where((t) => t.id != 'no' && (t.w ?? 0) > 0)
-            .toList()
-          ..sort((a, b) => (b.h ?? 0).compareTo(a.h ?? 0));
-
-        final result = await showDialog<String>(
-          context: context,
-          builder: (ctx) {
-            final ll = AppLocalizations.of(ctx);
-            return SimpleDialog(
-              title: Text(ll.playerResolutionDialog),
-              children: [
-                _TvDialogOption(
-                  label: ll.playerResolutionAuto,
-                  onTap: () => Navigator.pop(ctx, 'auto'),
-                ),
-                for (final t in variants)
-                  _TvDialogOption(
-                    label: '${t.h}p${t.fps != null ? " ${t.fps!.round()}fps" : ""}',
-                    onTap: () => Navigator.pop(ctx, t.id),
-                  ),
-                if (variants.isEmpty)
-                  Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Text(
-                      ll.playerSingleQuality,
-                      style: const TextStyle(color: Colors.white54),
-                    ),
-                  ),
-              ],
-            );
-          },
-        );
-        if (result == null) return;
-        if (result == 'auto') {
-          await player.setVideoTrack(VideoTrack.auto());
-          onFeedback(Icons.high_quality, 'Çözünürlük: Otomatik');
-        } else {
-          final track = variants.firstWhere((t) => t.id == result,
-              orElse: () => VideoTrack.auto());
-          await player.setVideoTrack(track);
-          onFeedback(Icons.high_quality, 'Çözünürlük: ${track.h}p');
-        }
-      },
-    );
-  }
-}
-
-// ── Gesture overlay (volume / brightness vertical swipe feedback) ────────────
-
-class _GestureOverlay extends StatelessWidget {
-  /// 'volume' (sağ) veya 'brightness' (sol)
-  final String type;
-  /// 0..1
-  final double value;
-
-  const _GestureOverlay({required this.type, required this.value});
-
-  @override
-  Widget build(BuildContext context) {
-    final isVolume = type == 'volume';
-    final icon = isVolume
-        ? (value < 0.01
-            ? Icons.volume_off
-            : value < 0.5
-                ? Icons.volume_down
-                : Icons.volume_up)
-        : (value < 0.5 ? Icons.brightness_low : Icons.brightness_high);
-    return Center(
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
-        decoration: BoxDecoration(
-          color: Colors.black.withValues(alpha: 0.65),
-          borderRadius: BorderRadius.circular(10),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, color: Colors.white, size: 32),
-            const SizedBox(height: 10),
-            SizedBox(
-              width: 140,
-              child: LinearProgressIndicator(
-                value: value,
-                minHeight: 4,
-                backgroundColor: Colors.white24,
-                valueColor: AlwaysStoppedAnimation(
-                  isVolume ? Colors.amber : Colors.lightBlueAccent,
-                ),
-              ),
-            ),
-            const SizedBox(height: 6),
-            Text(
-              '${(value * 100).round()}%',
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 13,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-// ── Aksiyon feedback pill (buton işlemi → kısa süreli merkezi bildirim) ──────
-//
-// Kullanıcı bir butona/tuşa bastığında ekran ortasında ~1 sn boyunca görünen
-// ikon + metin. TV/kumanda ile kullanımda işlemin gerçekleştiğini doğrular.
-class _ActionFeedbackOverlay extends StatelessWidget {
-  final IconData? icon;
-  final String text;
-
-  const _ActionFeedbackOverlay({required this.icon, required this.text});
-
-  @override
-  Widget build(BuildContext context) {
-    return IgnorePointer(
-      child: Center(
-        child: AnimatedOpacity(
-          opacity: text.isEmpty ? 0.0 : 1.0,
-          duration: const Duration(milliseconds: 150),
-          child: Container(
-            padding:
-                const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
-            decoration: BoxDecoration(
-              color: Colors.black.withValues(alpha: 0.72),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                if (icon != null) ...[
-                  Icon(icon, color: Colors.white, size: 26),
-                  const SizedBox(width: 10),
-                ],
-                Flexible(
-                  child: Text(
-                    text,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 15,
-                      fontWeight: FontWeight.w600,
+                Center(
+                  child: Video(
+                    controller: _controller,
+                    controls: (_) => const SizedBox.shrink(),
+                    fit: _videoFit,
+                    // Gömülü altyazı Flutter SubtitleView ile çizilir (libass kapalı)
+                    // → kullanıcı stil ayarı burada uygulanır.
+                    subtitleViewConfiguration: SubtitleViewConfiguration(
+                      style: TextStyle(
+                        height: 1.4,
+                        fontSize: style.fontSize,
+                        color: style.textColor,
+                        backgroundColor: style.backgroundColor,
+                        fontWeight: FontWeight.w500,
+                      ),
+                      textScaler: TextScaler.noScaling,
+                      padding: EdgeInsets.fromLTRB(16, 0, 16, controlsShown ? 120 : 24),
                     ),
                   ),
                 ),
+                if (!_hasVideo)
+                  AudioOnlyOverlay(title: title, logoUrl: ch?.logoUrl ?? ''),
+                if (!_isLive)
+                  SubtitleOverlay(
+                    channelId: widget.channelId,
+                    streamUrl: _playUrl,
+                    positionStream: _player.stream.position,
+                    currentPositionMs: () => _player.state.position.inMilliseconds,
+                    durationMs: () => _player.state.duration.inMilliseconds,
+                    enabled: _aiSubtitleEnabled,
+                    targetLang: targetLang,
+                    providerLabel: _prefs.aiProvider,
+                    userAgent: _prefs.userAgent,
+                    bannerEnabled: _prefs.aiBannerEnabled,
+                    style: style,
+                    bottomPadding: controlsShown ? 140 : 48,
+                    onError: _onAiError,
+                  ),
+                if ((_isBuffering || _isReconnecting) && _blockingError == null)
+                  Center(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5),
+                        const SizedBox(height: 12),
+                        Text(
+                          _isReconnecting
+                              ? (_reconnectAttempts > 1
+                                  ? l.playerReconnectingMulti(_reconnectAttempts)
+                                  : l.playerReconnecting)
+                              : l.playerLoading,
+                          style: const TextStyle(color: Colors.white70, fontSize: 13),
+                        ),
+                      ],
+                    ),
+                  ),
+                // Her zaman agacta: AnimatedOpacity ile solar (8 sn auto-hide
+                // davranisi ayni). PiP'te tamamen kaldirilir.
+                if (!_inPipMode)
+                  PlayerControlsOverlay(
+                    visible: controlsShown,
+                    player: _player,
+                    title: title,
+                    streamType: widget.streamType,
+                    channelId: widget.channelId,
+                    channel: ch,
+                    onClose: _stopAndPop,
+                    onReconnect: _manualReconnect,
+                    aiEnabled: _aiSubtitleEnabled,
+                    onAiToggle: _toggleAiSubtitle,
+                    onEmbeddedSubtitleSelected: _onEmbeddedSubtitleSelected,
+                    onAudioSelected: _onAudioSelected,
+                    videoFit: _videoFit,
+                    onFitChange: (f) {
+                      setState(() => _videoFit = f);
+                      _showActionFeedback(Icons.aspect_ratio, l.playerFeedbackFit(fitLabel(l, f)));
+                    },
+                    onPip: _enterPip,
+                    onAirplay: _showAirplay,
+                    showPip: _pipSupported,
+                    showAirplay: _airplaySupported,
+                    onFeedback: (i, t) => _showActionFeedback(i, t),
+                    onSeekRelative: _seekRelative,
+                    onToggleMute: _toggleMute,
+                    orientationLocked: _orientationLocked,
+                    onToggleOrientation: _toggleOrientationLock,
+                    onChannelPanel: _isLive && ch != null ? _openChannelPanel : null,
+                    onPrevChannel: _isLive && ch != null ? () => _stepChannel(-1) : null,
+                    onNextChannel: _isLive && ch != null ? () => _stepChannel(1) : null,
+                  ),
+                if (_gestureType.isNotEmpty)
+                  GestureValueOverlay(type: _gestureType, value: _gestureValue),
+                if (_actionText.isNotEmpty)
+                  ActionFeedbackOverlay(
+                    icon: _actionIcon,
+                    text: _actionText,
+                    alignment: _actionAlign,
+                    controlsVisible: controlsShown,
+                  ),
+                if (_blockingError != null)
+                  PlayerErrorOverlay(
+                    channelName: title,
+                    message: _blockingMessage(l, _blockingError!),
+                    onRetry: _manualReconnect,
+                    onBack: _stopAndPop,
+                    onOpenExternal: _openExternal,
+                    onReport: () => showErrorReportDialog(
+                      context,
+                      channelName: title,
+                      errorMessage: _blockingError!,
+                    ),
+                  ),
               ],
             ),
           ),
